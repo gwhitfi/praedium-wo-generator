@@ -66,7 +66,7 @@ const iconProps = {
     "aria-hidden": true,
 } as const;
 
-function MenuIcon() {
+export function MenuIcon() {
     return (
         <svg {...iconProps}>
             <path d="M4 6h16M4 12h16M4 18h16" />

@@ -3,6 +3,8 @@ import { UserButton } from "@clerk/nextjs";
 import ThemeToggle from "./ThemeToggle";
 import Logo from "./Logo";
 import MobileMenu, { type NavLink } from "./MobileMenu";
+import InfoMenu from "./InfoMenu";
+import { INFO_LINKS } from "@/lib/defaults";
 
 const links: NavLink[] = [
     { href: "/work-orders", label: "Work Orders" },
@@ -25,11 +27,12 @@ export default function Nav() {
                                 {link.label}
                             </Link>
                         ))}
+                        <InfoMenu />
                     </nav>
                     <ThemeToggle />
                     <UserButton />
                     <div className="md:hidden">
-                        <MobileMenu links={links} />
+                        <MobileMenu links={[...links, ...INFO_LINKS]} />
                     </div>
                 </div>
             </div>

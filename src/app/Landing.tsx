@@ -1,6 +1,6 @@
 import Link from "next/link";
 import Logo from "@/components/Logo";
-import ThemeToggle from "@/components/ThemeToggle";
+import PublicHeader from "@/components/PublicHeader";
 import HowItWorks from "@/components/HowItWorks";
 
 const FEATURES = [
@@ -21,23 +21,7 @@ const FEATURES = [
 export default function Landing() {
     return (
         <div className="text-foreground">
-            <header className="border-b border-line">
-                <div className="mx-auto flex max-w-5xl items-center justify-end px-4 py-4">
-                    <nav className="flex items-center gap-4">
-                        <ThemeToggle />
-                        <Link href="/sign-in" className="text-sm text-muted hover:text-foreground">
-                            Sign in
-                        </Link>
-
-                        <Link
-                            href="/sign-up"
-                            className="rounded-md bg-accent px-4 py-2 text-sm font-medium text-on-accent hover:bg-accent-hover"
-                        >
-                            Get started
-                        </Link>
-                    </nav>
-                </div>
-            </header>
+            <PublicHeader />
 
             <main>
                 {/* Hero */}
