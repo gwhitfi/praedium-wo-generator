@@ -2,7 +2,9 @@
 
 import { startTransition, useActionState, useEffect, useRef, type FormEvent } from "react";
 import { inputClass } from "@/lib/defaults";
+import type { ContractorOption, PropertyOption } from "@/lib/workOrderLookup";
 import { parseWorkOrderDescription } from "./actions";
+import ReviewDraft from "./ReviewDraft";
 import type { ParseState } from "./schemas";
 
 // The description is saved in this browser as the user types, so a refresh, a closed tab or an error never loses it.
@@ -16,7 +18,21 @@ function saveDescription(text: string) {
     }
 }
 
-export default function BotForm() {
+function clearSavedDescription() {
+    try {
+        localStorage.removeItem(STORAGE_KEY);
+    } catch {
+        // See saveDescription.
+    }
+}
+
+export default function BotForm({
+    properties,
+    contractors,
+}: {
+    properties: PropertyOption[];
+    contractors: ContractorOption[];
+}) {
     const [state, action, pending] = useActionState(parseWorkOrderDescription, {} as ParseState);
     const textarea = useRef<HTMLTextAreaElement>(null);
 
@@ -61,14 +77,19 @@ export default function BotForm() {
                 disabled={pending}
                 className="self-start rounded-md bg-accent px-4 py-2 text-sm font-medium text-on-accent hover:bg-accent-hover hover:cursor-pointer disabled:opacity-60"
             >
-                {pending ? "Reading your description…" : "Create work order"}
+                {pending ? "Reading your description…" : state.result ? "Read it again" : "Review work order"}
             </button>
 
-            {/* Temporary: shows the raw result for testing until the review screen is built. */}
             {state.result && (
-                <pre className="overflow-x-auto rounded-md border border-line bg-surface p-3 text-xs text-secondary">
-                    {JSON.stringify(state.result, null, 2)}
-                </pre>
+                <ReviewDraft
+                    // A new reading starts a fresh review.
+                    key={JSON.stringify(state.result.draft)}
+                    result={state.result}
+                    properties={properties}
+                    contractors={contractors}
+                    onCreateStart={clearSavedDescription}
+                    onCreateFailed={() => saveDescription(textarea.current?.value ?? "")}
+                />
             )}
         </form>
     );

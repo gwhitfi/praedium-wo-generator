@@ -13,6 +13,8 @@ const links: NavLink[] = [
     { href: "/settings", label: "Settings" },
 ];
 
+const AI_LINK: NavLink = { href: "/work-orders/new/ai", label: "Create work order with AI" };
+
 export default function Nav() {
     return (
         <header className="relative border-b border-line print:hidden">
@@ -29,13 +31,40 @@ export default function Nav() {
                         ))}
                         <InfoMenu />
                     </nav>
+                    <Link
+                        href={AI_LINK.href}
+                        aria-label={AI_LINK.label}
+                        title={AI_LINK.label}
+                        className="flex h-8 w-8 items-center justify-center rounded-md text-accent hover:bg-surface-hover hover:text-accent-hover"
+                    >
+                        <SparklesIcon />
+                    </Link>
                     <ThemeToggle />
                     <UserButton />
                     <div className="md:hidden">
-                        <MobileMenu links={[...links, ...INFO_LINKS]} />
+                        <MobileMenu links={[...links, AI_LINK, ...INFO_LINKS]} />
                     </div>
                 </div>
             </div>
         </header>
+    );
+}
+
+function SparklesIcon() {
+    return (
+        <svg
+            width={18}
+            height={18}
+            viewBox="0 0 24 24"
+            fill="none"
+            stroke="currentColor"
+            strokeWidth={2}
+            strokeLinecap="round"
+            strokeLinejoin="round"
+            aria-hidden
+        >
+            <path d="M10 3l1.9 5.1L17 10l-5.1 1.9L10 17l-1.9-5.1L3 10l5.1-1.9L10 3Z" />
+            <path d="M19 15v6M16 18h6" />
+        </svg>
     );
 }
