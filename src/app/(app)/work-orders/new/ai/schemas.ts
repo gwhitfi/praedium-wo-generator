@@ -1,6 +1,14 @@
 import { z } from "zod";
-import { draftArea } from "@/lib/workOrderDraft";
+import { draftArea, type WorkOrderDraft } from "@/lib/workOrderDraft";
 import { tooLong } from "@/lib/validation";
+import type { ContractorOption, PropertyLookup } from "@/lib/workOrderLookup";
+import type { MatchResult } from "@/lib/workOrderMatch";
+
+// What the bot page gets back after the description is read: the AI's draft and what it matched to.
+export type ParseState = {
+    error?: string;
+    result?: { draft: WorkOrderDraft; property: PropertyLookup; contractor: MatchResult<ContractorOption> };
+};
 
 const id = z.string().min(1).max(100);
 

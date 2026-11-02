@@ -8,6 +8,7 @@ const draft = {
     title: "Leak under kitchen sink",
     notes: "Tenant home after 3pm",
     dueDate: "2026-11-05",
+    dueDateText: "by Thursday",
     areas: [
         {
             name: "Kitchen",
@@ -39,11 +40,13 @@ describe("workOrderDraft", () => {
             contractorText: null,
             notes: "",
             dueDate: null,
+            dueDateText: null,
         });
         expect(result.unitText).toBeNull();
         expect(result.contractorText).toBeNull();
         expect(result.notes).toBeNull();
         expect(result.dueDate).toBeNull();
+        expect(result.dueDateText).toBeNull();
     });
 
     it("requires a property and a title", () => {

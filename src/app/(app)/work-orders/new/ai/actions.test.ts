@@ -16,12 +16,16 @@ vi.mock("@/lib/workOrderCreate", async (importOriginal) => ({
     findTenant: vi.fn(),
     nextJobNumber: vi.fn(),
 }));
+vi.mock("@/lib/parseDescription", () => ({ parseDescription: vi.fn() }));
+vi.mock("@/lib/workOrderLookup", () => ({ propertyLookup: vi.fn(), contractorLookup: vi.fn() }));
 
 import { redirect } from "next/navigation";
 import { getCurrentUser } from "@/lib/auth";
 import prisma from "@/lib/prisma";
+import { parseDescription } from "@/lib/parseDescription";
 import { findTenant, nextJobNumber } from "@/lib/workOrderCreate";
-import { createDraftFromBot } from "./actions";
+import { contractorLookup, propertyLookup } from "@/lib/workOrderLookup";
+import { createDraftFromBot, parseWorkOrderDescription } from "./actions";
 import type { ConfirmedDraft } from "./schemas";
 
 const draft: ConfirmedDraft = {
@@ -62,6 +66,53 @@ beforeEach(() => {
     create.mockResolvedValue({ id: "wo1" });
     vi.mocked(prisma.$transaction).mockImplementation((async (fn: (tx: unknown) => unknown) =>
         fn({ workOrder: { create } })) as never);
+});
+
+describe("parseWorkOrderDescription", () => {
+    const parsedDraft = {
+        propertyText: "123 Maple St",
+        unitText: "4B",
+        contractorText: "Joe",
+        title: "Fix sink",
+        notes: null,
+        dueDate: null,
+        dueDateText: null,
+        areas: [{ name: "Kitchen", lineItems: [{ description: "Fix sink", priority: "MEDIUM" as const }] }],
+    };
+    const form = (description: string) => {
+        const formData = new FormData();
+        formData.set("description", description);
+        return formData;
+    };
+
+    it("rejects a signed-out user without calling the AI", async () => {
+        vi.mocked(getCurrentUser).mockResolvedValue({ state: "signed-out" });
+
+        expect(await parseWorkOrderDescription({}, form("Fix the sink"))).toEqual({ error: "Not authorized" });
+        expect(parseDescription).not.toHaveBeenCalled();
+    });
+
+    it("passes on the AI's error", async () => {
+        vi.mocked(parseDescription).mockResolvedValue({ ok: false, error: "Describe the work first." });
+
+        expect(await parseWorkOrderDescription({}, form(" "))).toEqual({ error: "Describe the work first." });
+        expect(propertyLookup).not.toHaveBeenCalled();
+    });
+
+    it("matches the draft within the user's organization", async () => {
+        const property = { property: { status: "notFound" as const }, unit: null };
+        const contractor = { status: "notFound" as const };
+        vi.mocked(parseDescription).mockResolvedValue({ ok: true, draft: parsedDraft });
+        vi.mocked(propertyLookup).mockResolvedValue(property);
+        vi.mocked(contractorLookup).mockResolvedValue(contractor);
+
+        const result = await parseWorkOrderDescription({}, form("Fix the sink at 123 Maple 4B, Joe"));
+
+        expect(parseDescription).toHaveBeenCalledWith("Fix the sink at 123 Maple 4B, Joe");
+        expect(propertyLookup).toHaveBeenCalledWith("org1", "123 Maple St", "4B");
+        expect(contractorLookup).toHaveBeenCalledWith("org1", "Joe");
+        expect(result).toEqual({ result: { draft: parsedDraft, property, contractor } });
+    });
 });
 
 describe("createDraftFromBot", () => {

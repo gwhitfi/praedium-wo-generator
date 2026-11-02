@@ -121,12 +121,15 @@ export function matchByText<T>(
 
 // "123 Maple St apt 4" becomes "123 Maple St ", so the unit number isn't mistaken for a house number.
 const UNIT_DESIGNATOR = /(\b(unit|apt|apartment|suite|ste)\b\.?|#)\s*[a-z0-9-]+/gi;
+// "the Maple place" means the Maple property, not a street called Maple Place.
+const THE_PLACE = /^\s*the\s+(.+?)\s+place\s*$/i;
 
 export function matchProperty<T extends { displayName: string; addressLine1: string; city: string }>(
     query: string,
     properties: T[],
 ): MatchResult<T> {
-    return matchByText(query.replace(UNIT_DESIGNATOR, " "), properties, (p) => [p.displayName, p.addressLine1, p.city]);
+    const cleaned = query.replace(UNIT_DESIGNATOR, " ").replace(THE_PLACE, "$1");
+    return matchByText(cleaned, properties, (p) => [p.displayName, p.addressLine1, p.city]);
 }
 
 export function matchContact<

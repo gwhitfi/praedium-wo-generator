@@ -52,6 +52,19 @@ describe("matchProperty", () => {
         }
     });
 
+    it('treats "the ___ place" as a way of naming the property', () => {
+        expect(matchProperty("the maple place", properties)).toMatchObject({
+            status: "matched",
+            match: { id: "maple" },
+        });
+        expect(matchProperty("the Maple Court place", properties)).toMatchObject({ match: { id: "maple" } });
+    });
+
+    it("still matches a street called Place", () => {
+        const onPlace = [property("pl", "Elm Cottage", "8 Elm Place"), property("st", "Elm House", "8 Elm St")];
+        expect(matchProperty("8 Elm Place", onPlace)).toMatchObject({ status: "matched", match: { id: "pl" } });
+    });
+
     it("never matches a different house number", () => {
         expect(matchProperty("125 Maple St", properties).status).not.toBe("matched");
     });

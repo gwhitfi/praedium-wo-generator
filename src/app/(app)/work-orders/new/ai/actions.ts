@@ -5,8 +5,32 @@ import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 import { getCurrentUser } from "@/lib/auth";
 import prisma from "@/lib/prisma";
+import { z } from "zod";
+import { parseDescription } from "@/lib/parseDescription";
 import { contractorSnapshot, findTenant, nextJobNumber, tenantSnapshot } from "@/lib/workOrderCreate";
-import { confirmedDraft, type ConfirmedDraft } from "./schemas";
+import { contractorLookup, propertyLookup } from "@/lib/workOrderLookup";
+import { confirmedDraft, type ConfirmedDraft, type ParseState } from "./schemas";
+
+// Reads the user's description with the AI, then matches its property, unit and contractor to the
+// organization's records. Nothing is saved.
+export async function parseWorkOrderDescription(_prev: ParseState, formData: FormData): Promise<ParseState> {
+    const result = await getCurrentUser();
+    if (result.state !== "ready") return { error: "Not authorized" };
+
+    const description = z.string().safeParse(formData.get("description"));
+    if (!description.success) return { error: "Describe the work first." };
+
+    const parsed = await parseDescription(description.data);
+    if (!parsed.ok) return { error: parsed.error };
+
+    const organizationId = result.organization.id;
+    const { draft } = parsed;
+    const [property, contractor] = await Promise.all([
+        propertyLookup(organizationId, draft.propertyText, draft.unitText),
+        contractorLookup(organizationId, draft.contractorText),
+    ]);
+    return { result: { draft, property, contractor } };
+}
 
 type CreateDraftResult = { ok: false; error: string };
 

@@ -32,6 +32,8 @@ export const workOrderDraft = z.object({
     title: requiredText(200),
     notes: nullableText(5000),
     dueDate: z.iso.date().nullable(),
+    // The user's own words for the deadline ("next Friday"), so the review screen can ask them to confirm the date.
+    dueDateText: nullableText(100),
     areas: z.array(draftArea).min(1).max(50),
 });
 
