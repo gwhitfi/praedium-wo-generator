@@ -11,7 +11,7 @@ import { getAppUrl, sendEmail } from "@/lib/email";
 import { workOrderEmail } from "@/lib/emails/workOrderEmail";
 import { notifyContractorsCancelled } from "@/lib/emails/notifyCancelled";
 import { DELETE_NOT_CONFIRMED, isDeleteConfirmed } from "@/lib/confirmDelete";
-import { formatWorkOrderAddress, OPEN_STATUSES, SPLIT_VIEW_COOKIE } from "@/lib/workOrders";
+import { COLOR_SECTIONS_COOKIE, formatWorkOrderAddress, OPEN_STATUSES, SPLIT_VIEW_COOKIE } from "@/lib/workOrders";
 import { contractorSnapshot, findTenant, nextJobNumber, tenantSnapshot } from "@/lib/workOrderCreate";
 import { z } from "zod";
 import { checkPhoto, MAX_PHOTO_BYTES } from "@/lib/photos";
@@ -52,6 +52,23 @@ export async function setSplitView(enabled: boolean): Promise<void> {
 
     const on = z.boolean().parse(enabled);
     (await cookies()).set(SPLIT_VIEW_COOKIE, on ? "1" : "0", {
+        path: "/work-orders",
+        maxAge: 60 * 60 * 24 * 365,
+        sameSite: "lax",
+        httpOnly: true,
+        secure: process.env.NODE_ENV === "production",
+    });
+
+    revalidatePath("/work-orders");
+}
+
+// Saves the work order list's "Color sections" setting in a cookie, like setSplitView.
+export async function setColorSections(enabled: boolean): Promise<void> {
+    const result = await getCurrentUser();
+    if (result.state !== "ready") throw new Error("Not authorized");
+
+    const on = z.boolean().parse(enabled);
+    (await cookies()).set(COLOR_SECTIONS_COOKIE, on ? "1" : "0", {
         path: "/work-orders",
         maxAge: 60 * 60 * 24 * 365,
         sameSite: "lax",

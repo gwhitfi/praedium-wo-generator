@@ -1,8 +1,9 @@
+import type { WorkOrderStatus } from "@/generated/prisma/client";
 import { getCurrentUser } from "@/lib/auth";
 import { redirect } from "next/navigation";
 import PageHeader from "@/components/list/PageHeader";
 import EmptyState from "@/components/list/EmptyState";
-import { WorkOrderList, type WorkOrderWithPlace } from "@/components/WorkOrderRow";
+import { WorkOrderList, type ListTint, type WorkOrderWithPlace } from "@/components/WorkOrderRow";
 import { WORK_ORDER_STATUS_LABELS } from "@/lib/defaults";
 import {
     STATUS_ORDER,
@@ -12,7 +13,7 @@ import {
     type WorkOrderFilter,
     type WorkOrderSort,
 } from "@/lib/workOrders";
-import { getWorkOrderList, readWorkOrderListView } from "@/lib/workOrderList";
+import { getWorkOrderList, readColorSections, readWorkOrderListView } from "@/lib/workOrderList";
 import { hrefWithSort, sortLabels, type SearchParams, type SortLabel, type SortState } from "@/lib/sorting";
 import FilterMenu, { type FilterOption } from "./FilterMenu";
 import ListSettings from "./ListSettings";
@@ -32,6 +33,7 @@ export default async function WorkOrder({ searchParams }: { searchParams: Promis
     const view = await readWorkOrderListView(params);
     const { filter, sort, split: splitView } = view;
     const workOrders = await getWorkOrderList(result.organization.id, view);
+    const colorSections = await readColorSections();
 
     const noun = workOrders.length === 1 ? "work order" : "work orders";
     const label = sortLabels("/work-orders", params, WORK_ORDER_SORTS, sort);
@@ -48,7 +50,7 @@ export default async function WorkOrder({ searchParams }: { searchParams: Promis
 
             <div className="mb-4 flex items-center gap-2">
                 <Filters active={filter} sort={sort} />
-                <ListSettings splitView={splitView} />
+                <ListSettings splitView={splitView} colorSections={colorSections} />
             </div>
 
             {workOrders.length === 0 ? (
@@ -66,7 +68,12 @@ export default async function WorkOrder({ searchParams }: { searchParams: Promis
                     />
                 )
             ) : splitView ? (
-                <SplitList workOrders={workOrders} label={label} linkQuery={linkQuery} />
+                <SplitList
+                    workOrders={workOrders}
+                    label={label}
+                    linkQuery={linkQuery}
+                    colorSections={colorSections}
+                />
             ) : (
                 <WorkOrderList workOrders={workOrders} label={label} linkQuery={linkQuery} />
             )}
@@ -74,15 +81,28 @@ export default async function WorkOrder({ searchParams }: { searchParams: Promis
     );
 }
 
+// A faint wash of each status color behind its section's rows, and a deeper one on its header row (it sits on
+// top of the rows' tint). Written out in full so Tailwind generates the classes.
+const SECTION_TINTS: Record<WorkOrderStatus, ListTint> = {
+    DRAFT: { rows: "bg-status-draft/5", header: "bg-status-draft/12" },
+    SENT: { rows: "bg-status-sent/5", header: "bg-status-sent/12" },
+    IN_PROGRESS: { rows: "bg-status-in-progress/5", header: "bg-status-in-progress/12" },
+    COMPLETED: { rows: "bg-status-completed/5", header: "bg-status-completed/12" },
+    CLOSED: { rows: "bg-status-closed/5", header: "bg-status-closed/12" },
+    CANCELLED: { rows: "bg-status-cancelled/5", header: "bg-status-cancelled/12" },
+};
+
 // One section per status, in workflow order. Empty sections are left out.
 function SplitList({
     workOrders,
     label,
     linkQuery,
+    colorSections,
 }: {
     workOrders: WorkOrderWithPlace[];
     label: (label: string, key: WorkOrderSort) => SortLabel;
     linkQuery: string;
+    colorSections: boolean;
 }) {
     return (
         <div className="flex flex-col gap-8">
@@ -96,7 +116,12 @@ function SplitList({
                             {WORK_ORDER_STATUS_LABELS[status]}
                             <span className="text-sm font-normal text-subtle">{rows.length}</span>
                         </h2>
-                        <WorkOrderList workOrders={rows} label={label} linkQuery={linkQuery} />
+                        <WorkOrderList
+                            workOrders={rows}
+                            label={label}
+                            linkQuery={linkQuery}
+                            tint={colorSections ? SECTION_TINTS[status] : undefined}
+                        />
                     </section>
                 );
             })}

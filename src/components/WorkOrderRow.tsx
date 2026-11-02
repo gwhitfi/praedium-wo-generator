@@ -7,8 +7,12 @@ import { formatDueDate } from "@/lib/dates";
 
 export type WorkOrderWithPlace = Prisma.WorkOrderGetPayload<{ include: { property: true; unit: true } }>;
 
-const COLS = "sm:grid-cols-[minmax(0,2fr)_minmax(0,0.9fr)_minmax(0,0.9fr)_minmax(0,1.8fr)_minmax(0,1.2fr)]";
-const COLS_NO_CONTRACTOR = "sm:grid-cols-[minmax(0,2fr)_minmax(0,0.9fr)_minmax(0,0.9fr)_minmax(0,1.8fr)]";
+const COLS =
+    "sm:grid-cols-[5.5rem_minmax(0,1.6fr)_minmax(0,0.9fr)_minmax(0,0.9fr)_minmax(0,1.8fr)_minmax(0,1.2fr)]";
+const COLS_NO_CONTRACTOR = "sm:grid-cols-[5.5rem_minmax(0,1.6fr)_minmax(0,0.9fr)_minmax(0,0.9fr)_minmax(0,1.8fr)]";
+
+// Background classes that replace the list's surface colors, such as a status color.
+export type ListTint = { rows: string; header: string };
 
 // Pass `label` (from sortLabels) to make the headers sortable; the caller sorts the rows.
 // `linkQuery` (from listQuery) is added to each row's link, for the work order page's arrows.
@@ -17,14 +21,17 @@ export function WorkOrderList({
     hideContractor = false,
     label,
     linkQuery = "",
+    tint,
 }: {
     workOrders: WorkOrderWithPlace[];
     hideContractor?: boolean;
     label?: (label: string, key: WorkOrderSort) => SortLabel;
     linkQuery?: string;
+    tint?: ListTint;
 }) {
     const header = (text: string, key: WorkOrderSort) => (label ? label(text, key) : text);
     const labels = [
+        header("#", "number"),
         header("Title", "title"),
         header("Status", "status"),
         header("Due", "due"),
@@ -33,8 +40,8 @@ export function WorkOrderList({
     ];
 
     return (
-        <List>
-            <ListHeader cols={hideContractor ? COLS_NO_CONTRACTOR : COLS} labels={labels} />
+        <List tint={tint?.rows}>
+            <ListHeader cols={hideContractor ? COLS_NO_CONTRACTOR : COLS} labels={labels} tint={tint?.header} />
             {workOrders.map((workOrder) => (
                 <WorkOrderRow
                     key={workOrder.id}
@@ -64,8 +71,9 @@ export default function WorkOrderRow({
             label={`View ${workOrder.title ?? "untitled work order"}`}
             cols={hideContractor ? COLS_NO_CONTRACTOR : COLS}
         >
+            <Cell className="hidden whitespace-nowrap text-subtle sm:block">#{workOrder.jobNumber}</Cell>
             <Cell className="basis-full truncate font-medium">
-                <span className="mr-2 font-normal text-subtle">#{workOrder.jobNumber}</span>
+                <span className="mr-2 font-normal text-subtle sm:hidden">#{workOrder.jobNumber}</span>
                 {workOrder.title ??<span className="italic text-subtle">Untitled work order</span>}
             </Cell>
             <Cell>

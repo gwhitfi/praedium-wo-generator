@@ -2,19 +2,31 @@ import Link from "next/link";
 import React from "react";
 import type { SortLabel } from "@/lib/sorting";
 
-export function List({ children }: { children: React.ReactNode }) {
+// `tint` is a background class that replaces the default surface color, such as a status color.
+export function List({ tint, children }: { tint?: string; children: React.ReactNode }) {
     return (
-        <ul className="divide-y divide-line overflow-hidden rounded-lg border border-line bg-surface/40">{children}</ul>
+        <ul className={`divide-y divide-line overflow-hidden rounded-lg border border-line ${tint ?? "bg-surface/40"}`}>
+            {children}
+        </ul>
     );
 }
 
-export function ListHeader({ cols, labels }: { cols: string; labels: (string | SortLabel)[] }) {
+// `tint` replaces the header's surface color, like List's.
+export function ListHeader({
+    cols,
+    labels,
+    tint,
+}: {
+    cols: string;
+    labels: (string | SortLabel)[];
+    tint?: string;
+}) {
     const sortable = labels.some((label) => typeof label !== "string");
 
     return (
         <li
             aria-hidden={sortable ? undefined : true}
-            className={`hidden gap-4 bg-surface px-4 py-2 text-xs uppercase tracking-wide text-subtle sm:grid ${cols}`}
+            className={`hidden gap-4 px-4 py-2 text-xs uppercase tracking-wide text-subtle sm:grid ${tint ?? "bg-surface"} ${cols}`}
         >
             {labels.map((label, i) =>
                 typeof label === "string" ? (

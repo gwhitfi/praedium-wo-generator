@@ -12,6 +12,7 @@ import { sortRows } from "./sorting";
 
 describe("orderForView", () => {
     const base = {
+        jobNumber: "2026-1001",
         dueDate: null,
         contractorName: null,
         property: { addressLine1: "12 Oak St" },
@@ -83,6 +84,7 @@ describe("findNeighbors", () => {
 
 describe("WORK_ORDER_SORTS", () => {
     const workOrder = {
+        jobNumber: "2026-1001",
         title: "Fix sink",
         status: "SENT" as const,
         dueDate: null,
@@ -104,6 +106,13 @@ describe("WORK_ORDER_SORTS", () => {
             "CLOSED",
             "CANCELLED",
         ]);
+    });
+
+    it("sorts job numbers by year, then by number value", () => {
+        const numbers = ["2026-999", "2025-1500", "2026-1001"];
+        const rows = numbers.map((jobNumber) => ({ ...workOrder, jobNumber }));
+        const sorted = sortRows(rows, WORK_ORDER_SORTS, { key: "number", dir: "desc" });
+        expect(sorted.map((row) => row.jobNumber)).toEqual(["2026-1001", "2026-999", "2025-1500"]);
     });
 
     it("sorts the property by street, number, then unit", () => {

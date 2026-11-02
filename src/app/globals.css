@@ -4,7 +4,8 @@
 /* Theme colors: each is set once per theme here and used through the named classes in @theme below
    (bg-surface, text-muted, border-line, ...). Dark is the default; light applies with data-theme="light" on <html>,
    which the script in layout.tsx sets from the saved choice or the device setting (src/lib/theme.ts). */
-:root {
+:root,
+[data-theme="dark"] {
     color-scheme: dark;
 
     /* Page and text, brightest to dimmest */
@@ -73,6 +74,170 @@
     --status-completed: var(--color-green-700);
     --status-closed: var(--color-violet-700);
     --status-cancelled: var(--color-red-700);
+}
+
+/* Palettes the user can pick in Settings, one for each theme (src/lib/palettes.ts). Each overrides the light or
+   dark theme above when data-palette-light or data-palette-dark is set on <html>. Contractor pages never set them. */
+[data-theme="light"][data-palette-light="sage"] {
+    --background: #e1ebe4;
+    --foreground: #16231b;
+    --secondary: #24342a;
+    --muted: #43554a;
+    --subtle: #57695e;
+    --faint: #77897e;
+    --surface: #eff6f1;
+    --surface-hover: #d4e2d8;
+    --line: #c6d8cb;
+    --line-strong: #a4bcab;
+    --line-hover: #77897e;
+    --accent: #046c4e;
+    --accent-hover: #065442;
+    --on-accent: #ffffff;
+    --danger: #b91c1c;
+    --danger-strong: #dc2626;
+    --warning: #c2410c;
+    --success: #047857;
+    --status-draft: #5b6b61;
+    --status-sent: #0369a1;
+    --status-in-progress: #c2410c;
+    --status-completed: #15803d;
+    --status-closed: #6d28d9;
+    --status-cancelled: #b91c1c;
+}
+
+[data-theme="light"][data-palette-light="lavender"] {
+    --background: #e9e1fb;
+    --foreground: #1e1238;
+    --secondary: #2e1d52;
+    --muted: #4c3a78;
+    --subtle: #5f4d8c;
+    --faint: #8676b0;
+    --surface: #f5f0ff;
+    --surface-hover: #dccff8;
+    --line: #d3c4f3;
+    --line-strong: #b19ce6;
+    --line-hover: #8676b0;
+    --accent: #7c3aed;
+    --accent-hover: #6d28d9;
+    --on-accent: #ffffff;
+    --danger: #be123c;
+    --danger-strong: #e11d48;
+    --warning: #b45309;
+    --success: #047857;
+    --status-draft: #5f4d8c;
+    --status-sent: #1d4ed8;
+    --status-in-progress: #c2410c;
+    --status-completed: #047857;
+    --status-closed: #a21caf;
+    --status-cancelled: #be123c;
+}
+
+[data-theme="light"][data-palette-light="blue"] {
+    --background: #d8e6f8;
+    --foreground: #0b1f44;
+    --secondary: #13295a;
+    --muted: #2c4677;
+    --subtle: #3f5a8c;
+    --faint: #6a83ad;
+    --surface: #eef4fc;
+    --surface-hover: #c6d9f2;
+    --line: #bcd2ef;
+    --line-strong: #8fb1e0;
+    --line-hover: #6a83ad;
+    --accent: #c2410c;
+    --accent-hover: #9a3412;
+    --on-accent: #ffffff;
+    --danger: #b91c1c;
+    --danger-strong: #dc2626;
+    --warning: #b45309;
+    --success: #15803d;
+    --status-draft: #3f5a8c;
+    --status-sent: #1d4ed8;
+    --status-in-progress: #b45309;
+    --status-completed: #15803d;
+    --status-closed: #7e22ce;
+    --status-cancelled: #b91c1c;
+}
+
+[data-theme="dark"][data-palette-dark="navy"] {
+    --background: #0b1220;
+    --foreground: #e6ebf5;
+    --secondary: #c6cfdf;
+    --muted: #9aa6bd;
+    --subtle: #7c88a0;
+    --faint: #5c6780;
+    --surface: #121b2e;
+    --surface-hover: #1b2740;
+    --line: #1f2b44;
+    --line-strong: #2c3a58;
+    --line-hover: #44537a;
+    --accent: #34d399;
+    --accent-hover: #6ee7b7;
+    --on-accent: #06281d;
+    --danger: #f87171;
+    --danger-strong: #b91c1c;
+    --warning: #fbbf24;
+    --success: #4ade80;
+    --status-draft: #9aa6bd;
+    --status-sent: #60a5fa;
+    --status-in-progress: #fbbf24;
+    --status-completed: #4ade80;
+    --status-closed: #a78bfa;
+    --status-cancelled: #f87171;
+}
+
+[data-theme="dark"][data-palette-dark="forest"] {
+    --background: #08110d;
+    --foreground: #e3efe7;
+    --secondary: #c3d6ca;
+    --muted: #94ab9c;
+    --subtle: #76907f;
+    --faint: #56705f;
+    --surface: #0f1c16;
+    --surface-hover: #172a20;
+    --line: #1a2d23;
+    --line-strong: #26402f;
+    --line-hover: #3b5c47;
+    --accent: #34d399;
+    --accent-hover: #6ee7b7;
+    --on-accent: #052e1c;
+    --danger: #f87171;
+    --danger-strong: #b91c1c;
+    --warning: #fbbf24;
+    --success: #4ade80;
+    --status-draft: #94ab9c;
+    --status-sent: #60a5fa;
+    --status-in-progress: #fbbf24;
+    --status-completed: #4ade80;
+    --status-closed: #a78bfa;
+    --status-cancelled: #f87171;
+}
+
+[data-theme="dark"][data-palette-dark="espresso"] {
+    --background: #12100d;
+    --foreground: #f1ebe3;
+    --secondary: #d9cfc2;
+    --muted: #ab9f90;
+    --subtle: #8c8072;
+    --faint: #6b6155;
+    --surface: #1c1915;
+    --surface-hover: #27221c;
+    --line: #2b261f;
+    --line-strong: #3b342b;
+    --line-hover: #5a5043;
+    --accent: #2dd4bf;
+    --accent-hover: #5eead4;
+    --on-accent: #042f2a;
+    --danger: #f87171;
+    --danger-strong: #b91c1c;
+    --warning: #fbbf24;
+    --success: #4ade80;
+    --status-draft: #ab9f90;
+    --status-sent: #60a5fa;
+    --status-in-progress: #fbbf24;
+    --status-completed: #4ade80;
+    --status-closed: #a78bfa;
+    --status-cancelled: #f87171;
 }
 
 @media print {

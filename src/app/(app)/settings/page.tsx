@@ -3,6 +3,7 @@ import { redirect } from "next/navigation";
 import { formatPhone } from "@/lib/phone";
 import OrganizationContactForm from "./OrganizationContactForm";
 import AiPreferenceForm from "./AiPreferenceForm";
+import AppearanceSettings from "./AppearanceSettings";
 
 export default async function Settings() {
     const result = await getCurrentUser();
@@ -38,7 +39,10 @@ export default async function Settings() {
                     title="Your preferences"
                     description="Only you see these; they don't change anything for others in your organization."
                 />
-                <AiPreferenceForm aiEnabled={user.aiEnabled !== false} />
+                <div className="flex flex-col gap-6">
+                    <AppearanceSettings />
+                    <AiPreferenceForm aiEnabled={user.aiEnabled !== false} />
+                </div>
             </section>
         </main>
     );

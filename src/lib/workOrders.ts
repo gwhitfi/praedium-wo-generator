@@ -32,6 +32,10 @@ export type WorkOrderFilter = keyof typeof WORK_ORDER_FILTERS;
 // The "Split view by status" setting on /work-orders, saved per browser: "1" on, "0" off. On when not set.
 export const SPLIT_VIEW_COOKIE = "wo-split-view";
 
+// The "Color sections" setting on /work-orders: tints each split view section with its status color.
+// Saved per browser like the split view setting, and on when not set.
+export const COLOR_SECTIONS_COOKIE = "wo-color-sections";
+
 export function isWorkOrderFilter(value: unknown): value is WorkOrderFilter {
     return typeof value === "string" && Object.hasOwn(WORK_ORDER_FILTERS, value);
 }
@@ -39,6 +43,7 @@ export function isWorkOrderFilter(value: unknown): value is WorkOrderFilter {
 export const STATUS_ORDER: WorkOrderStatus[] = ["DRAFT", "SENT", "IN_PROGRESS", "COMPLETED", "CLOSED", "CANCELLED"];
 
 type SortableWorkOrder = {
+    jobNumber: string;
     title: string;
     status: WorkOrderStatus;
     dueDate: Date | null;
@@ -49,9 +54,11 @@ type SortableWorkOrder = {
     unit: { name: string; isDefault: boolean } | null;
 };
 
-export type WorkOrderSort = "title" | "status" | "due" | "property" | "contractor";
+export type WorkOrderSort = "number" | "title" | "status" | "due" | "property" | "contractor";
 
 export const WORK_ORDER_SORTS: SortColumns<SortableWorkOrder, WorkOrderSort> = {
+    // "2026-1001": the collator compares the year, then the number, by value. Newest first.
+    number: { value: (wo) => wo.jobNumber, firstDir: "desc" },
     title: { value: (wo) => wo.title },
     status: { value: (wo) => STATUS_ORDER.indexOf(wo.status) },
     due: { value: (wo) => wo.dueDate, firstDir: "desc" },

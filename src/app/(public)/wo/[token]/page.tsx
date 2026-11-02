@@ -3,6 +3,7 @@ import { notFound } from "next/navigation";
 import prisma from "@/lib/prisma";
 import { STATUS_COLORS, unitLabel, WORK_ORDER_STATUS_LABELS } from "@/lib/defaults";
 import InfoCard from "@/components/InfoCard";
+import ThemeToggle from "@/components/ThemeToggle";
 import ContractorSpaceCard from "./ContractorSpaceCard";
 import CompleteWorkOrder from "./CompleteWorkOrder";
 import { formatDueDate, formatTimestamp } from "@/lib/dates";
@@ -49,9 +50,15 @@ export default async function PublicWorkOrder({ params }: { params: Promise<{ to
     return (
         <main className="mx-auto max-w-3xl px-4 py-10 text-foreground">
             <div className="mb-8">
-                <p className="mb-2 text-xs uppercase tracking-wide text-subtle">
-                    {workOrder.organization.name} · #{workOrder.jobNumber}
-                </p>
+                {/* Standard light/dark only: the theme script never applies Settings palettes on /wo/ pages. */}
+                <div className="mb-2 flex items-center justify-between gap-3">
+                    <p className="text-xs uppercase tracking-wide text-subtle">
+                        {workOrder.organization.name} · #{workOrder.jobNumber}
+                    </p>
+                    <div className="print:hidden">
+                        <ThemeToggle />
+                    </div>
+                </div>
 
                 <div className="mb-1 flex items-center gap-3">
                     <span className={`rounded-full border px-2 py-0.5 text-xs ${STATUS_COLORS[workOrder.status]}`}>

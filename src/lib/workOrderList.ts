@@ -2,6 +2,7 @@ import { cookies } from "next/headers";
 import prisma from "@/lib/prisma";
 import { parseSort, type SearchParams } from "@/lib/sorting";
 import {
+    COLOR_SECTIONS_COOKIE,
     SPLIT_VIEW_COOKIE,
     WORK_ORDER_FILTERS,
     WORK_ORDER_SORTS,
@@ -22,6 +23,11 @@ export async function readWorkOrderListView(params: SearchParams): Promise<WorkO
         sort: parseSort(params, WORK_ORDER_SORTS),
         split: (await cookies()).get(SPLIT_VIEW_COOKIE)?.value !== "0",
     };
+}
+
+// The "Color sections" setting. Kept out of WorkOrderListView because it only changes how the list looks.
+export async function readColorSections(): Promise<boolean> {
+    return (await cookies()).get(COLOR_SECTIONS_COOKIE)?.value !== "0";
 }
 
 // The organization's work orders for a view, in the order the list shows them.
