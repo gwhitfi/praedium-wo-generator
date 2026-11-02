@@ -1,23 +1,22 @@
 import Link from "next/link";
-import { UserButton } from "@clerk/nextjs";
-import ThemeToggle from "./ThemeToggle";
 import Logo from "./Logo";
-import MobileMenu, { type NavLink } from "./MobileMenu";
-import InfoMenu from "./InfoMenu";
+import { type NavLink } from "./MobileMenu";
+import NavMenu from "./NavMenu";
 import { INFO_LINKS } from "@/lib/defaults";
 
 const links: NavLink[] = [
     { href: "/work-orders", label: "Work Orders" },
     { href: "/contacts", label: "Contacts" },
     { href: "/properties", label: "Properties" },
-    { href: "/settings", label: "Settings" },
 ];
+
+const SETTINGS_LINK: NavLink = { href: "/settings", label: "Settings" };
 
 const AI_LINK: NavLink = { href: "/work-orders/new/ai", label: "Create work order with AI" };
 
 export default function Nav() {
     return (
-        <header className="relative border-b border-line print:hidden">
+        <header className="sticky top-0 z-40 border-b border-line bg-background print:hidden">
             <div className="mx-auto flex max-w-5xl items-center justify-between gap-4 px-4 py-4">
                 <Link href="/" className="shrink-0 text-foreground">
                     <Logo className="h-6 w-auto" />
@@ -29,7 +28,6 @@ export default function Nav() {
                                 {link.label}
                             </Link>
                         ))}
-                        <InfoMenu />
                     </nav>
                     <Link
                         href={AI_LINK.href}
@@ -39,11 +37,7 @@ export default function Nav() {
                     >
                         <SparklesIcon />
                     </Link>
-                    <ThemeToggle />
-                    <UserButton />
-                    <div className="md:hidden">
-                        <MobileMenu links={[...links, AI_LINK, ...INFO_LINKS]} />
-                    </div>
+                    <NavMenu mobileLinks={[...links, AI_LINK]} links={[SETTINGS_LINK, ...INFO_LINKS]} />
                 </div>
             </div>
         </header>

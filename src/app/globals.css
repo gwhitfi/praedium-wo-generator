@@ -110,6 +110,11 @@
     --font-mono: var(--font-geist-mono);
 }
 
+/* Keeps anchor jumps and focused fields from landing under the sticky signed-in nav. */
+html {
+    scroll-padding-top: 5rem;
+}
+
 body {
     background: var(--background);
     color: var(--foreground);

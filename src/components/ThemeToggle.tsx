@@ -12,7 +12,8 @@ const getTheme = (): Theme => (document.documentElement.dataset.theme === "light
 // The server doesn't know the theme, so the button renders empty until the browser takes over.
 const getServerTheme = () => null;
 
-export default function ThemeToggle() {
+// With `label`, renders as a full-width "Dark mode" menu row with an on/off switch instead of an icon button.
+export default function ThemeToggle({ label = false }: { label?: boolean }) {
     const theme = useSyncExternalStore(subscribe, getTheme, getServerTheme);
     const next: Theme = theme === "light" ? "dark" : "light";
 
@@ -23,6 +24,30 @@ export default function ThemeToggle() {
         } catch {
             // Storage can be blocked (e.g. private browsing); the theme still changes for this page.
         }
+    }
+
+    if (label) {
+        return (
+            <button
+                type="button"
+                role="switch"
+                aria-checked={theme === "dark"}
+                onClick={toggle}
+                disabled={!theme}
+                className="flex w-full items-center gap-2 px-3 py-1.5 text-left text-sm text-muted hover:bg-surface-hover hover:text-foreground hover:cursor-pointer"
+            >
+                <MoonIcon />
+                <span className="flex-1">Dark mode</span>
+                <span
+                    aria-hidden
+                    className={`flex h-4 w-7 shrink-0 items-center rounded-full p-0.5 transition-colors ${theme === "dark" ? "bg-accent" : "bg-line-strong"}`}
+                >
+                    <span
+                        className={`h-3 w-3 rounded-full transition-transform ${theme === "dark" ? "translate-x-3 bg-surface" : "bg-foreground"}`}
+                    />
+                </span>
+            </button>
+        );
     }
 
     return (
