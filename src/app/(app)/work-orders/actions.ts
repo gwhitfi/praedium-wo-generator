@@ -12,7 +12,7 @@ import { workOrderEmail } from "@/lib/emails/workOrderEmail";
 import { notifyContractorsCancelled } from "@/lib/emails/notifyCancelled";
 import { DELETE_NOT_CONFIRMED, isDeleteConfirmed } from "@/lib/confirmDelete";
 import { formatWorkOrderAddress, OPEN_STATUSES, SPLIT_VIEW_COOKIE } from "@/lib/workOrders";
-import { todayInAppTimeZone } from "@/lib/dates";
+import { contractorSnapshot, findTenant, nextJobNumber, tenantSnapshot } from "@/lib/workOrderCreate";
 import { z } from "zod";
 import { checkPhoto, MAX_PHOTO_BYTES } from "@/lib/photos";
 import { deleteFiles, lineItemPhotoKey, uploadFile } from "@/lib/storage";
@@ -43,48 +43,6 @@ async function readWorkOrderForm(formData: FormData, organizationId: string, pro
         unitId,
         contractor,
     };
-}
-
-function findTenant(unitId: string | null, organizationId: string) {
-    if (!unitId) return null;
-    return prisma.contact.findFirst({
-        where: { unitId, contactType: "TENANT", organizationId, archived: false },
-    });
-}
-
-function contractorSnapshot(
-    contractor: { id: string; displayName: string; phone: string | null; email: string | null } | null,
-) {
-    return {
-        contractorId: contractor?.id ?? null,
-        contractorName: contractor?.displayName ?? null,
-        contractorPhone: contractor?.phone ?? null,
-        contractorEmail: contractor?.email ?? null,
-    };
-}
-
-function tenantSnapshot(
-    tenant: { id: string; displayName: string; phone: string | null; email: string | null } | null,
-) {
-    return {
-        tenantId: tenant?.id ?? null,
-        tenantName: tenant?.displayName ?? null,
-        tenantPhone: tenant?.phone ?? null,
-        tenantEmail: tenant?.email ?? null,
-    };
-}
-
-type Tx = Parameters<Parameters<typeof prisma.$transaction>[0]>[0];
-
-async function nextJobNumber(tx: Tx, organizationId: string) {
-    const year = todayInAppTimeZone().getUTCFullYear();
-    const [row] = await tx.$queryRaw<{ lastJobNumber: number }[]>`
-        UPDATE "Organization"
-        SET "lastJobNumber" = CASE WHEN "jobNumberYear" = ${year} THEN "lastJobNumber" + 1 ELSE 1001 END,
-            "jobNumberYear" = ${year}
-        WHERE "id" = ${organizationId}
-        RETURNING "lastJobNumber"`;
-    return `${year}-${row.lastJobNumber}`;
 }
 
 // Saves the work order list's "Split view by status" setting in a cookie, so the page renders the right view.
