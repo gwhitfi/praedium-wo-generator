@@ -6,7 +6,10 @@ import { after } from "next/server";
 import { getAppUrl, sendEmail } from "@/lib/email";
 import { completedEmail } from "@/lib/emails/completedEmail";
 import { formatWorkOrderAddress } from "@/lib/workOrders";
-import { completeInput, noteInput, toggleInput } from "./schemas";
+import { isLikelyBot, logDailyOpen, logEvent } from "@/lib/workOrderEvents";
+import { auth } from "@clerk/nextjs/server";
+import { headers } from "next/headers";
+import { completeInput, noteInput, openInput, toggleInput } from "./schemas";
 
 const OPEN_STATUSES = ["SENT", "IN_PROGRESS"] as const;
 
@@ -49,6 +52,13 @@ export async function toggleLineItem(token: string, lineItemId: string): Promise
             ? [prisma.workOrder.update({ where: { id: workOrder.id }, data: { status: "IN_PROGRESS" } })]
             : []),
     ]);
+    await logEvent({
+        type: completed ? "ITEM_CHECKED" : "ITEM_UNCHECKED",
+        workOrderId: workOrder.id,
+        organizationId: workOrder.organizationId,
+        actor: { kind: "contractor", name: workOrder.contractorName },
+        detail: { item: lineItem.description, area: lineItem.area.name },
+    });
 
     revalidate(input.token, workOrder.id);
 }
@@ -61,8 +71,57 @@ export async function saveLineItemNote(token: string, lineItemId: string, note: 
         where: { id: lineItem.id },
         data: { contractorNotes: input.note },
     });
+    if (input.note !== lineItem.contractorNotes) {
+        const workOrder = lineItem.area.workOrder;
+        await logEvent({
+            type: "NOTE_SAVED",
+            workOrderId: workOrder.id,
+            organizationId: workOrder.organizationId,
+            actor: { kind: "contractor", name: workOrder.contractorName },
+            // An empty note means the contractor cleared it.
+            detail: { item: lineItem.description, area: lineItem.area.name, note: input.note ?? "" },
+        });
+    }
 
     revalidate(input.token, lineItem.area.workOrderId);
+}
+
+// Records that the contractor opened the page, at most once per day. RecordOpen calls it after the tab has been
+// visible for 2 seconds, so most link scanners and previews never get here. Only counts work orders the page
+// actually shows. Never throws.
+export async function recordOpen(token: string): Promise<void> {
+    try {
+        const input = openInput.safeParse({ token });
+        if (!input.success) return;
+        if (isLikelyBot((await headers()).get("user-agent"))) return;
+
+        const workOrder = await prisma.workOrder.findUnique({
+            where: { publicToken: input.data.token },
+            select: {
+                id: true,
+                organizationId: true,
+                status: true,
+                archived: true,
+                contractorName: true,
+                organization: { select: { clerkOrgId: true } },
+            },
+        });
+        if (!workOrder || workOrder.archived || workOrder.status === "DRAFT" || workOrder.status === "CANCELLED") {
+            return;
+        }
+
+        // Office staff checking what the contractor sees aren't the contractor.
+        const { orgId } = await auth();
+        if (orgId && orgId === workOrder.organization.clerkOrgId) return;
+
+        await logDailyOpen({
+            workOrderId: workOrder.id,
+            organizationId: workOrder.organizationId,
+            contractorName: workOrder.contractorName,
+        });
+    } catch (error) {
+        console.error("recordOpen failed", error);
+    }
 }
 
 function loadForCompletion(token: string) {
@@ -95,6 +154,13 @@ export async function completeWorkOrder(token: string, completionNotes: string):
     await prisma.workOrder.update({
         where: { id: workOrder.id },
         data: { status: "COMPLETED", completedAt, completionNotes: notes },
+    });
+    await logEvent({
+        type: "COMPLETED_BY_CONTRACTOR",
+        workOrderId: workOrder.id,
+        organizationId: workOrder.organizationId,
+        actor: { kind: "contractor", name: workOrder.contractorName },
+        detail: { notes },
     });
 
     revalidate(input.token, workOrder.id);

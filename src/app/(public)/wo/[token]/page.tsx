@@ -6,6 +6,7 @@ import InfoCard from "@/components/InfoCard";
 import ThemeToggle from "@/components/ThemeToggle";
 import ContractorSpaceCard from "./ContractorSpaceCard";
 import CompleteWorkOrder from "./CompleteWorkOrder";
+import RecordOpen from "./RecordOpen";
 import { formatDueDate, formatTimestamp } from "@/lib/dates";
 import { formatPhone } from "@/lib/phone";
 
@@ -178,6 +179,11 @@ export default async function PublicWorkOrder({ params }: { params: Promise<{ to
             ) : (
                 <CompleteWorkOrder token={token} remainingCount={itemCount - completedCount} />
             )}
+
+            <p className="mt-10 text-center text-xs text-subtle print:hidden">
+                {workOrder.organization.name} can see when this page is opened and what&apos;s been checked off.
+            </p>
+            <RecordOpen token={token} />
         </main>
     );
 }

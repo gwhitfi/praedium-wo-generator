@@ -14,3 +14,4 @@ export const toggleInput = z.object({ token: tokenSchema, lineItemId: idSchema }
 export const noteInput = z.object({ token: tokenSchema, lineItemId: idSchema, note: noteSchema });
 export const completeInput = z.object({ token: tokenSchema, completionNotes: noteSchema });
 export const photoInput = z.object({ token: tokenSchema, attachmentId: idSchema });
+export const openInput = z.object({ token: tokenSchema });

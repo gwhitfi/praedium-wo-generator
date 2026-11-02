@@ -15,6 +15,10 @@ import { formatPhone } from "@/lib/phone";
 import { getWorkOrderPager, readWorkOrderListView } from "@/lib/workOrderList";
 import type { SearchParams } from "@/lib/sorting";
 import WorkOrderPager from "./WorkOrderPager";
+import ActivityLog from "./ActivityLog";
+
+// Most history entries the page loads.
+const ACTIVITY_LIMIT = 200;
 
 export default async function WorkOrderDetail({
     params,
@@ -58,6 +62,13 @@ export default async function WorkOrderDetail({
     });
 
     if (!workOrder) notFound();
+
+    const events = await prisma.workOrderEvent.findMany({
+        where: { workOrderId: workOrder.id, organizationId: result.organization.id },
+        orderBy: { createdAt: "desc" },
+        take: ACTIVITY_LIMIT,
+        select: { id: true, type: true, createdAt: true, actorName: true, byContractor: true, detail: true },
+    });
 
     const pager = await getWorkOrderPager(result.organization.id, await readWorkOrderListView(query), workOrder.id);
 
@@ -281,6 +292,8 @@ export default async function WorkOrderDetail({
                     )}
                 </div>
             </div>
+
+            <ActivityLog events={events} limit={ACTIVITY_LIMIT} />
         </main>
     );
 }

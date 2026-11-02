@@ -50,6 +50,33 @@ enum LineItemPriority {
   LOW
 }
 
+enum WorkOrderEventType {
+  // Office
+  CREATED
+  EDITED
+  SENT
+  CONTRACTOR_CHANGED
+  COMPLETED_BY_OFFICE
+  CANCELLED
+  REOPENED
+  CLOSED
+  ARCHIVED
+  RESTORED
+  PHOTO_ADDED
+  PHOTO_REMOVED
+  ITEM_ADDED
+  ITEM_REMOVED
+  ITEM_EDITED
+  AREA_ADDED
+  AREA_REMOVED
+  // Contractor
+  OPENED
+  ITEM_CHECKED
+  ITEM_UNCHECKED
+  NOTE_SAVED
+  COMPLETED_BY_CONTRACTOR
+}
+
 model Organization {
   id            String   @id @default(cuid())
   clerkOrgId    String   @unique
@@ -68,6 +95,8 @@ model Organization {
   units       Unit[]
   workOrders  WorkOrder[]
   attachments Attachment[]
+
+  workOrderEvents WorkOrderEvent[]
 }
 
 model User {
@@ -84,6 +113,8 @@ model User {
 
   organizationId String
   organization   Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+
+  workOrderEvents WorkOrderEvent[]
 
   @@unique([organizationId, email])
   @@index([organizationId])
@@ -218,6 +249,7 @@ model WorkOrder {
 
   areas       Area[]
   attachments Attachment[]
+  events      WorkOrderEvent[]
 
   organizationId String
   organization   Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
@@ -235,6 +267,38 @@ model WorkOrder {
   @@index([tenantId])
   @@index([status])
   @@index([unitId])
+}
+
+// The work order's activity history. One row per thing that happened; see WorkOrderEventType.
+model WorkOrderEvent {
+  id        String             @id @default(cuid())
+  type      WorkOrderEventType
+  createdAt DateTime           @default(now())
+
+  // Who did it. Office events set actorUserId; contractor events leave it null and set byContractor.
+  // actorName is copied at the time ("Justin W.", "Marcus Hill") so the log survives renames and deletes.
+  // Events backfilled from older work orders have no actor.
+  byContractor Boolean @default(false)
+  actorName    String?
+  actorUserId  String?
+  actorUser    User?   @relation(fields: [actorUserId], references: [id], onDelete: SetNull)
+
+  // Small event-specific details: item and area text, changed fields, cancel reason, delivery method.
+  detail Json?
+
+  // Stops duplicates where only one event is allowed, e.g. "opened:2026-10-23" for one open per day.
+  // Null for normal events (Postgres allows any number of nulls in a unique index).
+  dedupeKey String?
+
+  workOrderId String
+  workOrder   WorkOrder @relation(fields: [workOrderId], references: [id], onDelete: Cascade)
+
+  organizationId String
+  organization   Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+
+  @@unique([workOrderId, dedupeKey])
+  @@index([workOrderId, createdAt])
+  @@index([organizationId])
 }
 
 model Area {

@@ -9,6 +9,7 @@ import { z } from "zod";
 import { parseDescription } from "@/lib/parseDescription";
 import { contractorSnapshot, findTenant, nextJobNumber, tenantSnapshot } from "@/lib/workOrderCreate";
 import { contractorLookup, propertyLookup } from "@/lib/workOrderLookup";
+import { logEvent } from "@/lib/workOrderEvents";
 import { confirmedDraft, type ConfirmedDraft, type ParseState } from "./schemas";
 
 // Reads the user's description with the AI, then matches its property, unit and contractor to the
@@ -98,6 +99,14 @@ export async function createDraftFromBot(input: ConfirmedDraft): Promise<CreateD
             },
         }),
     );
+
+    await logEvent({
+        type: "CREATED",
+        workOrderId: workOrder.id,
+        organizationId,
+        actor: { kind: "office", user: result.user },
+        detail: { source: "bot" },
+    });
 
     revalidatePath("/work-orders");
     redirect(`/work-orders/${workOrder.id}`);

@@ -6,7 +6,8 @@ import { redirect } from "next/navigation";
 import { z } from "zod";
 import { notifyContractorsCancelled } from "@/lib/emails/notifyCancelled";
 import { DELETE_NOT_CONFIRMED, isDeleteConfirmed } from "@/lib/confirmDelete";
-import { formatWorkOrderAddress } from "@/lib/workOrders";
+import { formatWorkOrderAddress, OPEN_STATUSES } from "@/lib/workOrders";
+import { logEvents, type EventInput } from "@/lib/workOrderEvents";
 import { attachmentKeys, onWorkOrders } from "@/lib/attachments";
 import { deleteFiles } from "@/lib/storage";
 import { propertyInput, unitsInput, type PropertyFormState } from "./schemas";
@@ -85,7 +86,7 @@ async function findProperty(propertyId: string) {
     });
     if (!property) throw new Error("Invalid property");
 
-    return { property, organization: result.organization };
+    return { property, organization: result.organization, user: result.user };
 }
 
 export async function updateProperty(
@@ -109,7 +110,7 @@ export async function updateProperty(
 }
 
 export async function archiveProperty(propertyId: string) {
-    const { property, organization } = await findProperty(propertyId);
+    const { property, organization, user } = await findProperty(propertyId);
 
     const now = new Date();
     const onProperty = { propertyId, organizationId: organization.id };
@@ -117,6 +118,11 @@ export async function archiveProperty(propertyId: string) {
     const toNotify = await prisma.workOrder.findMany({
         where: { ...onProperty, archived: false, status: { in: ["SENT", "IN_PROGRESS"] } },
         include: { unit: true },
+    });
+    // Read before the updates below, to log what each work order goes through.
+    const before = await prisma.workOrder.findMany({
+        where: onProperty,
+        select: { id: true, status: true, archived: true },
     });
 
     await prisma.$transaction([
@@ -131,6 +137,20 @@ export async function archiveProperty(propertyId: string) {
         prisma.workOrder.updateMany({ where: onProperty, data: { archived: true } }),
         prisma.property.update({ where: { id: propertyId }, data: { archived: true } }),
     ]);
+
+    const actor = { kind: "office" as const, user };
+    await logEvents(
+        before.flatMap((wo): EventInput[] => {
+            const event = { workOrderId: wo.id, organizationId: organization.id, actor };
+            return [
+                ...(OPEN_STATUSES.includes(wo.status)
+                    ? [{ ...event, type: "CANCELLED" as const, detail: { reason: "Property archived" } }]
+                    : []),
+                ...(wo.status === "COMPLETED" ? [{ ...event, type: "CLOSED" as const }] : []),
+                ...(wo.archived ? [] : [{ ...event, type: "ARCHIVED" as const }]),
+            ];
+        }),
+    );
 
     notifyContractorsCancelled(
         organization,

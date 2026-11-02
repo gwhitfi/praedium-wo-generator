@@ -18,6 +18,7 @@ vi.mock("@/lib/workOrderCreate", async (importOriginal) => ({
 }));
 vi.mock("@/lib/parseDescription", () => ({ parseDescription: vi.fn() }));
 vi.mock("@/lib/workOrderLookup", () => ({ propertyLookup: vi.fn(), contractorLookup: vi.fn() }));
+vi.mock("@/lib/workOrderEvents", () => ({ logEvent: vi.fn() }));
 
 import { redirect } from "next/navigation";
 import { getCurrentUser } from "@/lib/auth";
@@ -25,6 +26,7 @@ import prisma from "@/lib/prisma";
 import { parseDescription } from "@/lib/parseDescription";
 import { findTenant, nextJobNumber } from "@/lib/workOrderCreate";
 import { contractorLookup, propertyLookup } from "@/lib/workOrderLookup";
+import { logEvent } from "@/lib/workOrderEvents";
 import { createDraftFromBot, parseWorkOrderDescription } from "./actions";
 import type { ConfirmedDraft } from "./schemas";
 
@@ -215,6 +217,26 @@ describe("createDraftFromBot", () => {
             },
         ]);
         expect(redirect).toHaveBeenCalledWith("/work-orders/wo1");
+    });
+
+    it("logs the draft as created by the bot", async () => {
+        await createDraftFromBot(draft);
+
+        expect(logEvent).toHaveBeenCalledWith({
+            type: "CREATED",
+            workOrderId: "wo1",
+            organizationId: "org1",
+            actor: { kind: "office", user: { id: "user1" } },
+            detail: { source: "bot" },
+        });
+    });
+
+    it("doesn't log anything when the draft is refused", async () => {
+        vi.mocked(prisma.property.findFirst).mockResolvedValue(null);
+
+        await createDraftFromBot(draft);
+
+        expect(logEvent).not.toHaveBeenCalled();
     });
 
     it("leaves the unit and contractor empty when none were chosen", async () => {

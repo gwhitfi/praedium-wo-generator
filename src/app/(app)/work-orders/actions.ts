@@ -17,6 +17,7 @@ import { z } from "zod";
 import { checkPhoto, MAX_PHOTO_BYTES } from "@/lib/photos";
 import { deleteFiles, lineItemPhotoKey, uploadFile } from "@/lib/storage";
 import { attachmentKeys, onWorkOrders } from "@/lib/attachments";
+import { logEvent } from "@/lib/workOrderEvents";
 
 async function readWorkOrderForm(formData: FormData, organizationId: string, propertyId: string) {
     const unitId = (formData.get("unitId") as string) || null;
@@ -113,6 +114,14 @@ export async function createWorkOrder(formData: FormData) {
         }),
     );
 
+    await logEvent({
+        type: "CREATED",
+        workOrderId: workOrder.id,
+        organizationId,
+        actor: { kind: "office", user: result.user },
+        detail: { source: "form" },
+    });
+
     revalidatePath("/work-orders");
     redirect(`/work-orders/${workOrder.id}`);
 }
@@ -146,6 +155,27 @@ export async function updateWorkOrder(workOrderId: string, formData: FormData) {
         },
     });
 
+    // Drafts change too often to be worth a history entry; edits are logged once the contractor has it.
+    if (workOrder.status !== "DRAFT") {
+        const event = { workOrderId, organizationId, actor: { kind: "office" as const, user: result.user } };
+        const changed = [
+            fields.title !== workOrder.title && "title",
+            fields.notes !== workOrder.notes && "notes",
+            fields.dueDate?.getTime() !== workOrder.dueDate?.getTime() && "dueDate",
+            unitChanged && "unit",
+            fields.notifyTenant !== workOrder.notifyTenant && "notifyTenant",
+        ].filter((field) => field !== false);
+
+        if (changed.length > 0) await logEvent({ ...event, type: "EDITED", detail: { fields: changed } });
+        if (contractorChanged) {
+            await logEvent({
+                ...event,
+                type: "CONTRACTOR_CHANGED",
+                detail: { from: workOrder.contractorName, to: contractor?.displayName ?? null },
+            });
+        }
+    }
+
     revalidatePath(`/work-orders/${workOrderId}`);
     revalidatePath("/work-orders");
     if (newLink) revalidatePath(`/wo/${workOrder.publicToken}`);
@@ -168,6 +198,14 @@ export async function archiveWorkOrder(workOrderId: string) {
         where: { id: workOrderId },
         data: willCancel ? { archived: true, status: "CANCELLED", cancelledAt: new Date() } : { archived: true },
     });
+
+    const event = {
+        workOrderId,
+        organizationId: workOrder.organizationId,
+        actor: { kind: "office" as const, user: result.user },
+    };
+    if (willCancel) await logEvent({ ...event, type: "CANCELLED", detail: { reason: "Archived" } });
+    await logEvent({ ...event, type: "ARCHIVED" });
 
     if (willCancel) {
         notifyContractorsCancelled(result.organization, [
@@ -196,6 +234,12 @@ export async function restoreWorkOrder(workOrderId: string): Promise<{ ok: true 
     }
 
     await prisma.workOrder.update({ where: { id: workOrderId }, data: { archived: false } });
+    await logEvent({
+        type: "RESTORED",
+        workOrderId,
+        organizationId: workOrder.organizationId,
+        actor: { kind: "office", user: result.user },
+    });
 
     revalidatePath("/work-orders");
     revalidatePath(`/work-orders/${workOrderId}`);
@@ -263,6 +307,16 @@ export async function addArea(workOrderId: string, name: string) {
             sortOrder,
         },
     });
+    // Changes to the work are logged once the contractor has it, like other edits.
+    if (workOrder.status !== "DRAFT") {
+        await logEvent({
+            type: "AREA_ADDED",
+            workOrderId,
+            organizationId: workOrder.organizationId,
+            actor: { kind: "office", user: result.user },
+            detail: { area: name },
+        });
+    }
     revalidatePath(`/work-orders/${workOrderId}`);
 }
 
@@ -282,6 +336,16 @@ export async function removeArea(areaId: string) {
     const photoKeys = await attachmentKeys(result.organization.id, { lineItem: { areaId } });
     await prisma.area.delete({ where: { id: areaId } });
     await deleteFiles(photoKeys);
+    // One entry for the area; its line items aren't logged one by one.
+    if (area.workOrder.status !== "DRAFT") {
+        await logEvent({
+            type: "AREA_REMOVED",
+            workOrderId: area.workOrderId,
+            organizationId: area.workOrder.organizationId,
+            actor: { kind: "office", user: result.user },
+            detail: { area: area.name },
+        });
+    }
     revalidatePath(`/work-orders/${area.workOrderId}`);
 }
 
@@ -349,6 +413,15 @@ export async function addLineItem(areaId: string, description: string, priority:
             sortOrder,
         },
     });
+    if (area.workOrder.status !== "DRAFT") {
+        await logEvent({
+            type: "ITEM_ADDED",
+            workOrderId: area.workOrderId,
+            organizationId: area.workOrder.organizationId,
+            actor: { kind: "office", user: result.user },
+            detail: { item: description, area: area.name },
+        });
+    }
     revalidatePath(`/work-orders/${area.workOrderId}`);
 }
 
@@ -372,6 +445,15 @@ export async function removeLineItem(lineItemId: string) {
     const photoKeys = await attachmentKeys(result.organization.id, { lineItemId });
     await prisma.lineItem.delete({ where: { id: lineItemId } });
     await deleteFiles(photoKeys);
+    if (lineItem.area.workOrder.status !== "DRAFT") {
+        await logEvent({
+            type: "ITEM_REMOVED",
+            workOrderId: lineItem.area.workOrderId,
+            organizationId: lineItem.area.workOrder.organizationId,
+            actor: { kind: "office", user: result.user },
+            detail: { item: lineItem.description, area: lineItem.area.name },
+        });
+    }
     revalidatePath(`/work-orders/${lineItem.area.workOrderId}`);
 }
 
@@ -434,6 +516,23 @@ export async function updateLineItem(lineItemId: string, description: string, pr
         data: { description, priority },
     });
 
+    const descriptionChanged = description !== lineItem.description;
+    const priorityChanged = priority !== lineItem.priority;
+    if (lineItem.area.workOrder.status !== "DRAFT" && (descriptionChanged || priorityChanged)) {
+        await logEvent({
+            type: "ITEM_EDITED",
+            workOrderId: lineItem.area.workOrderId,
+            organizationId: lineItem.area.workOrder.organizationId,
+            actor: { kind: "office", user: result.user },
+            detail: {
+                item: description,
+                area: lineItem.area.name,
+                ...(descriptionChanged ? { from: lineItem.description } : {}),
+                ...(priorityChanged ? { priority: { from: lineItem.priority, to: priority } } : {}),
+            },
+        });
+    }
+
     revalidatePath(`/work-orders/${lineItem.area.workOrderId}`);
 }
 
@@ -443,7 +542,8 @@ const lineItemIdInput = z.string().min(1).max(100);
 const photoInput = z.instanceof(File, { message: "Choose a photo." });
 
 type PhotoLineItem =
-    { ok: true; id: string; workOrder: { id: string; publicToken: string } } | { ok: false; error: string };
+    | { ok: true; id: string; item: string; area: string; workOrder: { id: string; publicToken: string } }
+    | { ok: false; error: string };
 
 // Photos can change only while the work order itself can be edited.
 async function findPhotoLineItem(lineItemId: unknown, organizationId: string): Promise<PhotoLineItem> {
@@ -452,7 +552,7 @@ async function findPhotoLineItem(lineItemId: unknown, organizationId: string): P
 
     const lineItem = await prisma.lineItem.findFirst({
         where: { id: id.data, area: { workOrder: { organizationId } } },
-        select: { id: true, area: { select: { workOrder: true } } },
+        select: { id: true, description: true, area: { select: { name: true, workOrder: true } } },
     });
     if (!lineItem) return { ok: false, error: "Line item not found." };
 
@@ -461,7 +561,13 @@ async function findPhotoLineItem(lineItemId: unknown, organizationId: string): P
         return { ok: false, error: "Photos can only be changed on open work orders." };
     }
 
-    return { ok: true, id: lineItem.id, workOrder: { id: workOrder.id, publicToken: workOrder.publicToken } };
+    return {
+        ok: true,
+        id: lineItem.id,
+        item: lineItem.description,
+        area: lineItem.area.name,
+        workOrder: { id: workOrder.id, publicToken: workOrder.publicToken },
+    };
 }
 
 function revalidatePhoto(workOrder: { id: string; publicToken: string }) {
@@ -521,6 +627,13 @@ export async function setLineItemPhoto(lineItemId: string, formData: FormData): 
     }
 
     await deleteFiles(replacedKeys);
+    await logEvent({
+        type: "PHOTO_ADDED",
+        workOrderId: lineItem.workOrder.id,
+        organizationId,
+        actor: { kind: "office", user: result.user },
+        detail: { item: lineItem.item, area: lineItem.area },
+    });
     revalidatePhoto(lineItem.workOrder);
     return { ok: true };
 }
@@ -543,6 +656,15 @@ export async function removeLineItemPhoto(lineItemId: string): Promise<PhotoResu
     });
 
     await deleteFiles(removedKeys);
+    if (removedKeys.length > 0) {
+        await logEvent({
+            type: "PHOTO_REMOVED",
+            workOrderId: lineItem.workOrder.id,
+            organizationId,
+            actor: { kind: "office", user: result.user },
+            detail: { item: lineItem.item, area: lineItem.area },
+        });
+    }
     revalidatePhoto(lineItem.workOrder);
     return { ok: true };
 }
@@ -571,6 +693,13 @@ export async function sendWorkOrder(workOrderId: string, deliveryMethod: Deliver
             contractorPhone: workOrder.contractor?.phone ?? null,
             contractorEmail: workOrder.contractor?.email ?? null,
         },
+    });
+    await logEvent({
+        type: "SENT",
+        workOrderId,
+        organizationId: workOrder.organizationId,
+        actor: { kind: "office", user: result.user },
+        detail: { deliveryMethod, resent: false },
     });
 
     revalidatePath(`/work-orders/${workOrderId}`);
@@ -634,6 +763,13 @@ export async function emailWorkOrder(workOrderId: string): Promise<EmailResult> 
             ...(workOrder.status === "DRAFT" ? { status: "SENT", sentAt: new Date() } : {}),
         },
     });
+    await logEvent({
+        type: "SENT",
+        workOrderId,
+        organizationId: workOrder.organizationId,
+        actor: { kind: "office", user: result.user },
+        detail: { deliveryMethod: "EMAIL", resent: workOrder.status !== "DRAFT" },
+    });
 
     revalidatePath(`/work-orders/${workOrderId}`);
     revalidatePath("/work-orders");
@@ -656,6 +792,12 @@ export async function markWorkOrderCompleted(workOrderId: string) {
             status: "COMPLETED",
             completedAt: new Date(),
         },
+    });
+    await logEvent({
+        type: "COMPLETED_BY_OFFICE",
+        workOrderId,
+        organizationId: workOrder.organizationId,
+        actor: { kind: "office", user: result.user },
     });
 
     revalidatePath(`/work-orders/${workOrderId}`);
@@ -682,6 +824,12 @@ export async function reopenWorkOrder(workOrderId: string) {
             cancelReason: null,
         },
     });
+    await logEvent({
+        type: "REOPENED",
+        workOrderId,
+        organizationId: workOrder.organizationId,
+        actor: { kind: "office", user: result.user },
+    });
 
     revalidatePath(`/work-orders/${workOrderId}`);
     revalidatePath("/work-orders");
@@ -705,6 +853,12 @@ export async function closeWorkOrder(workOrderId: string) {
             closedAt: new Date(),
         },
     });
+    await logEvent({
+        type: "CLOSED",
+        workOrderId,
+        organizationId: workOrder.organizationId,
+        actor: { kind: "office", user: result.user },
+    });
 
     revalidatePath(`/work-orders/${workOrderId}`);
     revalidatePath("/work-orders");
@@ -727,6 +881,13 @@ export async function cancelWorkOrder(workOrderId: string) {
     await prisma.workOrder.update({
         where: { id: workOrderId },
         data: { status: "CANCELLED", cancelledAt: new Date() },
+    });
+    await logEvent({
+        type: "CANCELLED",
+        workOrderId,
+        organizationId: workOrder.organizationId,
+        actor: { kind: "office", user: result.user },
+        detail: { reason: null },
     });
 
     if (!workOrder.archived) {
@@ -754,6 +915,13 @@ export async function regeneratePublicToken(workOrderId: string) {
     await prisma.workOrder.update({
         where: { id: workOrderId },
         data: { publicToken: randomBytes(24).toString("base64url") },
+    });
+    await logEvent({
+        type: "EDITED",
+        workOrderId,
+        organizationId: workOrder.organizationId,
+        actor: { kind: "office", user: result.user },
+        detail: { fields: ["link"] },
     });
 
     revalidatePath(`/work-orders/${workOrderId}`);
