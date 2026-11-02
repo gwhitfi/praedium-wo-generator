@@ -5,7 +5,7 @@ import { getCurrentUser } from "@/lib/auth";
 import prisma from "@/lib/prisma";
 import { revalidatePath } from "next/cache";
 import { z } from "zod";
-import { organizationInput, type OrganizationFormState } from "./schemas";
+import { aiPreferenceInput, organizationInput, type OrganizationFormState } from "./schemas";
 
 // Sent back on failure so the form can refill what the user typed.
 function submittedValues(formData: FormData) {
@@ -47,4 +47,19 @@ export async function updateOrganization(
 
     revalidatePath("/", "layout");
     return { ok: true };
+}
+
+// Per user, not per organization: each person decides whether they see the AI work order tool.
+export async function setAiPreference(formData: FormData): Promise<void> {
+    const result = await getCurrentUser();
+    if (result.state !== "ready") throw new Error("Not authorized");
+
+    const parsed = aiPreferenceInput.safeParse(Object.fromEntries(formData));
+    if (!parsed.success) throw new Error("Invalid AI preference");
+
+    await prisma.user.update({
+        where: { id: result.user.id },
+        data: { aiEnabled: parsed.data.aiEnabled },
+    });
+    revalidatePath("/", "layout");
 }

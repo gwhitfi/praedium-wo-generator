@@ -8,7 +8,7 @@ export default async function InfoLayout({ children }: { children: React.ReactNo
 
     return (
         <div className="min-h-screen text-foreground">
-            {result.state === "ready" ? <Nav /> : <PublicHeader showLogo />}
+            {result.state === "ready" ? <Nav showAi={result.user.aiEnabled !== false} /> : <PublicHeader showLogo />}
             {children}
         </div>
     );

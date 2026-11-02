@@ -1,7 +1,8 @@
 import Link from "next/link";
 import prisma from "@/lib/prisma";
-import type { Organization } from "@/generated/prisma/client";
+import type { Organization, User } from "@/generated/prisma/client";
 import Nav from "@/components/Nav";
+import AiPrompt from "./AiPrompt";
 import PageHeader from "@/components/list/PageHeader";
 import { WorkOrderList } from "@/components/WorkOrderRow";
 import { WORK_ORDER_FILTERS, WORK_ORDER_SORTS } from "@/lib/workOrders";
@@ -11,9 +12,11 @@ const include = { property: true, unit: true, contractor: { select: { firstName:
 
 export default async function Dashboard({
     organization,
+    user,
     params,
 }: {
     organization: Organization;
+    user: User;
     params: SearchParams;
 }) {
     const base = { organizationId: organization.id, archived: false };
@@ -68,7 +71,7 @@ export default async function Dashboard({
 
     return (
         <div className="text-foreground">
-            <Nav />
+            <Nav showAi={user.aiEnabled !== false} />
             <main className="mx-auto max-w-5xl px-4 py-10">
                 <PageHeader
                     title={organization.name}
@@ -77,6 +80,8 @@ export default async function Dashboard({
                     actionLabel="Create work order"
                     mobileLabel="+ New"
                 />
+
+                {user.aiEnabled === null && <AiPrompt />}
 
                 {steps.some((s) => !s.done) && <GetStarted steps={steps} />}
 

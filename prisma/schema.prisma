@@ -77,6 +77,8 @@ model User {
   firstName String?
   lastName  String?
   email     String
+  // null until the user picks on the dashboard prompt or in Settings; AI is shown unless this is false.
+  aiEnabled Boolean?
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 

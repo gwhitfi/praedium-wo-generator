@@ -8,6 +8,8 @@ export default async function NewWorkOrderWithAi() {
     const result = await getCurrentUser();
     if (result.state === "signed-out") redirect("/sign-in");
     if (result.state === "needs-org") redirect("/setup");
+    // "No AI" in Settings turns the tool off, not just its nav button.
+    if (result.user.aiEnabled === false) redirect("/work-orders/new");
     const organizationId = result.organization.id;
 
     // For the review screen's dropdowns. Only names and addresses: contact details stay on the server.

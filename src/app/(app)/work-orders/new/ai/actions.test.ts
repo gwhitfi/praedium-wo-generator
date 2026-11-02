@@ -92,6 +92,19 @@ describe("parseWorkOrderDescription", () => {
         expect(parseDescription).not.toHaveBeenCalled();
     });
 
+    it("refuses without calling the AI when the user turned AI off", async () => {
+        vi.mocked(getCurrentUser).mockResolvedValue({
+            state: "ready",
+            user: { id: "user1", aiEnabled: false },
+            organization: { id: "org1" },
+        } as never);
+
+        expect(await parseWorkOrderDescription({}, form("Fix the sink"))).toEqual({
+            error: "AI is turned off in your Settings.",
+        });
+        expect(parseDescription).not.toHaveBeenCalled();
+    });
+
     it("passes on the AI's error", async () => {
         vi.mocked(parseDescription).mockResolvedValue({ ok: false, error: "Describe the work first." });
 

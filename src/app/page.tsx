@@ -15,5 +15,5 @@ export default async function Home({ searchParams }: { searchParams: Promise<Sea
         redirect("/setup");
     }
 
-    return <Dashboard organization={result.organization} params={await searchParams} />;
+    return <Dashboard organization={result.organization} user={result.user} params={await searchParams} />;
 }

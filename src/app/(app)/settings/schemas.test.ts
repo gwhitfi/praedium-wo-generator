@@ -1,5 +1,17 @@
 import { describe, expect, it } from "vitest";
-import { organizationInput } from "./schemas";
+import { aiPreferenceInput, organizationInput } from "./schemas";
+
+describe("aiPreferenceInput", () => {
+    it("turns on and off into a boolean", () => {
+        expect(aiPreferenceInput.parse({ aiEnabled: "on" })).toEqual({ aiEnabled: true });
+        expect(aiPreferenceInput.parse({ aiEnabled: "off" })).toEqual({ aiEnabled: false });
+    });
+
+    it("rejects anything else", () => {
+        expect(aiPreferenceInput.safeParse({ aiEnabled: "true" }).success).toBe(false);
+        expect(aiPreferenceInput.safeParse({}).success).toBe(false);
+    });
+});
 
 const organization = { name: "Acme Property", phone: "864-555-0100", email: "office@acme.test" };
 

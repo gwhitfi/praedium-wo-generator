@@ -16,6 +16,7 @@ import { confirmedDraft, type ConfirmedDraft, type ParseState } from "./schemas"
 export async function parseWorkOrderDescription(_prev: ParseState, formData: FormData): Promise<ParseState> {
     const result = await getCurrentUser();
     if (result.state !== "ready") return { error: "Not authorized" };
+    if (result.user.aiEnabled === false) return { error: "AI is turned off in your Settings." };
 
     const description = z.string().safeParse(formData.get("description"));
     if (!description.success) return { error: "Describe the work first." };

@@ -7,6 +7,11 @@ export const organizationInput = z.object({
     email: optionalEmail,
 });
 
+// The Settings switch and the dashboard prompt both submit aiEnabled=on or aiEnabled=off.
+export const aiPreferenceInput = z.object({
+    aiEnabled: z.enum(["on", "off"]).transform((value) => value === "on"),
+});
+
 export type OrganizationFormState = {
     ok?: boolean;
     error?: string;

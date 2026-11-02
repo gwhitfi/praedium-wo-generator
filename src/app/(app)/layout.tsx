@@ -10,7 +10,7 @@ export default async function AppLayout({ children }: { children: React.ReactNod
 
     return (
         <div className="min-h-screen text-foreground">
-            <Nav />
+            <Nav showAi={result.user.aiEnabled !== false} />
             {children}
         </div>
     );

@@ -14,7 +14,8 @@ const SETTINGS_LINK: NavLink = { href: "/settings", label: "Settings" };
 
 const AI_LINK: NavLink = { href: "/work-orders/new/ai", label: "Create work order with AI" };
 
-export default function Nav() {
+// `showAi` is false when the user turned on "No AI" in Settings.
+export default function Nav({ showAi }: { showAi: boolean }) {
     return (
         <header className="sticky top-0 z-40 border-b border-line bg-background print:hidden">
             <div className="mx-auto flex max-w-5xl items-center justify-between gap-4 px-4 py-4">
@@ -29,15 +30,17 @@ export default function Nav() {
                             </Link>
                         ))}
                     </nav>
-                    <Link
-                        href={AI_LINK.href}
-                        aria-label={AI_LINK.label}
-                        title={AI_LINK.label}
-                        className="flex h-8 w-8 items-center justify-center rounded-md text-accent hover:bg-surface-hover hover:text-accent-hover"
-                    >
-                        <SparklesIcon />
-                    </Link>
-                    <NavMenu mobileLinks={[...links, AI_LINK]} links={[SETTINGS_LINK, ...INFO_LINKS]} />
+                    {showAi && (
+                        <Link
+                            href={AI_LINK.href}
+                            aria-label={AI_LINK.label}
+                            title={AI_LINK.label}
+                            className="flex h-8 w-8 items-center justify-center rounded-md text-accent hover:bg-surface-hover hover:text-accent-hover"
+                        >
+                            <SparklesIcon />
+                        </Link>
+                    )}
+                    <NavMenu mobileLinks={links} links={[SETTINGS_LINK, ...INFO_LINKS]} />
                 </div>
             </div>
         </header>
