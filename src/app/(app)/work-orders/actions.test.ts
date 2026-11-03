@@ -18,6 +18,7 @@ vi.mock("@/lib/prisma", () => ({
 vi.mock("@/lib/email", () => ({ getAppUrl: vi.fn(() => "https://example.com"), sendEmail: vi.fn() }));
 vi.mock("@/lib/emails/workOrderEmail", () => ({ workOrderEmail: vi.fn(() => ({ subject: "", html: "", text: "" })) }));
 vi.mock("@/lib/emails/notifyCancelled", () => ({ notifyContractorsCancelled: vi.fn() }));
+vi.mock("@/lib/emails/notifyTenant", () => ({ notifyTenant: vi.fn(() => false) }));
 vi.mock("@/lib/storage", () => ({ deleteFiles: vi.fn(), lineItemPhotoKey: vi.fn(), uploadFile: vi.fn() }));
 vi.mock("@/lib/attachments", () => ({ attachmentKeys: vi.fn(), onWorkOrders: vi.fn() }));
 vi.mock("@/lib/workOrderCreate", async (importOriginal) => ({
@@ -35,6 +36,7 @@ import { getCurrentUser } from "@/lib/auth";
 import prisma from "@/lib/prisma";
 import { sendEmail } from "@/lib/email";
 import { logEvent } from "@/lib/workOrderEvents";
+import { notifyTenant } from "@/lib/emails/notifyTenant";
 import {
     addArea,
     addLineItem,
@@ -131,6 +133,24 @@ describe("sendWorkOrder", () => {
 
         await expect(sendWorkOrder("wo1", "PRINT")).rejects.toThrow();
         expect(logEvent).not.toHaveBeenCalled();
+        expect(notifyTenant).not.toHaveBeenCalled();
+    });
+
+    it("emails the tenant and notes it in the log", async () => {
+        vi.mocked(notifyTenant).mockReturnValueOnce(true);
+
+        await sendWorkOrder("wo1", "PRINT");
+
+        expect(notifyTenant).toHaveBeenCalledWith(
+            expect.objectContaining({ name: "Acme Property" }),
+            expect.objectContaining({ id: "wo1", address: "12 Oak St, Greenville, SC 29601", contractor }),
+        );
+        expect(logEvent).toHaveBeenCalledWith({
+            ...ids,
+            type: "SENT",
+            actor: office,
+            detail: { deliveryMethod: "PRINT", resent: false, tenantNotified: true },
+        });
     });
 });
 
@@ -151,11 +171,45 @@ describe("emailWorkOrder", () => {
     });
 
     it("doesn't log when the email fails", async () => {
-        vi.mocked(sendEmail).mockRejectedValue(new Error("Resend is down"));
+        vi.mocked(sendEmail).mockRejectedValueOnce(new Error("Resend is down"));
         vi.spyOn(console, "error").mockImplementation(() => {});
 
         expect((await emailWorkOrder("wo1")).ok).toBe(false);
         expect(logEvent).not.toHaveBeenCalled();
+    });
+
+    it("emails the tenant on the first send and notes it in the log", async () => {
+        vi.mocked(notifyTenant).mockReturnValueOnce(true);
+
+        await emailWorkOrder("wo1");
+
+        expect(notifyTenant).toHaveBeenCalledWith(
+            expect.objectContaining({ name: "Acme Property" }),
+            expect.objectContaining({ id: "wo1", address: "12 Oak St, Greenville, SC 29601", contractor }),
+        );
+        expect(logEvent).toHaveBeenCalledWith({
+            ...ids,
+            type: "SENT",
+            actor: office,
+            detail: { deliveryMethod: "EMAIL", resent: false, tenantNotified: true },
+        });
+    });
+
+    it("doesn't email the tenant on a resend", async () => {
+        withWorkOrder({ status: "SENT" });
+
+        await emailWorkOrder("wo1");
+
+        expect(notifyTenant).not.toHaveBeenCalled();
+    });
+
+    it("doesn't email the tenant when the contractor email fails", async () => {
+        vi.mocked(sendEmail).mockRejectedValueOnce(new Error("Resend is down"));
+        vi.spyOn(console, "error").mockImplementation(() => {});
+
+        await emailWorkOrder("wo1");
+
+        expect(notifyTenant).not.toHaveBeenCalled();
     });
 });
 

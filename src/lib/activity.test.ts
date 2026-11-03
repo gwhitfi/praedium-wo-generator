@@ -23,6 +23,16 @@ describe("describeEvent: office", () => {
         ["SENT", { deliveryMethod: "EMAIL", resent: true }, "Justin W. re-sent it by email"],
         ["SENT", { deliveryMethod: "PRINT", resent: false }, "Justin W. marked it sent (printed)"],
         ["SENT", { deliveryMethod: "SMS", resent: false }, "Justin W. marked it sent (by text)"],
+        [
+            "SENT",
+            { deliveryMethod: "EMAIL", resent: false, tenantNotified: true },
+            "Justin W. sent it by email and emailed the tenant",
+        ],
+        [
+            "SENT",
+            { deliveryMethod: "PRINT", resent: false, tenantNotified: true },
+            "Justin W. marked it sent (printed) and emailed the tenant",
+        ],
         ["EDITED", { fields: ["title"] }, "Justin W. edited the title"],
         ["EDITED", { fields: ["title", "notes", "dueDate"] }, "Justin W. edited the title, notes and due date"],
         ["EDITED", { fields: ["link"] }, "Justin W. made a new contractor link"],

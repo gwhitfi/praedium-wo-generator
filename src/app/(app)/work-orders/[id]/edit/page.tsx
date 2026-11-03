@@ -68,6 +68,7 @@ export default async function EditWorkOrder({ params }: { params: Promise<{ id: 
                 action={updateWorkOrder.bind(null, workOrder.id)}
                 submitLabel="Save changes"
                 lockProperty
+                sent={workOrder.status !== "DRAFT"}
             />
             <Link
                 href={`/work-orders/${workOrder.id}`}

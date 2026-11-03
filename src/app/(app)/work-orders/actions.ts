@@ -10,6 +10,7 @@ import { DeliveryMethod, LineItemPriority, WorkOrderStatus } from "@/generated/p
 import { getAppUrl, sendEmail } from "@/lib/email";
 import { workOrderEmail } from "@/lib/emails/workOrderEmail";
 import { notifyContractorsCancelled } from "@/lib/emails/notifyCancelled";
+import { notifyTenant } from "@/lib/emails/notifyTenant";
 import { DELETE_NOT_CONFIRMED, isDeleteConfirmed } from "@/lib/confirmDelete";
 import { COLOR_SECTIONS_COOKIE, formatWorkOrderAddress, OPEN_STATUSES, SPLIT_VIEW_COOKIE } from "@/lib/workOrders";
 import { contractorSnapshot, findTenant, nextJobNumber, tenantSnapshot } from "@/lib/workOrderCreate";
@@ -689,7 +690,7 @@ export async function sendWorkOrder(workOrderId: string, deliveryMethod: Deliver
 
     const workOrder = await prisma.workOrder.findFirst({
         where: { id: workOrderId, organizationId: result.organization.id },
-        include: { contractor: true },
+        include: { contractor: true, property: true, unit: true },
     });
 
     if (!workOrder) throw new Error("Invalid work order");
@@ -708,12 +709,19 @@ export async function sendWorkOrder(workOrderId: string, deliveryMethod: Deliver
             contractorEmail: workOrder.contractor?.email ?? null,
         },
     });
+    const tenantNotified =
+        !!workOrder.contractor &&
+        notifyTenant(result.organization, {
+            ...workOrder,
+            address: formatWorkOrderAddress(workOrder.property, workOrder.unit),
+            contractor: workOrder.contractor,
+        });
     await logEvent({
         type: "SENT",
         workOrderId,
         organizationId: workOrder.organizationId,
         actor: { kind: "office", user: result.user },
-        detail: { deliveryMethod, resent: false },
+        detail: { deliveryMethod, resent: false, ...(tenantNotified ? { tenantNotified: true } : {}) },
     });
 
     revalidatePath(`/work-orders/${workOrderId}`);
@@ -777,12 +785,20 @@ export async function emailWorkOrder(workOrderId: string): Promise<EmailResult> 
             ...(workOrder.status === "DRAFT" ? { status: "SENT", sentAt: new Date() } : {}),
         },
     });
+    // Only the first send tells the tenant; resends don't.
+    const tenantNotified =
+        workOrder.status === "DRAFT" &&
+        notifyTenant(result.organization, { ...workOrder, address, contractor: workOrder.contractor });
     await logEvent({
         type: "SENT",
         workOrderId,
         organizationId: workOrder.organizationId,
         actor: { kind: "office", user: result.user },
-        detail: { deliveryMethod: "EMAIL", resent: workOrder.status !== "DRAFT" },
+        detail: {
+            deliveryMethod: "EMAIL",
+            resent: workOrder.status !== "DRAFT",
+            ...(tenantNotified ? { tenantNotified: true } : {}),
+        },
     });
 
     revalidatePath(`/work-orders/${workOrderId}`);

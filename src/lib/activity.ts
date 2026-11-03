@@ -57,7 +57,11 @@ const priority = z.enum(["EMERGENCY", "HIGH", "MEDIUM", "LOW"]);
 const schemas = {
     CREATED: z.object({ source: z.enum(["form", "bot"]).optional() }),
     EDITED: z.object({ fields: z.array(z.string()).min(1) }),
-    SENT: z.object({ deliveryMethod: z.enum(["EMAIL", "SMS", "PRINT"]).optional(), resent: z.boolean().optional() }),
+    SENT: z.object({
+        deliveryMethod: z.enum(["EMAIL", "SMS", "PRINT"]).optional(),
+        resent: z.boolean().optional(),
+        tenantNotified: z.boolean().optional(),
+    }),
     CONTRACTOR_CHANGED: z.object({ from: z.string().nullable(), to: z.string().nullable() }),
     CANCELLED: z.object({ reason: z.string().nullish() }),
     ITEM_EDITED: itemRef.extend({
@@ -104,16 +108,20 @@ function phrase(type: WorkOrderEventType, detail: Prisma.JsonValue): Phrase | nu
         }
         case "SENT": {
             const d = read(schemas.SENT);
+            const tenant = d?.tenantNotified ? " and emailed the tenant" : "";
             if (d?.deliveryMethod === "EMAIL") {
-                return { active: d.resent ? "re-sent it by email" : "sent it by email", passive: "Sent by email" };
+                return {
+                    active: `${d.resent ? "re-sent it by email" : "sent it by email"}${tenant}`,
+                    passive: "Sent by email",
+                };
             }
             if (d?.deliveryMethod === "PRINT") {
-                return { active: "marked it sent (printed)", passive: "Marked sent (printed)" };
+                return { active: `marked it sent (printed)${tenant}`, passive: "Marked sent (printed)" };
             }
             if (d?.deliveryMethod === "SMS") {
-                return { active: "marked it sent (by text)", passive: "Marked sent (by text)" };
+                return { active: `marked it sent (by text)${tenant}`, passive: "Marked sent (by text)" };
             }
-            return { active: "sent it to the contractor" };
+            return { active: `sent it to the contractor${tenant}` };
         }
         case "CONTRACTOR_CHANGED": {
             const d = read(schemas.CONTRACTOR_CHANGED);

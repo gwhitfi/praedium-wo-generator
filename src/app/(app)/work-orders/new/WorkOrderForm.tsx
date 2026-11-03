@@ -19,6 +19,7 @@ type ContactOption = {
 type TenantOption = {
     id: string;
     displayName: string;
+    email: string | null;
     unitId: string | null;
 };
 export type WorkOrderFormValues = {
@@ -42,6 +43,7 @@ export default function WorkOrderForm({
     action = createWorkOrder,
     submitLabel = "Save and Continue",
     lockProperty = false,
+    sent = false,
 }: {
     properties: PropertyOption[];
     contractors: ContactOption[];
@@ -51,6 +53,8 @@ export default function WorkOrderForm({
     action?: (formData: FormData) => void | Promise<void>;
     submitLabel?: string;
     lockProperty?: boolean;
+    // The work order has already gone to the contractor, so the tenant email won't be sent.
+    sent?: boolean;
 }) {
     const [selectedProperty, setSelectedProperty] = useState(initial?.propertyId ?? defaultPropertyId ?? "");
     const [selectedContractor, setSelectedContractor] = useState(initial?.contractorId ?? "");
@@ -161,10 +165,21 @@ export default function WorkOrderForm({
                 />
             </label>
             {contactTenant &&
-                (tenant ? (
-                    <p className="text-sm text-muted">Notification will go to {tenant.displayName}.</p>
-                ) : (
+                (sent ? (
+                    <p className="text-sm text-muted">
+                        This work order has already been sent, so the tenant won&apos;t be emailed.
+                    </p>
+                ) : !tenant ? (
                     <p className="text-sm text-warning">No tenant on file for this unit.</p>
+                ) : !tenant.email?.trim() ? (
+                    <p className="text-sm text-warning">
+                        {tenant.displayName} has no email address, so they won&apos;t be notified.
+                    </p>
+                ) : (
+                    <p className="text-sm text-muted">
+                        {tenant.displayName} ({tenant.email}) will be emailed when this work order is sent to the
+                        contractor.
+                    </p>
                 ))}
             <button
                 type="submit"

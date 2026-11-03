@@ -14,7 +14,8 @@ type ItemRef = { item: string; area: string };
 type DetailsByType = {
     CREATED: { source: "form" | "bot" };
     EDITED: { fields: string[] };
-    SENT: { deliveryMethod: DeliveryMethod; resent: boolean };
+    // `tenantNotified` is set only when the tenant email was queued on the first send.
+    SENT: { deliveryMethod: DeliveryMethod; resent: boolean; tenantNotified?: true };
     CONTRACTOR_CHANGED: { from: string | null; to: string | null };
     COMPLETED_BY_OFFICE: null;
     CANCELLED: { reason: string | null };
