@@ -6,7 +6,7 @@ import prisma from "@/lib/prisma";
 import { revalidatePath } from "next/cache";
 import { cookies } from "next/headers";
 import { redirect } from "next/navigation";
-import { DeliveryMethod, LineItemPriority } from "@/generated/prisma/enums";
+import { DeliveryMethod, LineItemPriority, WorkOrderStatus } from "@/generated/prisma/enums";
 import { getAppUrl, sendEmail } from "@/lib/email";
 import { workOrderEmail } from "@/lib/emails/workOrderEmail";
 import { notifyContractorsCancelled } from "@/lib/emails/notifyCancelled";
@@ -44,6 +44,13 @@ async function readWorkOrderForm(formData: FormData, organizationId: string, pro
         unitId,
         contractor,
     };
+}
+
+// Areas and line items can change only while the work order is open and not archived, matching the page's readOnly.
+function assertEditable(workOrder: { status: WorkOrderStatus; archived: boolean }): void {
+    if (workOrder.archived || !OPEN_STATUSES.includes(workOrder.status)) {
+        throw new Error("This work order can't be edited");
+    }
 }
 
 // Saves the work order list's "Split view by status" setting in a cookie, so the page renders the right view.
@@ -292,6 +299,7 @@ export async function addArea(workOrderId: string, name: string) {
     });
 
     if (!workOrder) throw new Error("Invalid work order");
+    assertEditable(workOrder);
 
     const last = await prisma.area.findFirst({
         where: { workOrderId },
@@ -332,6 +340,7 @@ export async function removeArea(areaId: string) {
     if (!area || area.workOrder.organizationId !== result.organization.id) {
         throw new Error("Invalid area");
     }
+    assertEditable(area.workOrder);
 
     const photoKeys = await attachmentKeys(result.organization.id, { lineItem: { areaId } });
     await prisma.area.delete({ where: { id: areaId } });
@@ -361,6 +370,7 @@ export async function moveArea(areaId: string, direction: "up" | "down") {
     if (!area || area.workOrder.organizationId !== result.organization.id) {
         throw new Error("Invalid area");
     }
+    assertEditable(area.workOrder);
 
     const neighbour = await prisma.area.findFirst({
         where: {
@@ -398,6 +408,7 @@ export async function addLineItem(areaId: string, description: string, priority:
     if (!area || area.workOrder.organizationId !== result.organization.id) {
         throw new Error("Invalid area");
     }
+    assertEditable(area.workOrder);
 
     const last = await prisma.lineItem.findFirst({
         where: { areaId },
@@ -441,6 +452,7 @@ export async function removeLineItem(lineItemId: string) {
     if (!lineItem || lineItem.area.workOrder.organizationId !== result.organization.id) {
         throw new Error("Invalid line item");
     }
+    assertEditable(lineItem.area.workOrder);
 
     const photoKeys = await attachmentKeys(result.organization.id, { lineItemId });
     await prisma.lineItem.delete({ where: { id: lineItemId } });
@@ -471,6 +483,7 @@ export async function moveLineItem(lineItemId: string, direction: "up" | "down")
     if (!lineItem || lineItem.area.workOrder.organizationId !== result.organization.id) {
         throw new Error("Invalid line item");
     }
+    assertEditable(lineItem.area.workOrder);
 
     const neighbour = await prisma.lineItem.findFirst({
         where: {
@@ -510,6 +523,7 @@ export async function updateLineItem(lineItemId: string, description: string, pr
     if (!lineItem || lineItem.area.workOrder.organizationId !== result.organization.id) {
         throw new Error("Invalid line item");
     }
+    assertEditable(lineItem.area.workOrder);
 
     await prisma.lineItem.update({
         where: { id: lineItemId },

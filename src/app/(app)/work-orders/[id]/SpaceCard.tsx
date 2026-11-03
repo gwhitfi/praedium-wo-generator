@@ -58,6 +58,7 @@ export default function SpaceCard({
     const [busyItemId, setBusyItemId] = useState<string | null>(null);
     const [editingId, setEditingId] = useState<string | null>(null);
     const [editDraft, setEditDraft] = useState("");
+    const [editPriority, setEditPriority] = useState("MEDIUM");
     const doneCount = area.lineItems.filter((i) => i.completed).length;
 
     async function handleAddItem() {
@@ -104,14 +105,14 @@ export default function SpaceCard({
     async function handleSaveEdit(item: LineItemRow) {
         const trimmed = editDraft.trim();
 
-        if (!trimmed || trimmed === item.description) {
+        if (!trimmed || (trimmed === item.description && editPriority === item.priority)) {
             setEditingId(null);
             return;
         }
 
         setBusyItemId(item.id);
         try {
-            await actions.updateLineItem(item.id, trimmed, item.priority as LineItemPriority);
+            await actions.updateLineItem(item.id, trimmed, editPriority as LineItemPriority);
             setEditingId(null);
             setError(null);
         } catch {
@@ -176,17 +177,35 @@ export default function SpaceCard({
                                     {item.completed && "✓"}
                                 </span>
                                 {editingId === item.id ? (
-                                    <input
-                                        value={editDraft}
-                                        onChange={(e) => setEditDraft(e.target.value)}
-                                        onBlur={() => handleSaveEdit(item)}
+                                    <div
+                                        className="flex flex-1 items-center gap-2"
+                                        onBlur={(e) => {
+                                            if (!e.currentTarget.contains(e.relatedTarget)) handleSaveEdit(item);
+                                        }}
                                         onKeyDown={(e) => {
                                             if (e.key === "Enter") handleSaveEdit(item);
                                             if (e.key === "Escape") setEditingId(null);
                                         }}
-                                        autoFocus
-                                        className="flex-1 rounded border border-faint bg-surface-hover px-2 py-0.5 text-base text-foreground focus:outline-none"
-                                    />
+                                    >
+                                        <input
+                                            value={editDraft}
+                                            onChange={(e) => setEditDraft(e.target.value)}
+                                            autoFocus
+                                            className="min-w-0 flex-1 rounded border border-faint bg-surface-hover px-2 py-0.5 text-base text-foreground focus:outline-none"
+                                        />
+                                        <select
+                                            value={editPriority}
+                                            onChange={(e) => setEditPriority(e.target.value)}
+                                            aria-label={`Priority for ${item.description}`}
+                                            className="shrink-0 rounded border border-faint bg-surface-hover px-2 py-0.5 text-sm text-foreground focus:outline-none"
+                                        >
+                                            {Object.entries(PRIORITY_LABELS).map(([value, label]) => (
+                                                <option key={value} value={value}>
+                                                    {label}
+                                                </option>
+                                            ))}
+                                        </select>
+                                    </div>
                                 ) : (
                                     <span
                                         onClick={
@@ -195,6 +214,7 @@ export default function SpaceCard({
                                                 : () => {
                                                       setEditingId(item.id);
                                                       setEditDraft(item.description);
+                                                      setEditPriority(item.priority);
                                                   }
                                         }
                                         className={`rounded px-1 ${readOnly ? "" : "cursor-text hover:bg-surface-hover"} ${
@@ -205,7 +225,7 @@ export default function SpaceCard({
                                     </span>
                                 )}
                                 <div className="ml-auto flex shrink-0 items-center gap-2">
-                                    {PRIORITY_STYLES[item.priority] && (
+                                    {editingId !== item.id && PRIORITY_STYLES[item.priority] && (
                                         <span
                                             className={`rounded-full border px-2 py-0.5 text-xs cursor-default ${PRIORITY_STYLES[item.priority]}`}
                                         >
@@ -270,6 +290,8 @@ export default function SpaceCard({
                 </ul>
             )}
 
+            {error && <p className="mt-2 text-sm text-danger">{error}</p>}
+
             {!readOnly && !adding && (
                 <button
                     type="button"
@@ -300,7 +322,6 @@ export default function SpaceCard({
                         autoFocus
                         className={inputClass}
                     />
-                    {error && <p className="text-sm text-danger">{error}</p>}
                     <div className="flex gap-2">
                         <select value={priority} onChange={(e) => setPriority(e.target.value)} className={inputClass}>
                             {Object.entries(PRIORITY_LABELS).map(([value, label]) => (

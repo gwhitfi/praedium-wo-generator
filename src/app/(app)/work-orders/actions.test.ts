@@ -44,6 +44,8 @@ import {
     createWorkOrder,
     emailWorkOrder,
     markWorkOrderCompleted,
+    moveArea,
+    moveLineItem,
     regeneratePublicToken,
     removeArea,
     removeLineItem,
@@ -418,6 +420,42 @@ describe("areas and line items", () => {
         await removeLineItem("li1");
         await updateLineItem("li1", "Replace kitchen faucet", "HIGH");
 
+        expect(logEvent).not.toHaveBeenCalled();
+    });
+
+    it.each([
+        ["completed", { status: "COMPLETED" }],
+        ["closed", { status: "CLOSED" }],
+        ["cancelled", { status: "CANCELLED" }],
+        ["archived", { status: "SENT", archived: true }],
+    ])("refuses every change to a %s work order", async (_, changes) => {
+        const locked = { ...workOrder, ...changes };
+        withWorkOrder(changes);
+        vi.mocked(prisma.area.findFirst).mockResolvedValue({ ...kitchen("SENT"), workOrder: locked } as never);
+        vi.mocked(prisma.lineItem.findFirst).mockResolvedValue({
+            ...faucet("SENT"),
+            area: { ...kitchen("SENT"), workOrder: locked },
+        } as never);
+
+        const attempts = [
+            () => addArea("wo1", "Yard"),
+            () => removeArea("area1"),
+            () => moveArea("area1", "down"),
+            () => addLineItem("area1", "Fix gate latch", "LOW"),
+            () => removeLineItem("li1"),
+            () => moveLineItem("li1", "down"),
+            () => updateLineItem("li1", "Replace kitchen faucet", "HIGH"),
+        ];
+        for (const attempt of attempts) {
+            await expect(attempt()).rejects.toThrow("This work order can't be edited");
+        }
+
+        expect(prisma.area.create).not.toHaveBeenCalled();
+        expect(prisma.area.delete).not.toHaveBeenCalled();
+        expect(prisma.lineItem.create).not.toHaveBeenCalled();
+        expect(prisma.lineItem.delete).not.toHaveBeenCalled();
+        expect(prisma.lineItem.update).not.toHaveBeenCalled();
+        expect(prisma.$transaction).not.toHaveBeenCalled();
         expect(logEvent).not.toHaveBeenCalled();
     });
 });
