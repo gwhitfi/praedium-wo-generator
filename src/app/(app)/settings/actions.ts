@@ -1,11 +1,19 @@
 "use server";
 
 import { clerkClient } from "@clerk/nextjs/server";
+import { generateApiKey } from "@/lib/apiKeys";
 import { getCurrentUser } from "@/lib/auth";
 import prisma from "@/lib/prisma";
 import { revalidatePath } from "next/cache";
 import { z } from "zod";
-import { aiPreferenceInput, organizationInput, type OrganizationFormState } from "./schemas";
+import {
+    aiPreferenceInput,
+    apiKeyNameInput,
+    organizationInput,
+    revokeApiKeyInput,
+    type ApiKeyFormState,
+    type OrganizationFormState,
+} from "./schemas";
 
 // Sent back on failure so the form can refill what the user typed.
 function submittedValues(formData: FormData) {
@@ -62,4 +70,50 @@ export async function setAiPreference(formData: FormData): Promise<void> {
         data: { aiEnabled: parsed.data.aiEnabled },
     });
     revalidatePath("/", "layout");
+}
+
+async function requireAdmin() {
+    const result = await getCurrentUser();
+    if (result.state !== "ready" || result.user.role !== "ADMIN") throw new Error("Not authorized");
+    return result;
+}
+
+// Returns the full key so the form can show it once; only its hash is stored.
+export async function createApiKey(prevState: ApiKeyFormState, formData: FormData): Promise<ApiKeyFormState> {
+    const { user, organization } = await requireAdmin();
+
+    const parsed = apiKeyNameInput.safeParse(Object.fromEntries(formData));
+    if (!parsed.success) {
+        const name = formData.get("name");
+        return {
+            errors: z.flattenError(parsed.error).fieldErrors,
+            name: typeof name === "string" ? name : undefined,
+        };
+    }
+
+    const { key, prefix, keyHash } = generateApiKey();
+    try {
+        await prisma.apiKey.create({
+            data: { name: parsed.data.name, prefix, keyHash, createdById: user.id, organizationId: organization.id },
+        });
+    } catch (error) {
+        console.error("createApiKey failed", error);
+        return { error: "Could not create the key. Try again.", name: parsed.data.name };
+    }
+
+    revalidatePath("/settings");
+    return { key, name: parsed.data.name };
+}
+
+export async function revokeApiKey(formData: FormData): Promise<void> {
+    const { organization } = await requireAdmin();
+
+    const parsed = revokeApiKeyInput.safeParse(Object.fromEntries(formData));
+    if (!parsed.success) throw new Error("Invalid API key");
+
+    await prisma.apiKey.updateMany({
+        where: { id: parsed.data.id, organizationId: organization.id, revokedAt: null },
+        data: { revokedAt: new Date() },
+    });
+    revalidatePath("/settings");
 }

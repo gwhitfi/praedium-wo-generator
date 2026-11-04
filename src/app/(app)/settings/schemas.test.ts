@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { aiPreferenceInput, organizationInput } from "./schemas";
+import { aiPreferenceInput, apiKeyNameInput, organizationInput, revokeApiKeyInput } from "./schemas";
 
 describe("aiPreferenceInput", () => {
     it("turns on and off into a boolean", () => {
@@ -41,5 +41,25 @@ describe("organizationInput", () => {
     it("rejects a malformed phone or email", () => {
         expect(organizationInput.safeParse({ ...organization, phone: "555-0100" }).success).toBe(false);
         expect(organizationInput.safeParse({ ...organization, email: "office@" }).success).toBe(false);
+    });
+});
+
+describe("apiKeyNameInput", () => {
+    it("trims the name", () => {
+        expect(apiKeyNameInput.parse({ name: "  Claude desktop  " })).toEqual({ name: "Claude desktop" });
+    });
+
+    it("rejects a missing, blank or over-long name", () => {
+        expect(apiKeyNameInput.safeParse({}).success).toBe(false);
+        expect(apiKeyNameInput.safeParse({ name: "   " }).success).toBe(false);
+        expect(apiKeyNameInput.safeParse({ name: "x".repeat(61) }).success).toBe(false);
+    });
+});
+
+describe("revokeApiKeyInput", () => {
+    it("requires an id", () => {
+        expect(revokeApiKeyInput.parse({ id: "key1" })).toEqual({ id: "key1" });
+        expect(revokeApiKeyInput.safeParse({ id: "" }).success).toBe(false);
+        expect(revokeApiKeyInput.safeParse({}).success).toBe(false);
     });
 });

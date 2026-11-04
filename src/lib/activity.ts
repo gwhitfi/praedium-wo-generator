@@ -55,7 +55,7 @@ const FIELD_LABELS: Record<string, string> = {
 const itemRef = z.object({ item: z.string(), area: z.string() });
 const priority = z.enum(["EMERGENCY", "HIGH", "MEDIUM", "LOW"]);
 const schemas = {
-    CREATED: z.object({ source: z.enum(["form", "bot"]).optional() }),
+    CREATED: z.object({ source: z.enum(["form", "bot", "mcp"]).optional() }),
     EDITED: z.object({ fields: z.array(z.string()).min(1) }),
     SENT: z.object({
         deliveryMethod: z.enum(["EMAIL", "SMS", "PRINT"]).optional(),
@@ -96,9 +96,9 @@ function phrase(type: WorkOrderEventType, detail: Prisma.JsonValue): Phrase | nu
     switch (type) {
         case "CREATED": {
             const d = read(schemas.CREATED);
-            return {
-                active: d?.source === "bot" ? "created the work order with Praedium Bot" : "created the work order",
-            };
+            if (d?.source === "bot") return { active: "created the work order with Praedium Bot" };
+            if (d?.source === "mcp") return { active: "created the work order through the API" };
+            return { active: "created the work order" };
         }
         case "EDITED": {
             const d = read(schemas.EDITED);

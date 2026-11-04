@@ -97,6 +97,7 @@ model Organization {
   attachments Attachment[]
 
   workOrderEvents WorkOrderEvent[]
+  apiKeys         ApiKey[]
 }
 
 model User {
@@ -115,6 +116,7 @@ model User {
   organization   Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
 
   workOrderEvents WorkOrderEvent[]
+  apiKeys         ApiKey[]
 
   @@unique([organizationId, email])
   @@index([organizationId])
@@ -362,5 +364,25 @@ model Attachment {
   @@index([workOrderId])
   @@index([lineItemId])
   @@index([contactId])
+  @@index([organizationId])
+}
+
+// A key that lets an outside AI assistant (over MCP) act for one organization without a Clerk session.
+// Only a hash of the key is stored; `prefix` is the first few characters, shown in Settings to tell keys apart.
+model ApiKey {
+  id         String    @id @default(cuid())
+  name       String
+  prefix     String
+  keyHash    String    @unique
+  lastUsedAt DateTime?
+  revokedAt  DateTime?
+  createdAt  DateTime  @default(now())
+
+  createdById String?
+  createdBy   User?   @relation(fields: [createdById], references: [id], onDelete: SetNull)
+
+  organizationId String
+  organization   Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+
   @@index([organizationId])
 }

@@ -3,30 +3,16 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 vi.mock("next/cache", () => ({ revalidatePath: vi.fn() }));
 vi.mock("next/navigation", () => ({ redirect: vi.fn() }));
 vi.mock("@/lib/auth", () => ({ getCurrentUser: vi.fn() }));
-vi.mock("@/lib/prisma", () => ({
-    default: {
-        property: { findFirst: vi.fn() },
-        unit: { findFirst: vi.fn() },
-        contact: { findFirst: vi.fn() },
-        $transaction: vi.fn(),
-    },
-}));
-vi.mock("@/lib/workOrderCreate", async (importOriginal) => ({
-    ...(await importOriginal<typeof import("@/lib/workOrderCreate")>()),
-    findTenant: vi.fn(),
-    nextJobNumber: vi.fn(),
-}));
+vi.mock("@/lib/workOrderCreate", () => ({ createDraftWorkOrder: vi.fn() }));
 vi.mock("@/lib/parseDescription", () => ({ parseDescription: vi.fn() }));
 vi.mock("@/lib/workOrderLookup", () => ({ propertyLookup: vi.fn(), contractorLookup: vi.fn() }));
-vi.mock("@/lib/workOrderEvents", () => ({ logEvent: vi.fn() }));
 
+import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 import { getCurrentUser } from "@/lib/auth";
-import prisma from "@/lib/prisma";
 import { parseDescription } from "@/lib/parseDescription";
-import { findTenant, nextJobNumber } from "@/lib/workOrderCreate";
+import { createDraftWorkOrder } from "@/lib/workOrderCreate";
 import { contractorLookup, propertyLookup } from "@/lib/workOrderLookup";
-import { logEvent } from "@/lib/workOrderEvents";
 import { createDraftFromBot, parseWorkOrderDescription } from "./actions";
 import type { ConfirmedDraft } from "./schemas";
 
@@ -49,10 +35,6 @@ const draft: ConfirmedDraft = {
     ],
 };
 
-const joes = { id: "joes", displayName: "Joe's Plumbing", phone: "8435550100", email: "joe@example.com" };
-const tenant = { id: "tenant1", displayName: "Ana Ruiz", phone: "8435550199", email: null };
-const create = vi.fn();
-
 beforeEach(() => {
     vi.clearAllMocks();
     vi.mocked(getCurrentUser).mockResolvedValue({
@@ -60,14 +42,7 @@ beforeEach(() => {
         user: { id: "user1" },
         organization: { id: "org1" },
     } as never);
-    vi.mocked(prisma.property.findFirst).mockResolvedValue({ id: "prop1" } as never);
-    vi.mocked(prisma.unit.findFirst).mockResolvedValue({ id: "unit1" } as never);
-    vi.mocked(prisma.contact.findFirst).mockResolvedValue(joes as never);
-    vi.mocked(findTenant).mockResolvedValue(tenant as never);
-    vi.mocked(nextJobNumber).mockResolvedValue("2026-1001");
-    create.mockResolvedValue({ id: "wo1" });
-    vi.mocked(prisma.$transaction).mockImplementation((async (fn: (tx: unknown) => unknown) =>
-        fn({ workOrder: { create } })) as never);
+    vi.mocked(createDraftWorkOrder).mockResolvedValue({ ok: true, workOrder: { id: "wo1", jobNumber: "2026-1001" } });
 });
 
 describe("parseWorkOrderDescription", () => {
@@ -130,122 +105,40 @@ describe("parseWorkOrderDescription", () => {
     });
 });
 
+// The ownership checks, snapshots and event are tested with createDraftWorkOrder in src/lib/workOrderCreate.test.ts.
 describe("createDraftFromBot", () => {
-    it("rejects a signed-out user without touching the database", async () => {
+    it("rejects a signed-out user without creating anything", async () => {
         vi.mocked(getCurrentUser).mockResolvedValue({ state: "signed-out" });
 
         expect(await createDraftFromBot(draft)).toEqual({ ok: false, error: "Not authorized" });
-        expect(prisma.property.findFirst).not.toHaveBeenCalled();
+        expect(createDraftWorkOrder).not.toHaveBeenCalled();
     });
 
     it("rejects invalid input", async () => {
         const result = await createDraftFromBot({ ...draft, areas: [] });
 
         expect(result.ok).toBe(false);
-        expect(prisma.$transaction).not.toHaveBeenCalled();
+        expect(createDraftWorkOrder).not.toHaveBeenCalled();
     });
 
-    it("only looks up records in the user's organization", async () => {
-        await createDraftFromBot(draft);
+    it("creates the draft in the user's organization as the bot, then opens it", async () => {
+        await createDraftFromBot({ ...draft, title: "  Leak under kitchen sink  ", notes: " " });
 
-        expect(prisma.property.findFirst).toHaveBeenCalledWith({
-            where: { id: "prop1", organizationId: "org1", archived: false },
-        });
-        expect(prisma.unit.findFirst).toHaveBeenCalledWith({
-            where: { id: "unit1", propertyId: "prop1", organizationId: "org1", archived: false },
-        });
-        expect(prisma.contact.findFirst).toHaveBeenCalledWith({
-            where: {
-                id: "joes",
-                organizationId: "org1",
-                archived: false,
-                contactType: { in: ["CONTRACTOR", "OTHER"] },
-            },
-        });
-        expect(findTenant).toHaveBeenCalledWith("unit1", "org1");
-    });
-
-    it.each([
-        ["property", () => vi.mocked(prisma.property.findFirst).mockResolvedValue(null)],
-        ["unit", () => vi.mocked(prisma.unit.findFirst).mockResolvedValue(null)],
-        ["contractor", () => vi.mocked(prisma.contact.findFirst).mockResolvedValue(null)],
-    ])("refuses a %s from another organization", async (name, notFound) => {
-        notFound();
-
-        const result = await createDraftFromBot(draft);
-
-        expect(result).toEqual({ ok: false, error: expect.stringContaining(name) });
-        expect(prisma.$transaction).not.toHaveBeenCalled();
-    });
-
-    it("creates a draft with contact snapshots and ordered areas and line items, then opens it", async () => {
-        await createDraftFromBot(draft);
-
-        const data = create.mock.calls[0][0].data;
-        expect(data).toMatchObject({
+        expect(createDraftWorkOrder).toHaveBeenCalledWith({
             organizationId: "org1",
-            jobNumber: "2026-1001",
-            status: "DRAFT",
-            propertyId: "prop1",
-            unitId: "unit1",
-            title: "Leak under kitchen sink",
-            notes: "Tenant home after 3pm",
-            dueDate: new Date("2026-11-05"),
-            contractorId: "joes",
-            contractorName: "Joe's Plumbing",
-            contractorPhone: "8435550100",
-            tenantId: "tenant1",
-            tenantName: "Ana Ruiz",
-            tenantPhone: "8435550199",
+            actor: { kind: "office", user: { id: "user1" } },
+            draft: { ...draft, title: "Leak under kitchen sink", notes: null },
+            source: "bot",
         });
-        expect(data.publicToken).toEqual(expect.any(String));
-        expect(data.areas.create).toEqual([
-            {
-                name: "Kitchen",
-                sortOrder: 0,
-                lineItems: {
-                    create: [
-                        { description: "Replace P-trap", priority: "HIGH", sortOrder: 0 },
-                        { description: "Check cabinet floor", priority: "MEDIUM", sortOrder: 1 },
-                    ],
-                },
-            },
-            {
-                name: "Bathroom",
-                sortOrder: 1,
-                lineItems: { create: [{ description: "Recaulk tub", priority: "LOW", sortOrder: 0 }] },
-            },
-        ]);
+        expect(revalidatePath).toHaveBeenCalledWith("/work-orders");
         expect(redirect).toHaveBeenCalledWith("/work-orders/wo1");
     });
 
-    it("logs the draft as created by the bot", async () => {
-        await createDraftFromBot(draft);
+    it("returns the refusal without opening anything", async () => {
+        const refused = { ok: false as const, error: "That property wasn't found. Choose it again." };
+        vi.mocked(createDraftWorkOrder).mockResolvedValue(refused);
 
-        expect(logEvent).toHaveBeenCalledWith({
-            type: "CREATED",
-            workOrderId: "wo1",
-            organizationId: "org1",
-            actor: { kind: "office", user: { id: "user1" } },
-            detail: { source: "bot" },
-        });
-    });
-
-    it("doesn't log anything when the draft is refused", async () => {
-        vi.mocked(prisma.property.findFirst).mockResolvedValue(null);
-
-        await createDraftFromBot(draft);
-
-        expect(logEvent).not.toHaveBeenCalled();
-    });
-
-    it("leaves the unit and contractor empty when none were chosen", async () => {
-        vi.mocked(findTenant).mockResolvedValue(null);
-
-        await createDraftFromBot({ ...draft, unitId: null, contractorId: null });
-
-        expect(prisma.unit.findFirst).not.toHaveBeenCalled();
-        expect(prisma.contact.findFirst).not.toHaveBeenCalled();
-        expect(create.mock.calls[0][0].data).toMatchObject({ unitId: null, contractorId: null, tenantId: null });
+        expect(await createDraftFromBot(draft)).toEqual(refused);
+        expect(redirect).not.toHaveBeenCalled();
     });
 });

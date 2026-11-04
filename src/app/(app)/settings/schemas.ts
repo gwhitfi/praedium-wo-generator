@@ -18,3 +18,19 @@ export type OrganizationFormState = {
     errors?: Partial<Record<keyof z.input<typeof organizationInput>, string[]>>;
     values?: Record<string, string>;
 };
+
+export const apiKeyNameInput = z.object({
+    name: z.string().trim().min(1, "Enter a name for this key").max(60),
+});
+
+export const revokeApiKeyInput = z.object({
+    id: z.string().min(1),
+});
+
+// `key` is the full key, returned only by the create that made it.
+export type ApiKeyFormState = {
+    key?: string;
+    error?: string;
+    errors?: Partial<Record<keyof z.input<typeof apiKeyNameInput>, string[]>>;
+    name?: string;
+};

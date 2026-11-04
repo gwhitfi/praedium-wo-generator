@@ -12,7 +12,7 @@ type ItemRef = { item: string; area: string };
 
 // The `detail` saved with each event type; null means none.
 type DetailsByType = {
-    CREATED: { source: "form" | "bot" };
+    CREATED: { source: "form" | "bot" | "mcp" };
     EDITED: { fields: string[] };
     // `tenantNotified` is set only when the tenant email was queued on the first send.
     SENT: { deliveryMethod: DeliveryMethod; resent: boolean; tenantNotified?: true };

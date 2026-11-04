@@ -1,9 +1,13 @@
 import { getCurrentUser } from "@/lib/auth";
 import { redirect } from "next/navigation";
 import { formatPhone } from "@/lib/phone";
+import { formatTimestamp } from "@/lib/dates";
+import prisma from "@/lib/prisma";
 import OrganizationContactForm from "./OrganizationContactForm";
 import AiPreferenceForm from "./AiPreferenceForm";
 import AppearanceSettings from "./AppearanceSettings";
+import ApiKeyForm from "./ApiKeyForm";
+import RevokeApiKeyButton from "./RevokeApiKeyButton";
 
 export default async function Settings() {
     const result = await getCurrentUser();
@@ -17,6 +21,12 @@ export default async function Settings() {
     }
 
     const { organization, user } = result;
+    const isAdmin = user.role === "ADMIN";
+    const apiKeys = await prisma.apiKey.findMany({
+        where: { organizationId: organization.id, revokedAt: null },
+        select: { id: true, name: true, prefix: true, createdAt: true, lastUsedAt: true },
+        orderBy: { createdAt: "desc" },
+    });
 
     return (
         <main className="mx-auto max-w-3xl px-4 py-10 text-foreground">
@@ -32,6 +42,43 @@ export default async function Settings() {
                     phone={organization.phone ? formatPhone(organization.phone) : null}
                     email={organization.email}
                 />
+            </section>
+
+            <section className="mb-10">
+                <GroupHeading
+                    title="API keys"
+                    description="Let an AI assistant search this organization's properties and contractors, list and read work orders, and create draft work orders. Everything it does is attributed to the person who created the key."
+                />
+                <div className="overflow-hidden rounded-xl border border-line bg-surface shadow-sm">
+                    {apiKeys.length === 0 ? (
+                        <p className="p-5 text-sm text-muted sm:px-6">No API keys yet.</p>
+                    ) : (
+                        <ul className="divide-y divide-line">
+                            {apiKeys.map((apiKey) => (
+                                <li key={apiKey.id} className="flex items-center gap-3 px-5 py-3 sm:px-6">
+                                    <div className="min-w-0 flex-1">
+                                        <p className="truncate text-sm font-medium text-foreground">{apiKey.name}</p>
+                                        <p className="text-xs text-subtle">
+                                            <span className="font-mono">pr_{apiKey.prefix}…</span> · Created{" "}
+                                            {formatTimestamp(apiKey.createdAt)} ·{" "}
+                                            {apiKey.lastUsedAt
+                                                ? `Last used ${formatTimestamp(apiKey.lastUsedAt)}`
+                                                : "Never used"}
+                                        </p>
+                                    </div>
+                                    {isAdmin && <RevokeApiKeyButton id={apiKey.id} name={apiKey.name} />}
+                                </li>
+                            ))}
+                        </ul>
+                    )}
+                    {isAdmin ? (
+                        <ApiKeyForm />
+                    ) : (
+                        <p className="border-t border-line px-5 py-3 text-sm text-muted sm:px-6">
+                            Only admins can create or revoke API keys.
+                        </p>
+                    )}
+                </div>
             </section>
 
             <section>

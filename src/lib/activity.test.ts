@@ -19,6 +19,7 @@ describe("describeEvent: office", () => {
     it.each<[WorkOrderEventType, Detail, string]>([
         ["CREATED", { source: "form" }, "Justin W. created the work order"],
         ["CREATED", { source: "bot" }, "Justin W. created the work order with Praedium Bot"],
+        ["CREATED", { source: "mcp" }, "Justin W. created the work order through the API"],
         ["SENT", { deliveryMethod: "EMAIL", resent: false }, "Justin W. sent it by email"],
         ["SENT", { deliveryMethod: "EMAIL", resent: true }, "Justin W. re-sent it by email"],
         ["SENT", { deliveryMethod: "PRINT", resent: false }, "Justin W. marked it sent (printed)"],
