@@ -27,6 +27,7 @@ export default function StatusActions({
     const [error, setError] = useState<string | null>(null);
     const [confirmingEmail, setConfirmingEmail] = useState(false);
     const [confirmingCancel, setConfirmingCancel] = useState(false);
+    const [cancelReason, setCancelReason] = useState("");
     const [sentTo, setSentTo] = useState<string | null>(null);
 
     async function handleEmail() {
@@ -90,6 +91,13 @@ export default function StatusActions({
         </span>
     );
 
+    function handleCancel() {
+        run(async () => {
+            await cancelWorkOrder(workOrderId, cancelReason);
+            setCancelReason("");
+        });
+    }
+
     async function run(fn: () => Promise<void>) {
         setPending(true);
         setError(null);
@@ -137,16 +145,35 @@ export default function StatusActions({
                                     ? `${contractor.name} will be emailed and their link will stop working.`
                                     : "The contractor link will stop working."}
                             </span>
+                            <input
+                                type="text"
+                                value={cancelReason}
+                                onChange={(e) => setCancelReason(e.target.value)}
+                                onKeyDown={(e) => {
+                                    if (e.key === "Enter" && !pending) {
+                                        e.preventDefault();
+                                        handleCancel();
+                                    }
+                                }}
+                                placeholder="Reason (optional)"
+                                aria-label="Reason for cancelling"
+                                maxLength={500}
+                                disabled={pending}
+                                className="min-w-48 flex-1 rounded border border-faint bg-surface-hover px-2 py-0.5 text-base text-foreground focus:outline-none"
+                            />
                             <button
                                 className="text-danger hover:text-danger/80 hover:cursor-pointer disabled:opacity-40"
-                                onClick={() => run(() => cancelWorkOrder(workOrderId))}
+                                onClick={handleCancel}
                                 disabled={pending}
                             >
                                 {pending ? "Cancelling..." : "Yes, cancel it"}
                             </button>
                             <button
                                 className="text-subtle hover:text-foreground hover:cursor-pointer"
-                                onClick={() => setConfirmingCancel(false)}
+                                onClick={() => {
+                                    setConfirmingCancel(false);
+                                    setCancelReason("");
+                                }}
                                 disabled={pending}
                             >
                                 Keep it

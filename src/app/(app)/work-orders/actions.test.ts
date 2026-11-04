@@ -115,6 +115,21 @@ describe("createWorkOrder", () => {
 
         expect(logEvent).toHaveBeenCalledWith({ ...ids, type: "CREATED", actor: office, detail: { source: "form" } });
     });
+
+    it("refuses an archived unit", async () => {
+        vi.mocked(prisma.property.findFirst).mockResolvedValue({ id: "prop1" } as never);
+        vi.mocked(prisma.unit.findFirst).mockResolvedValue(null);
+        const form = new FormData();
+        form.set("propertyId", "prop1");
+        form.set("unitId", "unit1");
+        form.set("title", "Fix sink");
+
+        await expect(createWorkOrder(form)).rejects.toThrow("Invalid unit");
+        expect(prisma.unit.findFirst).toHaveBeenCalledWith({
+            where: { id: "unit1", propertyId: "prop1", organizationId: "org1", archived: false },
+        });
+        expect(prisma.$transaction).not.toHaveBeenCalled();
+    });
 });
 
 describe("sendWorkOrder", () => {
@@ -233,6 +248,31 @@ describe("status changes", () => {
         await cancelWorkOrder("wo1");
 
         expect(logEvent).toHaveBeenCalledWith({ ...ids, type: "CANCELLED", actor: office, detail: { reason: null } });
+    });
+
+    it("cancelWorkOrder trims the reason, stores it and logs it", async () => {
+        withWorkOrder({ status: "SENT" });
+
+        await cancelWorkOrder("wo1", "  Tenant fixed it  ");
+
+        expect(prisma.workOrder.update).toHaveBeenCalledWith({
+            where: { id: "wo1" },
+            data: { status: "CANCELLED", cancelledAt: expect.any(Date), cancelReason: "Tenant fixed it" },
+        });
+        expect(logEvent).toHaveBeenCalledWith({
+            ...ids,
+            type: "CANCELLED",
+            actor: office,
+            detail: { reason: "Tenant fixed it" },
+        });
+    });
+
+    it("cancelWorkOrder refuses a reason over 500 characters", async () => {
+        withWorkOrder({ status: "SENT" });
+
+        await expect(cancelWorkOrder("wo1", "x".repeat(501))).rejects.toThrow();
+        expect(prisma.workOrder.update).not.toHaveBeenCalled();
+        expect(logEvent).not.toHaveBeenCalled();
     });
 
     it("doesn't log a refused change", async () => {

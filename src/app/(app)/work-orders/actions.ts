@@ -26,13 +26,20 @@ async function readWorkOrderForm(formData: FormData, organizationId: string, pro
     const dueDateRaw = (formData.get("dueDate") as string) || null;
 
     if (unitId) {
-        const unit = await prisma.unit.findFirst({ where: { id: unitId, propertyId, organizationId } });
+        const unit = await prisma.unit.findFirst({
+            where: { id: unitId, propertyId, organizationId, archived: false },
+        });
         if (!unit) throw new Error("Invalid unit");
     }
 
     const contractor = contractorId
         ? await prisma.contact.findFirst({
-              where: { id: contractorId, organizationId, contactType: { in: ["CONTRACTOR", "OTHER"] } },
+              where: {
+                  id: contractorId,
+                  organizationId,
+                  archived: false,
+                  contactType: { in: ["CONTRACTOR", "OTHER"] },
+              },
           })
         : null;
     if (contractorId && !contractor) throw new Error("Invalid contractor");
@@ -99,7 +106,7 @@ export async function createWorkOrder(formData: FormData) {
     const propertyId = formData.get("propertyId") as string;
 
     const property = await prisma.property.findFirst({
-        where: { id: propertyId, organizationId },
+        where: { id: propertyId, organizationId, archived: false },
     });
 
     if (!property) throw new Error("Invalid property");
@@ -869,9 +876,20 @@ export async function closeWorkOrder(workOrderId: string) {
     revalidatePath("/work-orders");
 }
 
-export async function cancelWorkOrder(workOrderId: string) {
+const cancelReasonInput = z
+    .string()
+    .trim()
+    .max(500, tooLong(500))
+    .optional()
+    .transform((val) => val || null);
+
+export async function cancelWorkOrder(workOrderId: string, rawReason?: string) {
     const result = await getCurrentUser();
     if (result.state !== "ready") throw new Error("Not authorized");
+
+    const parsed = cancelReasonInput.safeParse(rawReason);
+    if (!parsed.success) throw new Error(parsed.error.issues[0].message);
+    const reason = parsed.data;
 
     const workOrder = await prisma.workOrder.findFirst({
         where: { id: workOrderId, organizationId: result.organization.id },
@@ -885,14 +903,14 @@ export async function cancelWorkOrder(workOrderId: string) {
 
     await prisma.workOrder.update({
         where: { id: workOrderId },
-        data: { status: "CANCELLED", cancelledAt: new Date() },
+        data: { status: "CANCELLED", cancelledAt: new Date(), cancelReason: reason },
     });
     await logEvent({
         type: "CANCELLED",
         workOrderId,
         organizationId: workOrder.organizationId,
         actor: { kind: "office", user: result.user },
-        detail: { reason: null },
+        detail: { reason },
     });
 
     if (!workOrder.archived) {
