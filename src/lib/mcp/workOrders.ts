@@ -1,6 +1,7 @@
-// Server-only. Work order reads for the MCP tools: compact rows for list_work_orders and full detail for
-// get_work_order. Every query is scoped to the API key's organization.
-import type { DeliveryMethod, LineItemPriority, WorkOrderStatus } from "@/generated/prisma/client";
+// Server-only. Work order reads for the MCP tools: compact rows for list_work_orders, full detail for
+// get_work_order and the organization's history for list_activity. Every query is scoped to the API key's
+// organization.
+import type { DeliveryMethod, LineItemPriority, WorkOrderEventType, WorkOrderStatus } from "@/generated/prisma/client";
 import prisma from "@/lib/prisma";
 import { describeEvent } from "@/lib/activity";
 import { unitLabel } from "@/lib/defaults";
@@ -11,7 +12,10 @@ const ACTIVITY_LIMIT = 200;
 export type WorkOrderListFilters = {
     status?: WorkOrderStatus;
     propertyId?: string;
+    contractorId?: string;
+    unitId?: string;
     query?: string;
+    includeArchived?: boolean;
     limit: number;
 };
 
@@ -19,6 +23,8 @@ export type WorkOrderRow = {
     id: string;
     jobNumber: string;
     status: WorkOrderStatus;
+    // Only when archived work orders were asked for.
+    archived?: boolean;
     title: string;
     property: string;
     unit: string | null;
@@ -53,6 +59,7 @@ export type WorkOrderDetail = {
     contractor: ContactSnapshot | null;
     tenant: ContactSnapshot | null;
     areas: {
+        id: string;
         name: string;
         lineItems: {
             id: string;
@@ -84,15 +91,18 @@ function snapshot(contact: ContactSnapshot): ContactSnapshot | null {
     return contact.id || contact.name ? contact : null;
 }
 
-// The organization's non-archived work orders, newest first. `query` matches the title or job number.
+// The organization's work orders, newest first; archived ones only with `includeArchived`. `query` matches the
+// title or job number.
 export async function listWorkOrders(organizationId: string, filters: WorkOrderListFilters): Promise<WorkOrderRow[]> {
-    const { status, propertyId, query, limit } = filters;
+    const { status, propertyId, contractorId, unitId, query, includeArchived = false, limit } = filters;
     const rows = await prisma.workOrder.findMany({
         where: {
             organizationId,
-            archived: false,
+            ...(includeArchived ? {} : { archived: false }),
             ...(status ? { status } : {}),
             ...(propertyId ? { propertyId } : {}),
+            ...(contractorId ? { contractorId } : {}),
+            ...(unitId ? { unitId } : {}),
             ...(query
                 ? {
                       OR: [
@@ -108,6 +118,7 @@ export async function listWorkOrders(organizationId: string, filters: WorkOrderL
             id: true,
             jobNumber: true,
             status: true,
+            archived: true,
             title: true,
             dueDate: true,
             createdAt: true,
@@ -122,6 +133,7 @@ export async function listWorkOrders(organizationId: string, filters: WorkOrderL
         id: row.id,
         jobNumber: row.jobNumber,
         status: row.status,
+        ...(includeArchived ? { archived: row.archived } : {}),
         title: row.title,
         property: row.property.displayName,
         unit: row.unit ? unitLabel(row.unit.name) : null,
@@ -188,6 +200,7 @@ export async function getWorkOrder(organizationId: string, id: string): Promise<
             email: workOrder.tenantEmail,
         }),
         areas: workOrder.areas.map((area) => ({
+            id: area.id,
             name: area.name,
             lineItems: area.lineItems.map((item) => ({
                 id: item.id,
@@ -216,4 +229,63 @@ export async function getWorkOrder(organizationId: string, id: string): Promise<
             };
         }),
     };
+}
+
+export type ActivityFilters = {
+    workOrderId?: string;
+    // ISO date-time; only events at or after it.
+    since?: string;
+    types?: WorkOrderEventType[];
+    limit: number;
+};
+
+export type ActivityRow = {
+    type: WorkOrderEventType;
+    text: string;
+    note?: string;
+    createdAt: string;
+    workOrder: { id: string; jobNumber: string; title: string };
+};
+
+// The organization's history across work orders, newest first, worded as on the work order page. Null when
+// `workOrderId` is given but isn't one of the organization's work orders.
+export async function listActivity(organizationId: string, filters: ActivityFilters): Promise<ActivityRow[] | null> {
+    const { workOrderId, since, types, limit } = filters;
+    if (workOrderId) {
+        const workOrder = await prisma.workOrder.findFirst({
+            where: { id: workOrderId, organizationId },
+            select: { id: true },
+        });
+        if (!workOrder) return null;
+    }
+
+    const events = await prisma.workOrderEvent.findMany({
+        where: {
+            organizationId,
+            ...(workOrderId ? { workOrderId } : {}),
+            ...(since ? { createdAt: { gte: new Date(since) } } : {}),
+            ...(types && types.length > 0 ? { type: { in: types } } : {}),
+        },
+        orderBy: { createdAt: "desc" },
+        take: limit,
+        select: {
+            type: true,
+            createdAt: true,
+            actorName: true,
+            byContractor: true,
+            detail: true,
+            workOrder: { select: { id: true, jobNumber: true, title: true } },
+        },
+    });
+
+    return events.map((event) => {
+        const line = describeEvent(event);
+        return {
+            type: event.type,
+            text: line.text,
+            ...(line.note ? { note: line.note } : {}),
+            createdAt: event.createdAt.toISOString(),
+            workOrder: event.workOrder,
+        };
+    });
 }

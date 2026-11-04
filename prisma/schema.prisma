@@ -69,6 +69,7 @@ enum WorkOrderEventType {
   ITEM_EDITED
   AREA_ADDED
   AREA_REMOVED
+  AREA_RENAMED
   // Contractor
   OPENED
   ITEM_CHECKED
@@ -370,13 +371,15 @@ model Attachment {
 // A key that lets an outside AI assistant (over MCP) act for one organization without a Clerk session.
 // Only a hash of the key is stored; `prefix` is the first few characters, shown in Settings to tell keys apart.
 model ApiKey {
-  id         String    @id @default(cuid())
-  name       String
-  prefix     String
-  keyHash    String    @unique
-  lastUsedAt DateTime?
-  revokedAt  DateTime?
-  createdAt  DateTime  @default(now())
+  id              String    @id @default(cuid())
+  name            String
+  prefix          String
+  keyHash         String    @unique
+  lastUsedAt      DateTime?
+  revokedAt       DateTime?
+  createdAt       DateTime  @default(now())
+  // Lets the key send, cancel, archive and restore work orders over MCP. Off by default.
+  canChangeStatus Boolean   @default(false)
 
   createdById String?
   createdBy   User?   @relation(fields: [createdById], references: [id], onDelete: SetNull)

@@ -43,11 +43,22 @@ describe("createApiKey", () => {
         expect(prisma.apiKey.create).toHaveBeenCalledWith({
             data: {
                 name: "Claude desktop",
+                canChangeStatus: false,
                 prefix: state.key?.slice(3, 11),
                 keyHash: expect.stringMatching(/^[0-9a-f]{64}$/),
                 createdById: "user1",
                 organizationId: "org1",
             },
+        });
+    });
+
+    it("stores the status permission when the checkbox is ticked", async () => {
+        signedInAs("ADMIN");
+        await createApiKey({}, form({ name: "Rentals bot", canChangeStatus: "on" }));
+
+        expect(vi.mocked(prisma.apiKey.create).mock.calls[0][0].data).toMatchObject({
+            name: "Rentals bot",
+            canChangeStatus: true,
         });
     });
 

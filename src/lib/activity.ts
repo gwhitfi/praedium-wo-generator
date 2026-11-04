@@ -37,6 +37,7 @@ const PLAIN_LABELS: Record<WorkOrderEventType, string> = {
     ITEM_EDITED: "Line item edited",
     AREA_ADDED: "Area added",
     AREA_REMOVED: "Area removed",
+    AREA_RENAMED: "Area renamed",
     OPENED: "Opened by the contractor",
     ITEM_CHECKED: "Line item checked off",
     ITEM_UNCHECKED: "Line item unchecked",
@@ -69,6 +70,7 @@ const schemas = {
         priority: z.object({ from: priority, to: priority }).optional(),
     }),
     AREA: z.object({ area: z.string() }),
+    AREA_RENAMED: z.object({ from: z.string(), to: z.string() }),
     NOTE_SAVED: itemRef.extend({ note: z.string() }),
     COMPLETED_BY_CONTRACTOR: z.object({ notes: z.string().nullish() }),
 };
@@ -179,6 +181,10 @@ function phrase(type: WorkOrderEventType, detail: Prisma.JsonValue): Phrase | nu
         case "AREA_REMOVED": {
             const d = read(schemas.AREA);
             return d && { active: `removed the area ${quoted(d.area)}` };
+        }
+        case "AREA_RENAMED": {
+            const d = read(schemas.AREA_RENAMED);
+            return d && { active: `renamed the area ${quoted(d.from)} to ${quoted(d.to)}` };
         }
         case "OPENED":
             return { active: "opened the work order" };

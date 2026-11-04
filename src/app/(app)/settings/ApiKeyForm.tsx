@@ -64,6 +64,20 @@ export default function ApiKeyForm(): React.ReactElement {
                 </button>
             </div>
             {state.errors?.name && <p className="mt-1 text-sm text-danger">{state.errors.name[0]}</p>}
+            <label className="mt-3 flex items-start gap-2 text-sm text-foreground">
+                <input
+                    name="canChangeStatus"
+                    type="checkbox"
+                    className="mt-0.5 h-4 w-4 shrink-0 rounded border-line-strong bg-surface"
+                />
+                <span>
+                    Allow this key to send, cancel, archive and restore work orders
+                    <span className="block text-xs text-muted">
+                        These email contractors, and sometimes tenants. To change this later, revoke the key and create
+                        a new one.
+                    </span>
+                </span>
+            </label>
             {state.error && (
                 <p className="mt-1 text-sm text-danger" role="status">
                     {state.error}

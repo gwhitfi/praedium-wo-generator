@@ -21,6 +21,11 @@ export type OrganizationFormState = {
 
 export const apiKeyNameInput = z.object({
     name: z.string().trim().min(1, "Enter a name for this key").max(60),
+    // A checkbox: "on" when ticked, missing when not.
+    canChangeStatus: z
+        .literal("on")
+        .optional()
+        .transform((value) => value === "on"),
 });
 
 export const revokeApiKeyInput = z.object({

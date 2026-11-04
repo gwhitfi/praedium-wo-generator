@@ -10,7 +10,7 @@ vi.mock("@/lib/prisma", () => ({
         unit: { findFirst: vi.fn() },
         contact: { findFirst: vi.fn() },
         workOrder: { findFirst: vi.fn(), update: vi.fn() },
-        area: { findFirst: vi.fn(), create: vi.fn(), delete: vi.fn() },
+        area: { findFirst: vi.fn(), create: vi.fn(), delete: vi.fn(), update: vi.fn() },
         lineItem: { count: vi.fn(), findFirst: vi.fn(), create: vi.fn(), delete: vi.fn(), update: vi.fn() },
         $transaction: vi.fn(),
     },
@@ -52,6 +52,7 @@ import {
     removeArea,
     removeLineItem,
     removeLineItemPhoto,
+    renameArea,
     reopenWorkOrder,
     restoreWorkOrder,
     sendWorkOrder,
@@ -418,6 +419,44 @@ describe("areas and line items", () => {
         ]);
     });
 
+    it("renames an area and logs the old and new names", async () => {
+        onSent();
+
+        await renameArea("area1", "  Kitchen and pantry  ");
+
+        expect(prisma.area.update).toHaveBeenCalledWith({
+            where: { id: "area1" },
+            data: { name: "Kitchen and pantry" },
+        });
+        expect(vi.mocked(logEvent).mock.calls).toEqual([
+            [{ ...ids, type: "AREA_RENAMED", actor: office, detail: { from: "Kitchen", to: "Kitchen and pantry" } }],
+        ]);
+    });
+
+    it("doesn't save or log a rename that changes nothing, and doesn't log one on a draft", async () => {
+        onSent();
+        await renameArea("area1", " Kitchen ");
+        expect(prisma.area.update).not.toHaveBeenCalled();
+
+        vi.mocked(prisma.area.findFirst).mockResolvedValue(kitchen("DRAFT") as never);
+        await renameArea("area1", "Pantry");
+        expect(prisma.area.update).toHaveBeenCalledTimes(1);
+        expect(logEvent).not.toHaveBeenCalled();
+    });
+
+    it("rejects a blank or over-long area name, or an area in another organization", async () => {
+        onSent();
+        await expect(renameArea("area1", "   ")).rejects.toThrow("Enter an area name");
+        await expect(renameArea("area1", "x".repeat(101))).rejects.toThrow("Use 100 characters or fewer");
+
+        vi.mocked(prisma.area.findFirst).mockResolvedValue({
+            ...kitchen("SENT"),
+            workOrder: { ...workOrder, organizationId: "org2" },
+        } as never);
+        await expect(renameArea("area1", "Pantry")).rejects.toThrow("Invalid area");
+        expect(prisma.area.update).not.toHaveBeenCalled();
+    });
+
     it("logs adding and removing a line item", async () => {
         onSent();
 
@@ -495,6 +534,7 @@ describe("areas and line items", () => {
             () => addArea("wo1", "Yard"),
             () => removeArea("area1"),
             () => moveArea("area1", "down"),
+            () => renameArea("area1", "Pantry"),
             () => addLineItem("area1", "Fix gate latch", "LOW"),
             () => removeLineItem("li1"),
             () => moveLineItem("li1", "down"),
@@ -506,6 +546,7 @@ describe("areas and line items", () => {
 
         expect(prisma.area.create).not.toHaveBeenCalled();
         expect(prisma.area.delete).not.toHaveBeenCalled();
+        expect(prisma.area.update).not.toHaveBeenCalled();
         expect(prisma.lineItem.create).not.toHaveBeenCalled();
         expect(prisma.lineItem.delete).not.toHaveBeenCalled();
         expect(prisma.lineItem.update).not.toHaveBeenCalled();

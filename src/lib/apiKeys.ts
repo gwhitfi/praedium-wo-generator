@@ -20,8 +20,9 @@ export function generateApiKey(): GeneratedApiKey {
     return { key, prefix: secret.slice(0, 8), keyHash: hashApiKey(key) };
 }
 
-// `user` is the key's creator, or null if that user has since been deleted.
-export type VerifiedApiKey = { organization: Organization; user: User | null };
+// `user` is the key's creator, or null if that user has since been deleted. `canChangeStatus` lets the key send,
+// cancel, archive and restore work orders.
+export type VerifiedApiKey = { organization: Organization; user: User | null; canChangeStatus: boolean };
 
 // Runs a task after the response is sent: Next's after() by default; tests pass their own.
 export type ScheduleTask = (task: () => Promise<void>) => void;
@@ -45,5 +46,5 @@ export async function verifyApiKey(bearer: string, schedule: ScheduleTask = afte
         }
     });
 
-    return { organization: apiKey.organization, user: apiKey.createdBy };
+    return { organization: apiKey.organization, user: apiKey.createdBy, canChangeStatus: apiKey.canChangeStatus };
 }

@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import { addArea, removeArea, moveArea } from "../actions";
+import { addArea, removeArea, moveArea, renameArea } from "../actions";
 import { inputClass } from "@/lib/defaults";
 import SpaceCard from "./SpaceCard";
 
@@ -71,6 +71,16 @@ export default function AreaBuilder({
             setBusyId(null);
         }
     }
+
+    // Errors reach SpaceCard, which shows them in the area's card.
+    async function handleRename(areaId: string, newName: string) {
+        setBusyId(areaId);
+        try {
+            await renameArea(areaId, newName);
+        } finally {
+            setBusyId(null);
+        }
+    }
     return (
         <div className="border-t border-line pt-6">
             <h2 className="text-lg font-semibold text-foreground">Areas</h2>
@@ -119,6 +129,7 @@ export default function AreaBuilder({
                             total={areas.length}
                             onMove={handleMove}
                             onRemove={handleRemove}
+                            onRename={handleRename}
                             busy={busyId === area.id}
                             readOnly={readOnly}
                         />

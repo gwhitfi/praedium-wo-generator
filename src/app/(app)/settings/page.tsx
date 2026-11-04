@@ -24,7 +24,7 @@ export default async function Settings() {
     const isAdmin = user.role === "ADMIN";
     const apiKeys = await prisma.apiKey.findMany({
         where: { organizationId: organization.id, revokedAt: null },
-        select: { id: true, name: true, prefix: true, createdAt: true, lastUsedAt: true },
+        select: { id: true, name: true, prefix: true, createdAt: true, lastUsedAt: true, canChangeStatus: true },
         orderBy: { createdAt: "desc" },
     });
 
@@ -47,7 +47,7 @@ export default async function Settings() {
             <section className="mb-10">
                 <GroupHeading
                     title="API keys"
-                    description="Let an AI assistant search this organization's properties and contractors, list and read work orders, and create draft work orders. Everything it does is attributed to the person who created the key."
+                    description="Let an AI assistant read and change this organization's properties, contacts and work orders, and create draft work orders. Keys marked “Can change status” can also send, cancel, archive and restore work orders. Everything a key does is attributed to the person who created it."
                 />
                 <div className="overflow-hidden rounded-xl border border-line bg-surface shadow-sm">
                     {apiKeys.length === 0 ? (
@@ -57,7 +57,14 @@ export default async function Settings() {
                             {apiKeys.map((apiKey) => (
                                 <li key={apiKey.id} className="flex items-center gap-3 px-5 py-3 sm:px-6">
                                     <div className="min-w-0 flex-1">
-                                        <p className="truncate text-sm font-medium text-foreground">{apiKey.name}</p>
+                                        <p className="flex items-baseline gap-2 text-sm font-medium text-foreground">
+                                            <span className="truncate">{apiKey.name}</span>
+                                            {apiKey.canChangeStatus && (
+                                                <span className="shrink-0 text-xs font-normal text-muted">
+                                                    Can change status
+                                                </span>
+                                            )}
+                                        </p>
                                         <p className="text-xs text-subtle">
                                             <span className="font-mono">pr_{apiKey.prefix}…</span> · Created{" "}
                                             {formatTimestamp(apiKey.createdAt)} ·{" "}

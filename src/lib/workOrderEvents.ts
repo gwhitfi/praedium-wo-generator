@@ -31,6 +31,7 @@ type DetailsByType = {
     ITEM_EDITED: ItemRef & { from?: string; priority?: { from: LineItemPriority; to: LineItemPriority } };
     AREA_ADDED: { area: string };
     AREA_REMOVED: { area: string };
+    AREA_RENAMED: { from: string; to: string };
     OPENED: null;
     ITEM_CHECKED: ItemRef;
     ITEM_UNCHECKED: ItemRef;

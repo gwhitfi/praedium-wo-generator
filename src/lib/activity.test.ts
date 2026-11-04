@@ -74,6 +74,7 @@ describe("describeEvent: office", () => {
         ],
         ["AREA_ADDED", { area: "Yard" }, 'Justin W. added the area "Yard"'],
         ["AREA_REMOVED", { area: "Yard" }, 'Justin W. removed the area "Yard"'],
+        ["AREA_RENAMED", { from: "Yard", to: "Back yard" }, 'Justin W. renamed the area "Yard" to "Back yard"'],
     ])("%s %j", (type, detail, text) => {
         expect(office(type, detail)).toEqual({ text, backfilled: false });
     });
@@ -152,6 +153,7 @@ describe("describeEvent: unreadable details", () => {
         ["ITEM_CHECKED", { item: 42 }],
         ["EDITED", { fields: [] }],
         ["NOTE_SAVED", "not an object"],
+        ["AREA_RENAMED", { from: "Yard" }],
     ])("falls back to a plain label for %s %j", (type, detail) => {
         expect(office(type, detail).text).not.toContain("undefined");
         expect(office(type, detail)).toEqual({ text: expect.not.stringContaining("Justin"), backfilled: false });

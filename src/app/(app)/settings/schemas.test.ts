@@ -45,8 +45,16 @@ describe("organizationInput", () => {
 });
 
 describe("apiKeyNameInput", () => {
-    it("trims the name", () => {
-        expect(apiKeyNameInput.parse({ name: "  Claude desktop  " })).toEqual({ name: "Claude desktop" });
+    it("trims the name and leaves the status permission off without the checkbox", () => {
+        expect(apiKeyNameInput.parse({ name: "  Claude desktop  " })).toEqual({
+            name: "Claude desktop",
+            canChangeStatus: false,
+        });
+    });
+
+    it("turns the ticked checkbox into true and rejects other values", () => {
+        expect(apiKeyNameInput.parse({ name: "Bot", canChangeStatus: "on" }).canChangeStatus).toBe(true);
+        expect(apiKeyNameInput.safeParse({ name: "Bot", canChangeStatus: "yes" }).success).toBe(false);
     });
 
     it("rejects a missing, blank or over-long name", () => {

@@ -20,7 +20,7 @@ export const MAX_UNITS = 500;
 // Matches the limit for units added later on the property page.
 export const MAX_UNIT_NAME_LENGTH = 100;
 
-const unitList = z
+export const unitList = z
     .array(
         z.object({
             name: z

@@ -48,9 +48,10 @@ describe("verifyApiKey", () => {
             id: "key1",
             organization,
             createdBy: user,
+            canChangeStatus: false,
         } as never);
 
-        await expect(verifyApiKey(key)).resolves.toEqual({ organization, user });
+        await expect(verifyApiKey(key)).resolves.toEqual({ organization, user, canChangeStatus: false });
         expect(prisma.apiKey.findFirst).toHaveBeenCalledWith({
             where: { keyHash, revokedAt: null },
             include: { organization: true, createdBy: true },
@@ -79,6 +80,20 @@ describe("verifyApiKey", () => {
     it("returns a null user when the key's creator was deleted", async () => {
         vi.mocked(prisma.apiKey.findFirst).mockResolvedValue({ id: "key1", organization, createdBy: null } as never);
         await expect(verifyApiKey(generateApiKey().key)).resolves.toEqual({ organization, user: null });
+    });
+
+    it("passes on the key's status permission", async () => {
+        vi.mocked(prisma.apiKey.findFirst).mockResolvedValue({
+            id: "key1",
+            organization,
+            createdBy: user,
+            canChangeStatus: true,
+        } as never);
+        await expect(verifyApiKey(generateApiKey().key)).resolves.toEqual({
+            organization,
+            user,
+            canChangeStatus: true,
+        });
     });
 
     it("logs, never throws, when the lastUsedAt update fails after the response", async () => {

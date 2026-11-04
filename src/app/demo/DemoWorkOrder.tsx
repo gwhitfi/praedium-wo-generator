@@ -493,6 +493,7 @@ function DemoArea({
             showPhotos={false}
             onMove={(_id, direction) => move(direction)}
             onRemove={remove}
+            onRename={(_id, name) => update((current) => ({ ...current, name }))}
             actions={{
                 addLineItem: async (_id, description, priority) =>
                     update((current) => ({

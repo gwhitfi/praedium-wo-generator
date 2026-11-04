@@ -29,6 +29,7 @@ export default function SpaceCard({
     total,
     onMove,
     onRemove,
+    onRename,
     busy,
     readOnly,
     actions = { addLineItem, removeLineItem, moveLineItem, updateLineItem },
@@ -39,6 +40,7 @@ export default function SpaceCard({
     total: number;
     onMove: (id: string, direction: "up" | "down") => void;
     onRemove: (id: string) => void;
+    onRename: (id: string, name: string) => Promise<unknown> | void;
     busy: boolean;
     readOnly: boolean;
     actions?: {
@@ -59,7 +61,28 @@ export default function SpaceCard({
     const [editingId, setEditingId] = useState<string | null>(null);
     const [editDraft, setEditDraft] = useState("");
     const [editPriority, setEditPriority] = useState("MEDIUM");
+    const [renaming, setRenaming] = useState(false);
+    const [nameDraft, setNameDraft] = useState("");
+    // Set when Enter or Escape has already handled the rename, so the blur that follows doesn't save again.
+    const skipNameBlur = useRef(false);
     const doneCount = area.lineItems.filter((i) => i.completed).length;
+
+    async function handleRename() {
+        const trimmed = nameDraft.trim();
+        if (!trimmed || trimmed === area.name) {
+            setRenaming(false);
+            return;
+        }
+
+        try {
+            await onRename(area.id, trimmed);
+            setRenaming(false);
+            setError(null);
+        } catch {
+            skipNameBlur.current = false;
+            setError("Could not rename that area.");
+        }
+    }
 
     async function handleAddItem() {
         const trimmed = description.trim();
@@ -124,8 +147,49 @@ export default function SpaceCard({
     return (
         <li className="overflow-hidden rounded-md border border-line bg-surface px-4 py-3">
             <div className="-mx-4 -mt-3 flex items-center justify-between gap-3 border-b border-line bg-surface-hover/40 px-4 py-2.5">
-                <h3 className="flex items-baseline gap-2 font-semibold">
-                    {area.name}
+                <h3 className={`flex min-w-0 items-baseline gap-2 font-semibold ${renaming ? "flex-1" : ""}`}>
+                    {!readOnly && renaming ? (
+                        <input
+                            value={nameDraft}
+                            onChange={(e) => setNameDraft(e.target.value)}
+                            onKeyDown={(e) => {
+                                if (e.key === "Enter") {
+                                    skipNameBlur.current = true;
+                                    handleRename();
+                                }
+                                if (e.key === "Escape") {
+                                    skipNameBlur.current = true;
+                                    setRenaming(false);
+                                }
+                            }}
+                            onBlur={() => {
+                                if (skipNameBlur.current) {
+                                    skipNameBlur.current = false;
+                                    return;
+                                }
+                                handleRename();
+                            }}
+                            maxLength={100}
+                            autoFocus
+                            aria-label={`New name for ${area.name}`}
+                            className="min-w-0 flex-1 rounded border border-faint bg-surface-hover px-2 py-0.5 text-base text-foreground focus:outline-none"
+                        />
+                    ) : readOnly ? (
+                        area.name
+                    ) : (
+                        <button
+                            type="button"
+                            onClick={() => {
+                                skipNameBlur.current = false;
+                                setNameDraft(area.name);
+                                setRenaming(true);
+                            }}
+                            aria-label={`Rename ${area.name}`}
+                            className="-mx-1 cursor-text rounded px-1 text-left font-semibold hover:bg-surface-hover"
+                        >
+                            {area.name}
+                        </button>
+                    )}
                     {area.lineItems.length > 0 && (
                         <span className="text-xs font-normal text-subtle">
                             {doneCount}/{area.lineItems.length} done

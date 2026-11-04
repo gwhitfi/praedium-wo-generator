@@ -7,8 +7,6 @@ import { revalidatePath } from "next/cache";
 import { cookies } from "next/headers";
 import { redirect } from "next/navigation";
 import { DeliveryMethod, LineItemPriority, WorkOrderStatus } from "@/generated/prisma/enums";
-import { getAppUrl, sendEmail } from "@/lib/email";
-import { workOrderEmail } from "@/lib/emails/workOrderEmail";
 import { notifyContractorsCancelled } from "@/lib/emails/notifyCancelled";
 import { notifyTenant } from "@/lib/emails/notifyTenant";
 import { DELETE_NOT_CONFIRMED, isDeleteConfirmed } from "@/lib/confirmDelete";
@@ -19,6 +17,8 @@ import { checkPhoto, MAX_PHOTO_BYTES } from "@/lib/photos";
 import { deleteFiles, lineItemPhotoKey, uploadFile } from "@/lib/storage";
 import { attachmentKeys, onWorkOrders } from "@/lib/attachments";
 import { logEvent } from "@/lib/workOrderEvents";
+import { emailWorkOrderToContractor } from "@/lib/workOrderSend";
+import { tooLong } from "@/lib/validation";
 
 async function readWorkOrderForm(formData: FormData, organizationId: string, propertyId: string) {
     const unitId = (formData.get("unitId") as string) || null;
@@ -354,6 +354,40 @@ export async function removeArea(areaId: string) {
             organizationId: area.workOrder.organizationId,
             actor: { kind: "office", user: result.user },
             detail: { area: area.name },
+        });
+    }
+    revalidatePath(`/work-orders/${area.workOrderId}`);
+}
+
+const areaNameInput = z.string().trim().min(1, "Enter an area name").max(100, tooLong(100));
+
+export async function renameArea(areaId: string, rawName: string): Promise<void> {
+    const result = await getCurrentUser();
+    if (result.state !== "ready") throw new Error("Not authorized");
+
+    const parsed = areaNameInput.safeParse(rawName);
+    if (!parsed.success) throw new Error(parsed.error.issues[0].message);
+    const name = parsed.data;
+
+    const area = await prisma.area.findFirst({
+        where: { id: areaId },
+        include: { workOrder: true },
+    });
+
+    if (!area || area.workOrder.organizationId !== result.organization.id) {
+        throw new Error("Invalid area");
+    }
+    assertEditable(area.workOrder);
+    if (name === area.name) return;
+
+    await prisma.area.update({ where: { id: area.id }, data: { name } });
+    if (area.workOrder.status !== "DRAFT") {
+        await logEvent({
+            type: "AREA_RENAMED",
+            workOrderId: area.workOrderId,
+            organizationId: area.workOrder.organizationId,
+            actor: { kind: "office", user: result.user },
+            detail: { from: area.name, to: name },
         });
     }
     revalidatePath(`/work-orders/${area.workOrderId}`);
@@ -734,76 +768,17 @@ export async function emailWorkOrder(workOrderId: string): Promise<EmailResult> 
     const result = await getCurrentUser();
     if (result.state !== "ready") return { ok: false, error: "Not authorized" };
 
-    const workOrder = await prisma.workOrder.findFirst({
-        where: { id: workOrderId, organizationId: result.organization.id },
-        include: {
-            contractor: true,
-            property: true,
-            unit: true,
-        },
-    });
-
-    if (!workOrder) return { ok: false, error: "Work order not found" };
-    if (workOrder.archived) return { ok: false, error: "Archived work orders can't be emailed" };
-    if (!["DRAFT", "SENT", "IN_PROGRESS"].includes(workOrder.status)) {
-        return { ok: false, error: "Only open work orders can be emailed" };
-    }
-    if (!workOrder.contractor) return { ok: false, error: "Assign a contractor before sending" };
-
-    const to = workOrder.contractor.email?.trim();
-    if (!to) return { ok: false, error: `${workOrder.contractor.displayName} has no email address` };
-
-    const itemCount = await prisma.lineItem.count({ where: { area: { workOrderId } } });
-    const address = formatWorkOrderAddress(workOrder.property, workOrder.unit);
-
-    try {
-        const email = workOrderEmail({
-            organization: result.organization,
-            title: workOrder.title,
-            jobNumber: workOrder.jobNumber,
-            address,
-            dueDate: workOrder.dueDate,
-            notes: workOrder.notes,
-            itemCount,
-            url: `${getAppUrl()}/wo/${workOrder.publicToken}`,
-            isResend: workOrder.deliveryMethod === "EMAIL",
-        });
-
-        await sendEmail({ to, ...email, replyTo: result.organization.email, fromName: result.organization.name });
-    } catch (error) {
-        console.error("emailWorkOrder failed", error);
-        return { ok: false, error: error instanceof Error ? error.message : "Email failed to send" };
-    }
-
-    await prisma.workOrder.update({
-        where: { id: workOrderId },
-        data: {
-            deliveryMethod: "EMAIL",
-            contractorName: workOrder.contractor.displayName,
-            contractorPhone: workOrder.contractor.phone,
-            contractorEmail: workOrder.contractor.email,
-            ...(workOrder.status === "DRAFT" ? { status: "SENT", sentAt: new Date() } : {}),
-        },
-    });
-    // Only the first send tells the tenant; resends don't.
-    const tenantNotified =
-        workOrder.status === "DRAFT" &&
-        notifyTenant(result.organization, { ...workOrder, address, contractor: workOrder.contractor });
-    await logEvent({
-        type: "SENT",
+    const sent = await emailWorkOrderToContractor({
+        organizationId: result.organization.id,
+        organization: result.organization,
+        user: result.user,
         workOrderId,
-        organizationId: workOrder.organizationId,
-        actor: { kind: "office", user: result.user },
-        detail: {
-            deliveryMethod: "EMAIL",
-            resent: workOrder.status !== "DRAFT",
-            ...(tenantNotified ? { tenantNotified: true } : {}),
-        },
     });
+    if (!sent.ok) return sent;
 
     revalidatePath(`/work-orders/${workOrderId}`);
     revalidatePath("/work-orders");
-    return { ok: true, to };
+    return { ok: true, to: sent.to };
 }
 
 export async function markWorkOrderCompleted(workOrderId: string) {

@@ -94,7 +94,14 @@ export async function createApiKey(prevState: ApiKeyFormState, formData: FormDat
     const { key, prefix, keyHash } = generateApiKey();
     try {
         await prisma.apiKey.create({
-            data: { name: parsed.data.name, prefix, keyHash, createdById: user.id, organizationId: organization.id },
+            data: {
+                name: parsed.data.name,
+                canChangeStatus: parsed.data.canChangeStatus,
+                prefix,
+                keyHash,
+                createdById: user.id,
+                organizationId: organization.id,
+            },
         });
     } catch (error) {
         console.error("createApiKey failed", error);

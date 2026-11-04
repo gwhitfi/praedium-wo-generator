@@ -22,9 +22,8 @@ export async function handleMcpRequest(request: Request): Promise<Response> {
     const verified = token ? await verifyApiKey(token) : null;
     if (!verified) return unauthorized();
 
-    const organizationId = verified.organization.id;
-    const { user } = verified;
-    const handler = createMcpHandler(() => buildMcpServer({ organizationId, user }), {
+    const { organization, user, canChangeStatus } = verified;
+    const handler = createMcpHandler(() => buildMcpServer({ organization, user, canChangeStatus }), {
         legacy: "stateless",
         onerror: (error) => console.error("MCP request failed", error),
     });
