@@ -1,4 +1,5 @@
 import type { Metadata } from "next";
+import Link from "next/link";
 import { notFound } from "next/navigation";
 import prisma from "@/lib/prisma";
 import { STATUS_COLORS, unitLabel, WORK_ORDER_STATUS_LABELS } from "@/lib/defaults";
@@ -182,6 +183,11 @@ export default async function PublicWorkOrder({ params }: { params: Promise<{ to
 
             <p className="mt-10 text-center text-xs text-subtle print:hidden">
                 {workOrder.organization.name} can see when this page is opened and what&apos;s been checked off.
+            </p>
+            <p className="mt-2 text-center text-xs text-subtle print:hidden">
+                <Link href="/privacy" className="underline hover:text-foreground">
+                    Privacy Policy
+                </Link>
             </p>
             <RecordOpen token={token} />
         </main>

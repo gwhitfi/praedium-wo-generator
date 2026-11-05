@@ -74,7 +74,17 @@ export default function Landing() {
             </main>
 
             <footer className="mx-auto max-w-5xl border-t border-line px-4 py-8 text-sm text-subtle">
-                <p>&copy; {new Date().getFullYear()} Praedium</p>
+                <p className="flex flex-wrap gap-3">
+                    <span>&copy; {new Date().getFullYear()} Praedium</span>
+                    <span aria-hidden="true">·</span>
+                    <Link href="/terms" className="hover:text-foreground">
+                        Terms
+                    </Link>
+                    <span aria-hidden="true">·</span>
+                    <Link href="/privacy" className="hover:text-foreground">
+                        Privacy
+                    </Link>
+                </p>
             </footer>
         </div>
     );

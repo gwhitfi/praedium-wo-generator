@@ -106,11 +106,13 @@ export const US_STATE_LABELS: Record<string, string> = {
     WY: "Wyoming",
 };
 
-// The About, FAQ and Contact pages, linked from the Menu dropdown and the mobile menu in both headers.
+// The About, FAQ, Contact, Terms and Privacy pages, linked from the Menu dropdown and the mobile menu in both headers.
 export const INFO_LINKS: { href: string; label: string }[] = [
     { href: "/about", label: "About" },
     { href: "/faq", label: "FAQ" },
     { href: "/contact", label: "Contact" },
+    { href: "/terms", label: "Terms" },
+    { href: "/privacy", label: "Privacy" },
 ];
 
 // Short unit names ("B", "2B", "101") read better as "Unit B"; names with a space ("Unit A", "Apt 101",

@@ -1,3 +1,4 @@
+import Link from "next/link";
 import { getCurrentUser } from "@/lib/auth";
 import { redirect } from "next/navigation";
 import { formatPhone } from "@/lib/phone";
@@ -98,6 +99,21 @@ export default async function Settings() {
                     <AiPreferenceForm aiEnabled={user.aiEnabled !== false} />
                 </div>
             </section>
+
+            <p className="mt-10 text-xs text-subtle">
+                <Link href="/terms" className="underline hover:text-foreground">
+                    Terms of Service
+                </Link>{" "}
+                ·{" "}
+                <Link href="/privacy" className="underline hover:text-foreground">
+                    Privacy Policy
+                </Link>
+                . To delete your account or organization, email{" "}
+                <a href="mailto:justinwclemson@gmail.com" className="underline hover:text-foreground">
+                    justinwclemson@gmail.com
+                </a>
+                .
+            </p>
         </main>
     );
 }
