@@ -71,9 +71,11 @@ export default function Terms(): React.ReactElement {
                     login secure and tell us if you suspect someone else has used it.
                 </P>
                 <P>
-                    Every user belongs to one organization, and everyone in an organization can see and change all of
-                    its data. Admins control who is a member and can create and revoke API keys. Only invite people who
-                    should have access to your organization&apos;s properties, contacts and work orders.
+                    A user can belong to more than one organization; each organization&apos;s data is separate, and
+                    everyone in an organization can see and change all of its data. Admins control who is a member,
+                    change the organization&apos;s name and contact details, and can create and revoke API keys. Only
+                    invite people who should have access to your organization&apos;s properties, contacts and work
+                    orders.
                 </P>
             </Section>
 

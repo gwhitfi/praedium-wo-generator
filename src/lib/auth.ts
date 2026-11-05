@@ -1,20 +1,24 @@
+// Clerk decides who belongs to an organization and who is an admin (org:admin). Each request reads the role
+// from Clerk; the Membership row mirrors it so the database knows the members of each organization.
 import { auth, currentUser, clerkClient } from "@clerk/nextjs/server";
 import { Prisma, type User, type Organization } from "@/generated/prisma/client";
+import type { UserRole } from "@/generated/prisma/enums";
 import prisma from "./prisma";
 
 type AuthResult =
     | { state: "signed-out" }
     | { state: "needs-org"; clerkUserId: string }
-    | { state: "ready"; user: User; organization: Organization };
+    | { state: "ready"; user: User; organization: Organization; role: UserRole };
 
 export async function getCurrentUser(): Promise<AuthResult> {
-    const { userId, orgId } = await auth();
+    const { userId, orgId, orgRole } = await auth();
     if (!userId) {
         return { state: "signed-out" };
     }
     if (!orgId) {
         return { state: "needs-org", clerkUserId: userId };
     }
+    const role: UserRole = orgRole === "org:admin" ? "ADMIN" : "USER";
 
     let organization = await prisma.organization.findUnique({
         where: { clerkOrgId: orgId },
@@ -58,5 +62,21 @@ export async function getCurrentUser(): Promise<AuthResult> {
             user = await prisma.user.findUniqueOrThrow({ where: { clerkId: userId } });
         }
     }
-    return { state: "ready", user, organization };
+
+    const membership = await prisma.membership.findUnique({
+        where: { userId_organizationId: { userId: user.id, organizationId: organization.id } },
+    });
+    if (!membership) {
+        try {
+            await prisma.membership.create({
+                data: { userId: user.id, organizationId: organization.id, role },
+            });
+        } catch (error) {
+            if (!(error instanceof Prisma.PrismaClientKnownRequestError && error.code === "P2002")) throw error;
+        }
+    } else if (membership.role !== role) {
+        await prisma.membership.update({ where: { id: membership.id }, data: { role } });
+    }
+
+    return { state: "ready", user, organization, role };
 }

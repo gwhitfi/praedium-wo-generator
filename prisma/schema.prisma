@@ -99,11 +99,13 @@ model Organization {
 
   workOrderEvents WorkOrderEvent[]
   apiKeys         ApiKey[]
+  memberships     Membership[]
 }
 
 model User {
   id        String   @id @default(cuid())
   clerkId   String   @unique
+  // Deprecated: membership and role live in Membership now. Still written on create; dropped in a later migration (two-deploy rule).
   role      UserRole @default(USER)
   firstName String?
   lastName  String?
@@ -113,13 +115,32 @@ model User {
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
+  // Deprecated: membership and role live in Membership now. Still written on create; dropped in a later migration (two-deploy rule).
   organizationId String
   organization   Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
 
   workOrderEvents WorkOrderEvent[]
   apiKeys         ApiKey[]
+  memberships     Membership[]
 
-  @@unique([organizationId, email])
+  @@index([organizationId])
+}
+
+// Who belongs to which organization, and as what. Clerk is the source of truth (org membership and org:admin);
+// getCurrentUser() mirrors it here on each request so the database knows the members of an organization.
+model Membership {
+  id        String   @id @default(cuid())
+  role      UserRole @default(USER)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  userId String
+  user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  organizationId String
+  organization   Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, organizationId])
   @@index([organizationId])
 }
 

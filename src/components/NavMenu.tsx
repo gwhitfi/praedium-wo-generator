@@ -2,13 +2,19 @@
 
 import Link from "next/link";
 import { useEffect, useId, useRef, useState } from "react";
-import { UserButton } from "@clerk/nextjs";
+import { OrganizationSwitcher, UserButton } from "@clerk/nextjs";
 import ThemeToggle from "./ThemeToggle";
 import { MenuIcon, type NavLink } from "./MobileMenu";
 
+// Clerk renders its popovers and modals in a portal outside the menu; every element in them has a `cl-` class.
+function insideClerk(target: EventTarget | null): boolean {
+    return target instanceof Element && target.closest('[class^="cl-"], [class*=" cl-"]') !== null;
+}
+
 // The signed-in header's hamburger menu, at the far right on every screen size. `mobileLinks` are the
 // header's own links, listed here only on small screens where the header hides them.
-// Closes on picking a link, clicking outside, Escape, or tabbing away.
+// Closes on picking a link, clicking outside, Escape, or tabbing away. Clerk's popovers and modals (from the user
+// button and organization switcher) don't count as outside.
 export default function NavMenu({
     mobileLinks,
     links,
@@ -25,6 +31,7 @@ export default function NavMenu({
         if (!open) return;
 
         function onPointerDown(event: PointerEvent) {
+            if (insideClerk(event.target)) return;
             if (!rootRef.current?.contains(event.target as Node)) setOpen(false);
         }
         function onKeyDown(event: KeyboardEvent) {
@@ -48,6 +55,7 @@ export default function NavMenu({
             ref={rootRef}
             className="relative"
             onBlur={(event) => {
+                if (insideClerk(event.relatedTarget)) return;
                 if (!rootRef.current?.contains(event.relatedTarget)) setOpen(false);
             }}
         >
@@ -68,6 +76,14 @@ export default function NavMenu({
                     <div id={menuId} className="min-w-48 rounded-lg border border-line bg-surface py-1 shadow-lg">
                         <div className="mb-1 border-b border-line px-3 pt-1 pb-2">
                             <UserButton showName />
+                            <div className="mt-2">
+                                <OrganizationSwitcher
+                                    hidePersonal
+                                    afterSelectOrganizationUrl="/"
+                                    afterCreateOrganizationUrl="/"
+                                    afterLeaveOrganizationUrl="/setup"
+                                />
+                            </div>
                         </div>
                         <ul className="border-b border-line pb-1 mb-1 md:hidden">
                             {mobileLinks.map((link) => (

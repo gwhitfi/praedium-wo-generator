@@ -6,18 +6,21 @@ vi.mock("@/lib/auth", () => ({ getCurrentUser: vi.fn() }));
 vi.mock("@/lib/prisma", () => ({
     default: {
         apiKey: { create: vi.fn(), updateMany: vi.fn() },
+        organization: { update: vi.fn() },
     },
 }));
 
+import { clerkClient } from "@clerk/nextjs/server";
 import { getCurrentUser } from "@/lib/auth";
 import prisma from "@/lib/prisma";
-import { createApiKey, revokeApiKey } from "./actions";
+import { createApiKey, revokeApiKey, updateOrganization } from "./actions";
 
 function signedInAs(role: "ADMIN" | "USER") {
     vi.mocked(getCurrentUser).mockResolvedValue({
         state: "ready",
-        user: { id: "user1", role },
-        organization: { id: "org1" },
+        user: { id: "user1" },
+        organization: { id: "org1", clerkOrgId: "clerk_org1", name: "Acme" },
+        role,
     } as never);
 }
 
@@ -82,6 +85,32 @@ describe("createApiKey", () => {
         expect(state.errors?.name).toBeDefined();
         expect(state.key).toBeUndefined();
         expect(prisma.apiKey.create).not.toHaveBeenCalled();
+    });
+});
+
+describe("updateOrganization", () => {
+    it("refuses users who aren't admins", async () => {
+        signedInAs("USER");
+        await expect(updateOrganization({}, form({ name: "Acme Rentals" }))).rejects.toThrow("Not authorized");
+        expect(prisma.organization.update).not.toHaveBeenCalled();
+    });
+
+    it("saves the details for an admin and renames the Clerk organization", async () => {
+        signedInAs("ADMIN");
+        const updateClerkOrganization = vi.fn().mockResolvedValue({});
+        vi.mocked(clerkClient).mockResolvedValue({
+            organizations: { updateOrganization: updateClerkOrganization },
+        } as never);
+        vi.mocked(prisma.organization.update).mockResolvedValue({} as never);
+
+        const state = await updateOrganization({}, form({ name: "Acme Rentals", phone: "", email: "" }));
+
+        expect(state).toEqual({ ok: true });
+        expect(updateClerkOrganization).toHaveBeenCalledWith("clerk_org1", { name: "Acme Rentals" });
+        expect(prisma.organization.update).toHaveBeenCalledWith({
+            where: { id: "org1" },
+            data: expect.objectContaining({ name: "Acme Rentals" }),
+        });
     });
 });
 

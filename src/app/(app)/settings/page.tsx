@@ -21,8 +21,8 @@ export default async function Settings() {
         redirect("/setup");
     }
 
-    const { organization, user } = result;
-    const isAdmin = user.role === "ADMIN";
+    const { organization, user, role } = result;
+    const isAdmin = role === "ADMIN";
     const apiKeys = await prisma.apiKey.findMany({
         where: { organizationId: organization.id, revokedAt: null },
         select: { id: true, name: true, prefix: true, createdAt: true, lastUsedAt: true, canChangeStatus: true },
@@ -38,11 +38,27 @@ export default async function Settings() {
 
             <section className="mb-10">
                 <GroupHeading title="Organization" description={`Shared by everyone in ${organization.name}.`} />
-                <OrganizationContactForm
-                    name={organization.name}
-                    phone={organization.phone ? formatPhone(organization.phone) : null}
-                    email={organization.email}
-                />
+                {isAdmin ? (
+                    <OrganizationContactForm
+                        name={organization.name}
+                        phone={organization.phone ? formatPhone(organization.phone) : null}
+                        email={organization.email}
+                    />
+                ) : (
+                    <div className="rounded-xl border border-line bg-surface p-5 text-sm shadow-sm sm:px-6">
+                        <dl className="grid grid-cols-[auto_1fr] gap-x-6 gap-y-2">
+                            <dt className="text-muted">Name</dt>
+                            <dd className="text-foreground">{organization.name}</dd>
+                            <dt className="text-muted">Phone</dt>
+                            <dd className="text-foreground">
+                                {organization.phone ? formatPhone(organization.phone) : "Not set"}
+                            </dd>
+                            <dt className="text-muted">Email</dt>
+                            <dd className="text-foreground">{organization.email ?? "Not set"}</dd>
+                        </dl>
+                        <p className="mt-4 text-muted">Only admins can change these.</p>
+                    </div>
+                )}
             </section>
 
             <section className="mb-10">

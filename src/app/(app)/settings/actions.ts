@@ -29,8 +29,7 @@ export async function updateOrganization(
     prevState: OrganizationFormState,
     formData: FormData,
 ): Promise<OrganizationFormState> {
-    const result = await getCurrentUser();
-    if (result.state !== "ready") throw new Error("Not authorized");
+    const result = await requireAdmin();
 
     const parsed = organizationInput.safeParse(Object.fromEntries(formData));
     if (!parsed.success) {
@@ -74,7 +73,7 @@ export async function setAiPreference(formData: FormData): Promise<void> {
 
 async function requireAdmin() {
     const result = await getCurrentUser();
-    if (result.state !== "ready" || result.user.role !== "ADMIN") throw new Error("Not authorized");
+    if (result.state !== "ready" || result.role !== "ADMIN") throw new Error("Not authorized");
     return result;
 }
 
