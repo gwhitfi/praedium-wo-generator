@@ -5,6 +5,7 @@ import { redirect } from "next/navigation";
 import { getCurrentUser } from "@/lib/auth";
 import { z } from "zod";
 import { parseDescription } from "@/lib/parseDescription";
+import { RATE_LIMITS, rateLimit } from "@/lib/rateLimit";
 import { createDraftWorkOrder } from "@/lib/workOrderCreate";
 import { contractorLookup, propertyLookup } from "@/lib/workOrderLookup";
 import { confirmedDraft, type ConfirmedDraft, type ParseState } from "./schemas";
@@ -18,6 +19,13 @@ export async function parseWorkOrderDescription(_prev: ParseState, formData: For
 
     const description = z.string().safeParse(formData.get("description"));
     if (!description.success) return { error: "Describe the work first." };
+
+    const limited = await rateLimit(`bot:${result.user.id}`, RATE_LIMITS.bot);
+    if (!limited.ok) {
+        return {
+            error: "You've used Praedium Bot a lot in the last hour. Try again in a few minutes, or use the regular form.",
+        };
+    }
 
     const parsed = await parseDescription(description.data);
     if (!parsed.ok) return { error: parsed.error };

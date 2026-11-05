@@ -18,10 +18,15 @@ vi.mock("@/lib/workOrderEvents", async (importOriginal) => ({
     logEvent: vi.fn(),
     logDailyOpen: vi.fn(),
 }));
+vi.mock("@/lib/rateLimit", async (importOriginal) => ({
+    ...(await importOriginal<typeof import("@/lib/rateLimit")>()),
+    rateLimit: vi.fn(),
+}));
 
 import { auth } from "@clerk/nextjs/server";
 import { headers } from "next/headers";
 import prisma from "@/lib/prisma";
+import { rateLimit } from "@/lib/rateLimit";
 import { logDailyOpen, logEvent } from "@/lib/workOrderEvents";
 import { completeWorkOrder, recordOpen, saveLineItemNote, toggleLineItem } from "./actions";
 
@@ -59,6 +64,7 @@ beforeEach(() => {
     withWorkOrder();
     vi.mocked(headers).mockResolvedValue(new Headers({ "user-agent": CHROME }) as never);
     vi.mocked(auth).mockResolvedValue({ orgId: null } as never);
+    vi.mocked(rateLimit).mockResolvedValue({ ok: true, remaining: 1, retryAfterSeconds: 0 });
 });
 
 describe("toggleLineItem", () => {
@@ -97,6 +103,15 @@ describe("toggleLineItem", () => {
             expect(logEvent).not.toHaveBeenCalled();
         },
     );
+
+    it("refuses an over-limit toggle before touching the database", async () => {
+        vi.mocked(rateLimit).mockResolvedValue({ ok: false, remaining: 0, retryAfterSeconds: 30 });
+
+        await expect(toggleLineItem("token1", "li1")).rejects.toThrow("Too many requests");
+        expect(rateLimit).toHaveBeenCalledWith("contractor:token1", expect.any(Object));
+        expect(prisma.lineItem.findFirst).not.toHaveBeenCalled();
+        expect(prisma.$transaction).not.toHaveBeenCalled();
+    });
 });
 
 describe("saveLineItemNote", () => {

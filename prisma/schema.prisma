@@ -389,3 +389,11 @@ model ApiKey {
 
   @@index([organizationId])
 }
+
+// Fixed-window request counters used by src/lib/rateLimit.ts. One row per bucket (for example an API key hash, an
+// IP, a user id or an organization id with a prefix). Expired rows are deleted opportunistically.
+model RateLimit {
+  key     String   @id
+  count   Int
+  resetAt DateTime
+}

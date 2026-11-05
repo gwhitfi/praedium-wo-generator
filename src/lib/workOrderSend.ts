@@ -6,6 +6,7 @@ import { getAppUrl, sendEmail } from "@/lib/email";
 import { notifyTenant } from "@/lib/emails/notifyTenant";
 import { workOrderEmail } from "@/lib/emails/workOrderEmail";
 import prisma from "@/lib/prisma";
+import { RATE_LIMITS, rateLimit } from "@/lib/rateLimit";
 import { logEvent } from "@/lib/workOrderEvents";
 import { formatWorkOrderAddress } from "@/lib/workOrders";
 
@@ -44,6 +45,9 @@ export async function emailWorkOrderToContractor({
 
     const to = workOrder.contractor.email?.trim();
     if (!to) return { ok: false, error: `${workOrder.contractor.displayName} has no email address` };
+
+    const limited = await rateLimit(`email:${organizationId}`, RATE_LIMITS.email);
+    if (!limited.ok) return { ok: false, error: "Too many emails sent in the last hour. Try again later." };
 
     const itemCount = await prisma.lineItem.count({ where: { area: { workOrderId } } });
     const address = formatWorkOrderAddress(workOrder.property, workOrder.unit);

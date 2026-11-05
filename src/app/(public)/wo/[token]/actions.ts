@@ -5,6 +5,7 @@ import { revalidatePath } from "next/cache";
 import { after } from "next/server";
 import { getAppUrl, sendEmail } from "@/lib/email";
 import { completedEmail } from "@/lib/emails/completedEmail";
+import { RATE_LIMITS, rateLimit } from "@/lib/rateLimit";
 import { formatWorkOrderAddress } from "@/lib/workOrders";
 import { isLikelyBot, logDailyOpen, logEvent } from "@/lib/workOrderEvents";
 import { auth } from "@clerk/nextjs/server";
@@ -31,6 +32,11 @@ async function getOpenLineItem(token: string, lineItemId: string) {
     return lineItem;
 }
 
+async function checkRate(token: string): Promise<void> {
+    const result = await rateLimit(`contractor:${token}`, RATE_LIMITS.contractor);
+    if (!result.ok) throw new Error("Too many requests");
+}
+
 function revalidate(token: string, workOrderId: string) {
     revalidatePath(`/wo/${token}`);
     revalidatePath(`/work-orders/${workOrderId}`);
@@ -39,6 +45,7 @@ function revalidate(token: string, workOrderId: string) {
 
 export async function toggleLineItem(token: string, lineItemId: string): Promise<void> {
     const input = toggleInput.parse({ token, lineItemId });
+    await checkRate(input.token);
     const lineItem = await getOpenLineItem(input.token, input.lineItemId);
     const workOrder = lineItem.area.workOrder;
     const completed = !lineItem.completed;
@@ -65,6 +72,7 @@ export async function toggleLineItem(token: string, lineItemId: string): Promise
 
 export async function saveLineItemNote(token: string, lineItemId: string, note: string): Promise<void> {
     const input = noteInput.parse({ token, lineItemId, note });
+    await checkRate(input.token);
     const lineItem = await getOpenLineItem(input.token, input.lineItemId);
 
     await prisma.lineItem.update({
@@ -143,6 +151,7 @@ type CompletionWorkOrder = NonNullable<Awaited<ReturnType<typeof loadForCompleti
 
 export async function completeWorkOrder(token: string, completionNotes: string): Promise<void> {
     const input = completeInput.parse({ token, completionNotes });
+    await checkRate(input.token);
     const workOrder = await loadForCompletion(input.token);
 
     if (!workOrder) throw new Error("Invalid work order");

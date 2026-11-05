@@ -40,9 +40,14 @@ vi.mock("./status", async (importOriginal) => ({
     archiveWorkOrder: vi.fn(),
     restoreWorkOrder: vi.fn(),
 }));
+vi.mock("@/lib/rateLimit", async (importOriginal) => ({
+    ...(await importOriginal<typeof import("@/lib/rateLimit")>()),
+    rateLimit: vi.fn(),
+}));
 
 import prisma from "@/lib/prisma";
 import { generateApiKey } from "@/lib/apiKeys";
+import { rateLimit } from "@/lib/rateLimit";
 import { createDraftWorkOrder } from "@/lib/workOrderCreate";
 import { assistantGuide } from "./guide";
 import { bearerToken, handleMcpRequest } from "./handler";
@@ -90,6 +95,7 @@ beforeEach(() => {
         canChangeStatus: false,
     } as never);
     vi.mocked(prisma.apiKey.update).mockResolvedValue({} as never);
+    vi.mocked(rateLimit).mockResolvedValue({ ok: true, remaining: 1, retryAfterSeconds: 0 });
 });
 
 describe("bearerToken", () => {
@@ -129,6 +135,39 @@ describe("handleMcpRequest auth gate", () => {
         withStatusKey();
         const withStatus = await rpcResult(await handleMcpRequest(mcpRequest(initialize)));
         expect(withStatus.result?.instructions).toEqual(expect.stringContaining("send_work_order"));
+    });
+});
+
+describe("handleMcpRequest rate limits", () => {
+    const overLimit = { ok: false, remaining: 0, retryAfterSeconds: 42 };
+
+    it("returns 429 with Retry-After when a valid key is over its limit", async () => {
+        vi.mocked(rateLimit).mockResolvedValue(overLimit);
+        const response = await handleMcpRequest(mcpRequest(initialize));
+        expect(response.status).toBe(429);
+        expect(response.headers.get("retry-after")).toBe("42");
+        expect(await response.json()).toEqual({ error: expect.stringContaining("Too many requests") });
+        expect(vi.mocked(rateLimit).mock.calls[0][0]).toMatch(/^mcp:/);
+    });
+
+    it("still returns 401 for a missing key under the failure limit", async () => {
+        const response = await handleMcpRequest(mcpRequest(initialize, {}));
+        expect(response.status).toBe(401);
+    });
+
+    it("returns 429 for a missing key over the failure limit, bucketed by the first forwarded IP", async () => {
+        vi.mocked(rateLimit).mockResolvedValue(overLimit);
+        const response = await handleMcpRequest(mcpRequest(initialize, { "x-forwarded-for": "203.0.113.7, 10.0.0.1" }));
+        expect(response.status).toBe(429);
+        expect(response.headers.get("retry-after")).toBe("42");
+        expect(vi.mocked(rateLimit).mock.calls[0][0]).toBe("mcp-auth:203.0.113.7");
+    });
+
+    it("buckets a valid key by its hash, not the key itself", async () => {
+        await handleMcpRequest(mcpRequest(initialize));
+        const bucket = vi.mocked(rateLimit).mock.calls[0][0];
+        expect(bucket).toMatch(/^mcp:/);
+        expect(bucket).not.toContain(key);
     });
 });
 

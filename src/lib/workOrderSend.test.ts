@@ -10,11 +10,16 @@ vi.mock("@/lib/email", () => ({ getAppUrl: vi.fn(() => "https://example.com"), s
 vi.mock("@/lib/emails/workOrderEmail", () => ({ workOrderEmail: vi.fn(() => ({ subject: "", html: "", text: "" })) }));
 vi.mock("@/lib/emails/notifyTenant", () => ({ notifyTenant: vi.fn(() => false) }));
 vi.mock("@/lib/workOrderEvents", () => ({ logEvent: vi.fn() }));
+vi.mock("@/lib/rateLimit", async (importOriginal) => ({
+    ...(await importOriginal<typeof import("@/lib/rateLimit")>()),
+    rateLimit: vi.fn(),
+}));
 
 import { sendEmail } from "@/lib/email";
 import { notifyTenant } from "@/lib/emails/notifyTenant";
 import { workOrderEmail } from "@/lib/emails/workOrderEmail";
 import prisma from "@/lib/prisma";
+import { rateLimit } from "@/lib/rateLimit";
 import { logEvent } from "@/lib/workOrderEvents";
 import { emailWorkOrderToContractor } from "./workOrderSend";
 
@@ -45,6 +50,7 @@ function withWorkOrder(overrides: Record<string, unknown> = {}) {
 beforeEach(() => {
     vi.clearAllMocks();
     vi.mocked(prisma.lineItem.count).mockResolvedValue(2);
+    vi.mocked(rateLimit).mockResolvedValue({ ok: true, remaining: 1, retryAfterSeconds: 0 });
     withWorkOrder();
 });
 
@@ -106,5 +112,17 @@ describe("emailWorkOrderToContractor", () => {
     it("refuses a work order outside the organization", async () => {
         vi.mocked(prisma.workOrder.findFirst).mockResolvedValue(null);
         await expect(emailWorkOrderToContractor(send)).resolves.toEqual({ ok: false, error: "Work order not found" });
+    });
+
+    it("refuses when the organization is over its hourly email limit", async () => {
+        vi.mocked(rateLimit).mockResolvedValue({ ok: false, remaining: 0, retryAfterSeconds: 600 });
+
+        await expect(emailWorkOrderToContractor(send)).resolves.toEqual({
+            ok: false,
+            error: "Too many emails sent in the last hour. Try again later.",
+        });
+        expect(rateLimit).toHaveBeenCalledWith("email:org1", expect.any(Object));
+        expect(sendEmail).not.toHaveBeenCalled();
+        expect(prisma.workOrder.update).not.toHaveBeenCalled();
     });
 });

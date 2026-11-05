@@ -6,11 +6,16 @@ vi.mock("@/lib/auth", () => ({ getCurrentUser: vi.fn() }));
 vi.mock("@/lib/workOrderCreate", () => ({ createDraftWorkOrder: vi.fn() }));
 vi.mock("@/lib/parseDescription", () => ({ parseDescription: vi.fn() }));
 vi.mock("@/lib/workOrderLookup", () => ({ propertyLookup: vi.fn(), contractorLookup: vi.fn() }));
+vi.mock("@/lib/rateLimit", async (importOriginal) => ({
+    ...(await importOriginal<typeof import("@/lib/rateLimit")>()),
+    rateLimit: vi.fn(),
+}));
 
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 import { getCurrentUser } from "@/lib/auth";
 import { parseDescription } from "@/lib/parseDescription";
+import { rateLimit } from "@/lib/rateLimit";
 import { createDraftWorkOrder } from "@/lib/workOrderCreate";
 import { contractorLookup, propertyLookup } from "@/lib/workOrderLookup";
 import { createDraftFromBot, parseWorkOrderDescription } from "./actions";
@@ -43,6 +48,7 @@ beforeEach(() => {
         organization: { id: "org1" },
     } as never);
     vi.mocked(createDraftWorkOrder).mockResolvedValue({ ok: true, workOrder: { id: "wo1", jobNumber: "2026-1001" } });
+    vi.mocked(rateLimit).mockResolvedValue({ ok: true, remaining: 1, retryAfterSeconds: 0 });
 });
 
 describe("parseWorkOrderDescription", () => {
@@ -79,6 +85,16 @@ describe("parseWorkOrderDescription", () => {
         expect(await parseWorkOrderDescription({}, form("Fix the sink"))).toEqual({
             error: "AI is turned off in your Settings.",
         });
+        expect(parseDescription).not.toHaveBeenCalled();
+    });
+
+    it("refuses without calling the AI when the user is over the hourly limit", async () => {
+        vi.mocked(rateLimit).mockResolvedValue({ ok: false, remaining: 0, retryAfterSeconds: 600 });
+
+        expect(await parseWorkOrderDescription({}, form("Fix the sink"))).toEqual({
+            error: "You've used Praedium Bot a lot in the last hour. Try again in a few minutes, or use the regular form.",
+        });
+        expect(rateLimit).toHaveBeenCalledWith("bot:user1", expect.any(Object));
         expect(parseDescription).not.toHaveBeenCalled();
     });
 
