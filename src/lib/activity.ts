@@ -43,6 +43,7 @@ const PLAIN_LABELS: Record<WorkOrderEventType, string> = {
     ITEM_UNCHECKED: "Line item unchecked",
     NOTE_SAVED: "Note saved",
     COMPLETED_BY_CONTRACTOR: "Marked complete",
+    VERIFIED: "Verified by the contractor",
 };
 
 const FIELD_LABELS: Record<string, string> = {
@@ -207,6 +208,8 @@ function phrase(type: WorkOrderEventType, detail: Prisma.JsonValue): Phrase | nu
             const notes = read(schemas.COMPLETED_BY_CONTRACTOR)?.notes;
             return { active: "marked the work complete", ...(notes ? { note: notes } : {}) };
         }
+        case "VERIFIED":
+            return { active: "verified their email" };
     }
 }
 

@@ -1,9 +1,8 @@
-import type { WorkOrderStatus } from "@/generated/prisma/client";
 import { getCurrentUser } from "@/lib/auth";
 import { redirect } from "next/navigation";
 import PageHeader from "@/components/list/PageHeader";
 import EmptyState from "@/components/list/EmptyState";
-import { WorkOrderList, type ListTint, type WorkOrderWithPlace } from "@/components/WorkOrderRow";
+import { SECTION_TINTS, WorkOrderList, type WorkOrderWithPlace } from "@/components/WorkOrderRow";
 import { WORK_ORDER_STATUS_LABELS } from "@/lib/defaults";
 import {
     STATUS_ORDER,
@@ -80,17 +79,6 @@ export default async function WorkOrder({ searchParams }: { searchParams: Promis
         </main>
     );
 }
-
-// A faint wash of each status color behind its section's rows, and a deeper one on its header row (it sits on
-// top of the rows' tint). Written out in full so Tailwind generates the classes.
-const SECTION_TINTS: Record<WorkOrderStatus, ListTint> = {
-    DRAFT: { rows: "bg-status-draft/5", header: "bg-status-draft/12" },
-    SENT: { rows: "bg-status-sent/5", header: "bg-status-sent/12" },
-    IN_PROGRESS: { rows: "bg-status-in-progress/5", header: "bg-status-in-progress/12" },
-    COMPLETED: { rows: "bg-status-completed/5", header: "bg-status-completed/12" },
-    CLOSED: { rows: "bg-status-closed/5", header: "bg-status-closed/12" },
-    CANCELLED: { rows: "bg-status-cancelled/5", header: "bg-status-cancelled/12" },
-};
 
 // One section per status, in workflow order. Empty sections are left out.
 function SplitList({

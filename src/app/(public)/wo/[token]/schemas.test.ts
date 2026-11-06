@@ -1,5 +1,13 @@
 import { describe, expect, it } from "vitest";
-import { completeInput, noteInput, photoInput, toggleInput } from "./schemas";
+import {
+    completeInput,
+    magicLinkInput,
+    noteInput,
+    photoInput,
+    sendCodeInput,
+    toggleInput,
+    verifyCodeInput,
+} from "./schemas";
 
 const token = "abc123";
 const lineItemId = "cl0000000000000000000000";
@@ -67,5 +75,44 @@ describe("photoInput", () => {
         expect(photoInput.safeParse({ token: "", attachmentId: lineItemId }).success).toBe(false);
         expect(photoInput.safeParse({ token, attachmentId: "" }).success).toBe(false);
         expect(photoInput.safeParse({ token, attachmentId: "x".repeat(101) }).success).toBe(false);
+    });
+});
+
+describe("sendCodeInput", () => {
+    it("accepts a token and rejects an empty one", () => {
+        expect(sendCodeInput.parse({ token })).toEqual({ token });
+        expect(sendCodeInput.safeParse({ token: "" }).success).toBe(false);
+    });
+});
+
+describe("verifyCodeInput", () => {
+    const valid = { token, challengeId: "ch1", code: "042917", remember: true };
+
+    it("accepts six digits and trims spaces", () => {
+        expect(verifyCodeInput.parse(valid)).toEqual(valid);
+        expect(verifyCodeInput.parse({ ...valid, code: " 042917 " }).code).toBe("042917");
+    });
+
+    it("rejects five digits, seven digits and letters", () => {
+        expect(verifyCodeInput.safeParse({ ...valid, code: "04291" }).success).toBe(false);
+        expect(verifyCodeInput.safeParse({ ...valid, code: "0429171" }).success).toBe(false);
+        expect(verifyCodeInput.safeParse({ ...valid, code: "04291a" }).success).toBe(false);
+    });
+
+    it("rejects a non-boolean remember and a missing challenge ID", () => {
+        expect(verifyCodeInput.safeParse({ ...valid, remember: "true" }).success).toBe(false);
+        expect(verifyCodeInput.safeParse({ ...valid, challengeId: "" }).success).toBe(false);
+    });
+});
+
+describe("magicLinkInput", () => {
+    it("splits the challenge ID and the code", () => {
+        expect(magicLinkInput.parse("ch-1.042917")).toEqual({ challengeId: "ch-1", code: "042917" });
+    });
+
+    it("rejects a missing or malformed code or ID", () => {
+        for (const value of ["ch1", "ch1.12345", ".042917", "ch1.04291a", `${"x".repeat(101)}.042917`, "a.b.042917"]) {
+            expect(magicLinkInput.safeParse(value).success).toBe(false);
+        }
     });
 });

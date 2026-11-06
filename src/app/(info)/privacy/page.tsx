@@ -168,7 +168,8 @@ export default function Privacy(): React.ReactElement {
                     <Link href="/demo" className={LINK}>
                         The demo
                     </Link>{" "}
-                    keeps its sample data in your browser only.
+                    keeps its sample data in your browser only. A contractor who verifies on a work order link gets a
+                    cookie that remembers that browser for 30 days; it holds only a random key.
                 </P>
             </Section>
 

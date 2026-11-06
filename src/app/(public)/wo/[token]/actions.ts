@@ -5,17 +5,125 @@ import { revalidatePath } from "next/cache";
 import { after } from "next/server";
 import { getAppUrl, sendEmail } from "@/lib/email";
 import { completedEmail } from "@/lib/emails/completedEmail";
-import { RATE_LIMITS, rateLimit } from "@/lib/rateLimit";
+import { clientIp, RATE_LIMITS, rateLimit } from "@/lib/rateLimit";
 import { formatWorkOrderAddress } from "@/lib/workOrders";
 import { isLikelyBot, logDailyOpen, logEvent } from "@/lib/workOrderEvents";
 import { auth } from "@clerk/nextjs/server";
-import { headers } from "next/headers";
-import { completeInput, noteInput, openInput, toggleInput } from "./schemas";
+import { cookies, headers } from "next/headers";
+import {
+    CONTRACTOR_COOKIE,
+    createContractorSession,
+    isVerifiedFor,
+    sessionCookieOptions,
+} from "@/lib/contractorAccess";
+import { maskEmail, normalizeEmail } from "@/lib/contractorWorkOrders";
+import { checkCode, startVerification } from "@/lib/contractorVerify";
+import { completeInput, noteInput, openInput, sendCodeInput, toggleInput, verifyCodeInput } from "./schemas";
 
+// Not the office's OPEN_STATUSES (`@/lib/workOrders`), which includes DRAFT: contractors never act on drafts.
 const OPEN_STATUSES = ["SENT", "IN_PROGRESS"] as const;
 
 function isOpen(status: string) {
     return (OPEN_STATUSES as readonly string[]).includes(status);
+}
+
+// The same rule as isOpen, as a filter for the writes, so they only apply while it still holds.
+function openWorkOrderWhere(token: string) {
+    return { publicToken: token, archived: false, status: { in: [...OPEN_STATUSES] } };
+}
+
+// The mutations need a verified contractor session. A work order with no contractor email can't be verified, so it
+// stays open to anyone with the link, as the page shows it.
+async function requireVerified(workOrder: { contractorEmail: string | null }): Promise<void> {
+    if (workOrder.contractorEmail && !(await isVerifiedFor(workOrder))) throw new Error("Verification required");
+}
+
+// The work order a contractor link shows, with what verification needs. Null when missing, archived, a draft or
+// cancelled, the same rule as the page.
+async function loadContractorWorkOrder(token: string) {
+    const workOrder = await prisma.workOrder.findUnique({
+        where: { publicToken: token },
+        include: { organization: { select: { name: true, email: true } } },
+    });
+    if (!workOrder || workOrder.archived || workOrder.status === "DRAFT" || workOrder.status === "CANCELLED") {
+        return null;
+    }
+    return workOrder;
+}
+
+// Emails a 6-digit code (and a confirm link) to the work order's contractor address.
+export async function sendCode(
+    token: string,
+): Promise<{ ok: true; challengeId: string; emailHint: string } | { ok: false; error: string }> {
+    const input = sendCodeInput.safeParse({ token });
+    if (!input.success) return { ok: false, error: "This link isn't valid." };
+
+    const workOrder = await loadContractorWorkOrder(input.data.token);
+    if (!workOrder) return { ok: false, error: "This work order isn't available." };
+    // A closed job only ever shows the summary, so there's nothing to verify for.
+    if (workOrder.status === "CLOSED") return { ok: false, error: "This work order is closed." };
+    if (!workOrder.contractorEmail) return { ok: false, error: "This work order has no contractor email on file." };
+
+    let appUrl: string;
+    try {
+        appUrl = getAppUrl();
+    } catch (error) {
+        console.error("sendCode: no app URL", error);
+        return { ok: false, error: "Couldn't send the email. Try again." };
+    }
+
+    const result = await startVerification({
+        workOrder,
+        organization: workOrder.organization,
+        appUrl,
+        ip: clientIp(await headers()),
+    });
+    if ("error" in result) return { ok: false, error: result.error };
+
+    return { ok: true, challengeId: result.challengeId, emailHint: maskEmail(workOrder.contractorEmail) };
+}
+
+// Checks the code and, when it's right, remembers this browser with a contractor session cookie.
+export async function verifyCode(
+    token: string,
+    challengeId: string,
+    code: string,
+    remember: boolean,
+): Promise<{ ok: true } | { ok: false; error: string }> {
+    const input = verifyCodeInput.safeParse({ token, challengeId, code, remember });
+    if (!input.success) return { ok: false, error: "Enter the 6-digit code from the email." };
+
+    const workOrder = await loadContractorWorkOrder(input.data.token);
+    if (!workOrder) return { ok: false, error: "This work order isn't available." };
+    if (workOrder.status === "CLOSED") return { ok: false, error: "This work order is closed." };
+
+    const result = await checkCode({
+        workOrderId: workOrder.id,
+        challengeId: input.data.challengeId,
+        code: input.data.code,
+    });
+    if (!result.ok) return result;
+    // The office changed the contractor's email after the code was sent.
+    if (!workOrder.contractorEmail || normalizeEmail(workOrder.contractorEmail) !== result.email) {
+        return { ok: false, error: "The email on this work order has changed. Send a new code." };
+    }
+
+    const session = await createContractorSession({
+        email: result.email,
+        remember: input.data.remember,
+        userAgent: (await headers()).get("user-agent"),
+    });
+    (await cookies()).set(CONTRACTOR_COOKIE, session.token, sessionCookieOptions(input.data.remember));
+
+    await logEvent({
+        type: "VERIFIED",
+        workOrderId: workOrder.id,
+        organizationId: workOrder.organizationId,
+        actor: { kind: "contractor", name: workOrder.contractorName },
+    });
+
+    revalidatePath(`/wo/${input.data.token}`);
+    return { ok: true };
 }
 
 async function getOpenLineItem(token: string, lineItemId: string) {
@@ -48,17 +156,26 @@ export async function toggleLineItem(token: string, lineItemId: string): Promise
     await checkRate(input.token);
     const lineItem = await getOpenLineItem(input.token, input.lineItemId);
     const workOrder = lineItem.area.workOrder;
+    await requireVerified(workOrder);
     const completed = !lineItem.completed;
 
-    await prisma.$transaction([
-        prisma.lineItem.update({
-            where: { id: lineItem.id },
+    // Conditional on the work order still being open under this token, in case it was closed, cancelled, archived or
+    // re-tokened since the check above.
+    const [updated] = await prisma.$transaction([
+        prisma.lineItem.updateMany({
+            where: { id: lineItem.id, area: { workOrder: openWorkOrderWhere(input.token) } },
             data: { completed, completedAt: completed ? new Date() : null },
         }),
         ...(completed && workOrder.status === "SENT"
-            ? [prisma.workOrder.update({ where: { id: workOrder.id }, data: { status: "IN_PROGRESS" } })]
+            ? [
+                  prisma.workOrder.updateMany({
+                      where: { id: workOrder.id, publicToken: input.token, status: "SENT", archived: false },
+                      data: { status: "IN_PROGRESS" },
+                  }),
+              ]
             : []),
     ]);
+    if (updated.count === 0) throw new Error("Work order is not open");
     await logEvent({
         type: completed ? "ITEM_CHECKED" : "ITEM_UNCHECKED",
         workOrderId: workOrder.id,
@@ -74,11 +191,13 @@ export async function saveLineItemNote(token: string, lineItemId: string, note: 
     const input = noteInput.parse({ token, lineItemId, note });
     await checkRate(input.token);
     const lineItem = await getOpenLineItem(input.token, input.lineItemId);
+    await requireVerified(lineItem.area.workOrder);
 
-    await prisma.lineItem.update({
-        where: { id: lineItem.id },
+    const updated = await prisma.lineItem.updateMany({
+        where: { id: lineItem.id, area: { workOrder: openWorkOrderWhere(input.token) } },
         data: { contractorNotes: input.note },
     });
+    if (updated.count === 0) throw new Error("Work order is not open");
     if (input.note !== lineItem.contractorNotes) {
         const workOrder = lineItem.area.workOrder;
         await logEvent({
@@ -156,14 +275,16 @@ export async function completeWorkOrder(token: string, completionNotes: string):
 
     if (!workOrder) throw new Error("Invalid work order");
     if (workOrder.archived || !isOpen(workOrder.status)) throw new Error("Work order is not open");
+    await requireVerified(workOrder);
 
     const completedAt = new Date();
     const notes = input.completionNotes;
 
-    await prisma.workOrder.update({
-        where: { id: workOrder.id },
+    const updated = await prisma.workOrder.updateMany({
+        where: { id: workOrder.id, ...openWorkOrderWhere(input.token) },
         data: { status: "COMPLETED", completedAt, completionNotes: notes },
     });
+    if (updated.count === 0) throw new Error("Work order is not open");
     await logEvent({
         type: "COMPLETED_BY_CONTRACTOR",
         workOrderId: workOrder.id,

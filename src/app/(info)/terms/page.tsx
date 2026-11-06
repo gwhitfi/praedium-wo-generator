@@ -97,9 +97,12 @@ export default function Terms(): React.ReactElement {
                 <P>
                     Contractors don&apos;t need an account. When you send a work order, the contractor gets a link
                     containing a long random code. Anyone who has that link can open the work order and see your
-                    organization&apos;s name and contact details, the property address and unit, the tenant&apos;s name,
-                    phone and email, the line items, notes and photos. They can also check off items, add notes and mark
-                    the work order complete.
+                    organization&apos;s name and contact details, the property address and unit, and the list of work
+                    items. To see the tenant&apos;s name, phone and email, the notes and photos, to check off items, add
+                    notes and mark the work order complete, or to list the contractor&apos;s other current work orders,
+                    the contractor verifies once by entering a code we email to the contractor&apos;s address on file.
+                    The browser stays verified for 30 days from its last visit, and you can sign a contractor out of
+                    every device from their contact page.
                 </P>
                 <P>
                     Send links only to the contractor, and treat them like a password. The page is hidden from search

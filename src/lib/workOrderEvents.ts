@@ -37,6 +37,7 @@ type DetailsByType = {
     ITEM_UNCHECKED: ItemRef;
     NOTE_SAVED: ItemRef & { note: string };
     COMPLETED_BY_CONTRACTOR: { notes: string | null };
+    VERIFIED: null;
 };
 
 // Fails to compile if an event type in the schema is missing from DetailsByType.

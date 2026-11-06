@@ -76,6 +76,7 @@ enum WorkOrderEventType {
   ITEM_UNCHECKED
   NOTE_SAVED
   COMPLETED_BY_CONTRACTOR
+  VERIFIED
 }
 
 model Organization {
@@ -274,6 +275,7 @@ model WorkOrder {
   areas       Area[]
   attachments Attachment[]
   events      WorkOrderEvent[]
+  challenges  ContractorChallenge[]
 
   organizationId String
   organization   Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
@@ -417,4 +419,43 @@ model RateLimit {
   key     String   @id
   count   Int
   resetAt DateTime
+}
+
+// A one-time code emailed to a work order's contractor so a browser can be verified as theirs. Only the code's
+// hash is stored; the row is useless after it expires or is consumed. See src/lib/contractorVerify.ts.
+model ContractorChallenge {
+  id         String    @id @default(cuid())
+  // The address the code went to, trimmed and lower-cased.
+  email      String
+  // scrypt of the 6-digit code, salted with the challenge id.
+  codeHash   String
+  attempts   Int       @default(0)
+  expiresAt  DateTime
+  consumedAt DateTime?
+  createdAt  DateTime  @default(now())
+
+  workOrderId String
+  workOrder   WorkOrder @relation(fields: [workOrderId], references: [id], onDelete: Cascade)
+
+  @@index([workOrderId])
+  @@index([expiresAt])
+}
+
+// A verified contractor browser: the cookie holds a random token, only its hash is stored. Keyed by the
+// contractor's email, not an organization, so one verification covers every organization that sends them work.
+// expiresAt rolls forward 30 days from the last use; the database, not the cookie, decides when it ends.
+model ContractorSession {
+  id         String    @id @default(cuid())
+  tokenHash  String    @unique
+  // Trimmed and lower-cased.
+  email      String
+  remember   Boolean   @default(true)
+  createdAt  DateTime  @default(now())
+  lastUsedAt DateTime  @default(now())
+  expiresAt  DateTime
+  revokedAt  DateTime?
+  userAgent  String?
+
+  @@index([email])
+  @@index([expiresAt])
 }

@@ -3,6 +3,7 @@ import { getCurrentUser } from "@/lib/auth";
 import prisma from "@/lib/prisma";
 import { OPEN_STATUSES } from "@/lib/workOrders";
 import { DELETE_NOT_CONFIRMED, isDeleteConfirmed } from "@/lib/confirmDelete";
+import { revokeContractorSessions } from "@/lib/contractorAccess";
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 import { z } from "zod";
@@ -192,6 +193,38 @@ export async function archiveContact(contactId: string): Promise<ActionResult> {
 
     revalidateContact(contactId);
     if (contact.unitId) revalidatePath("/properties", "layout");
+    return { ok: true };
+}
+
+// Revokes every verified contractor session for the contact's email. They verify again from their next work order.
+export async function signOutContractorDevices(contactId: string): Promise<ActionResult> {
+    const id = z.string().min(1).max(100).safeParse(contactId);
+    if (!id.success) return { ok: false, error: "Contact not found." };
+
+    const result = await getCurrentUser();
+    if (result.state !== "ready") return { ok: false, error: "Not authorized" };
+
+    const contact = await prisma.contact.findFirst({
+        where: { id: id.data, organizationId: result.organization.id },
+    });
+    if (!contact) return { ok: false, error: "Contact not found." };
+    if (contact.contactType === "TENANT" || !contact.email) {
+        return { ok: false, error: "Only contractors with an email can be signed out." };
+    }
+
+    // Sessions are keyed by email, so this signs the contractor out everywhere, not only from this organization's
+    // work orders. Until that's per organization (a `Contact.contractorSignedOutAt` column, tracked in TODO), only an
+    // organization that has actually sent this contractor work may do it, so a contact made up with someone's email
+    // can't be used to sign them out.
+    const sent = await prisma.workOrder.findFirst({
+        where: { organizationId: result.organization.id, contractorId: contact.id, sentAt: { not: null } },
+        select: { id: true },
+    });
+    if (!sent) return { ok: false, error: "This contractor hasn't been sent a work order yet." };
+
+    await revokeContractorSessions(contact.email);
+
+    revalidatePath(`/contacts/${contact.id}`);
     return { ok: true };
 }
 

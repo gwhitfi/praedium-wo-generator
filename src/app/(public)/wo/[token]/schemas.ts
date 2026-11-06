@@ -9,9 +9,28 @@ const noteSchema = z
     .max(MAX_NOTE_LENGTH)
     .trim()
     .transform((note) => note || null);
+const codeSchema = z
+    .string()
+    .trim()
+    .regex(/^\d{6}$/);
 
 export const toggleInput = z.object({ token: tokenSchema, lineItemId: idSchema });
 export const noteInput = z.object({ token: tokenSchema, lineItemId: idSchema, note: noteSchema });
 export const completeInput = z.object({ token: tokenSchema, completionNotes: noteSchema });
 export const photoInput = z.object({ token: tokenSchema, attachmentId: idSchema });
 export const openInput = z.object({ token: tokenSchema });
+export const sendCodeInput = z.object({ token: tokenSchema });
+export const verifyCodeInput = z.object({
+    token: tokenSchema,
+    challengeId: idSchema,
+    code: codeSchema,
+    remember: z.boolean(),
+});
+// The magic link's `c` parameter: `<challengeId>.<code>`.
+export const magicLinkInput = z
+    .string()
+    .regex(/^[^.]{1,100}\.\d{6}$/)
+    .transform((value) => {
+        const dot = value.lastIndexOf(".");
+        return { challengeId: value.slice(0, dot), code: value.slice(dot + 1) };
+    });

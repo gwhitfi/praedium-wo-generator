@@ -12,6 +12,7 @@ import { WorkOrderList } from "@/components/WorkOrderRow";
 import DeleteButton from "@/components/DeleteButton";
 import { deleteContact, toggleContactFavorite } from "../actions";
 import { ArchiveContactButton, RestoreContactButton } from "./ArchiveContact";
+import { SignOutDevicesButton } from "./SignOutDevices";
 
 export default async function ContactDetail({ params }: { params: Promise<{ id: string }> }) {
     const { id } = await params;
@@ -62,6 +63,12 @@ export default async function ContactDetail({ params }: { params: Promise<{ id: 
         ...workOrders.filter((wo) => isOpen(wo.status)),
         ...workOrders.filter((wo) => !isOpen(wo.status)),
     ].slice(0, 10);
+
+    // Sign-out needs a work order this organization has sent the contractor (see signOutContractorDevices).
+    const showAccess =
+        !isTenant &&
+        !!contact.email &&
+        (await prisma.workOrder.count({ where: { organizationId, contractorId: id, sentAt: { not: null } } })) > 0;
 
     const fullName = [contact.firstName, contact.lastName].filter(Boolean).join(" ");
     const contactTitle = fullName || contact.company || contact.displayName;
@@ -172,6 +179,18 @@ export default async function ContactDetail({ params }: { params: Promise<{ id: 
                     <WorkOrderList workOrders={shownWorkOrders} hideContractor={!isTenant} />
                 )}
             </section>
+
+            {showAccess && (
+                <section className="mt-8 border-t border-line pt-6">
+                    <h2 className="mb-3 text-lg font-semibold">Contractor access</h2>
+                    <div className="flex flex-wrap items-center justify-between gap-3">
+                        <p className="text-sm text-subtle">
+                            Contractors verify once by email and stay verified on that device for 30 days.
+                        </p>
+                        <SignOutDevicesButton contactId={contact.id} />
+                    </div>
+                </section>
+            )}
 
             <div className="mt-8 flex flex-wrap items-center justify-end gap-2 border-t border-line pt-6">
                 {(isTenant || openCount === 0) && (

@@ -24,16 +24,19 @@ export default function ContractorSpaceCard({
     token,
     area,
     readOnly,
+    summaryOnly = false,
     actions = { toggleLineItem, saveLineItemNote },
 }: {
     token: string;
     area: AreaRow;
     readOnly: boolean;
+    // Before the contractor verifies (and on closed work orders): no photos and no contractor notes, only the items.
+    summaryOnly?: boolean;
     actions?: {
         toggleLineItem: (token: string, id: string) => Promise<unknown>;
         saveLineItemNote: (token: string, id: string, note: string) => Promise<unknown>;
     };
-}) {
+}): React.ReactElement {
     const [busyItemId, setBusyItemId] = useState<string | null>(null);
     const [error, setError] = useState<string | null>(null);
     const [notingId, setNotingId] = useState<string | null>(null);
@@ -141,7 +144,7 @@ export default function ContractorSpaceCard({
                                     )}
                                 </div>
 
-                                {item.attachments[0] && (
+                                {!summaryOnly && item.attachments[0] && (
                                     <a
                                         href={`/wo/${token}/photos/${item.attachments[0].id}`}
                                         target="_blank"
@@ -199,6 +202,7 @@ export default function ContractorSpaceCard({
                                         </div>
                                     </div>
                                 ) : (
+                                    !summaryOnly &&
                                     item.contractorNotes && (
                                         <p
                                             onClick={readOnly ? undefined : () => startNote(item)}

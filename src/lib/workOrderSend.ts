@@ -1,7 +1,9 @@
 // Server-only. Emails a work order's link to its contractor, shared by the office's "Email" button
 // (emailWorkOrder in src/app/(app)/work-orders/actions.ts) and the MCP send_work_order tool. The caller checks auth
 // and passes the organization it resolved; every query here is scoped to that organization.
+import { randomBytes } from "node:crypto";
 import type { User } from "@/generated/prisma/client";
+import { normalizeEmail } from "@/lib/contractorWorkOrders";
 import { getAppUrl, sendEmail } from "@/lib/email";
 import { notifyTenant } from "@/lib/emails/notifyTenant";
 import { workOrderEmail } from "@/lib/emails/workOrderEmail";
@@ -52,6 +54,12 @@ export async function emailWorkOrderToContractor({
     const itemCount = await prisma.lineItem.count({ where: { area: { workOrderId } } });
     const address = formatWorkOrderAddress(workOrder.property, workOrder.unit);
 
+    // The contact's email changed since the work order was last sent: issue a new link, so the old recipient's link
+    // stops working.
+    const recipientChanged =
+        !!workOrder.contractorEmail && normalizeEmail(workOrder.contractorEmail) !== normalizeEmail(to);
+    const publicToken = recipientChanged ? randomBytes(24).toString("base64url") : workOrder.publicToken;
+
     try {
         const email = workOrderEmail({
             organization,
@@ -61,7 +69,7 @@ export async function emailWorkOrderToContractor({
             dueDate: workOrder.dueDate,
             notes: workOrder.notes,
             itemCount,
-            url: `${getAppUrl()}/wo/${workOrder.publicToken}`,
+            url: `${getAppUrl()}/wo/${publicToken}`,
             isResend: workOrder.deliveryMethod === "EMAIL",
         });
 
@@ -78,6 +86,7 @@ export async function emailWorkOrderToContractor({
             contractorName: workOrder.contractor.displayName,
             contractorPhone: workOrder.contractor.phone,
             contractorEmail: workOrder.contractor.email,
+            ...(recipientChanged ? { publicToken } : {}),
             ...(workOrder.status === "DRAFT" ? { status: "SENT", sentAt: new Date() } : {}),
         },
     });

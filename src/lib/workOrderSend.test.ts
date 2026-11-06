@@ -109,6 +109,28 @@ describe("emailWorkOrderToContractor", () => {
         expect(logEvent).not.toHaveBeenCalled();
     });
 
+    it("issues a new link when the contact's email differs from the one it was sent to", async () => {
+        withWorkOrder({ status: "SENT", deliveryMethod: "EMAIL", contractorEmail: "old@example.com" });
+
+        await expect(emailWorkOrderToContractor(send)).resolves.toMatchObject({ ok: true });
+
+        const data = vi.mocked(prisma.workOrder.update).mock.calls[0][0].data as { publicToken?: string };
+        expect(data.publicToken).toMatch(/^[A-Za-z0-9_-]{32}$/);
+        expect(data.publicToken).not.toBe("token1");
+        expect(workOrderEmail).toHaveBeenCalledWith(
+            expect.objectContaining({ url: `https://example.com/wo/${data.publicToken}` }),
+        );
+    });
+
+    it("keeps the link when the email is the same apart from case and spaces", async () => {
+        withWorkOrder({ status: "SENT", deliveryMethod: "EMAIL", contractorEmail: " Joe@Example.com" });
+
+        await emailWorkOrderToContractor(send);
+
+        expect(vi.mocked(prisma.workOrder.update).mock.calls[0][0].data).not.toHaveProperty("publicToken");
+        expect(workOrderEmail).toHaveBeenCalledWith(expect.objectContaining({ url: "https://example.com/wo/token1" }));
+    });
+
     it("refuses a work order outside the organization", async () => {
         vi.mocked(prisma.workOrder.findFirst).mockResolvedValue(null);
         await expect(emailWorkOrderToContractor(send)).resolves.toEqual({ ok: false, error: "Work order not found" });
