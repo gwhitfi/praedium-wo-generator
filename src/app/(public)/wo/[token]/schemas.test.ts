@@ -88,9 +88,10 @@ describe("sendCodeInput", () => {
 describe("verifyCodeInput", () => {
     const valid = { token, challengeId: "ch1", code: "042917", remember: true };
 
-    it("accepts six digits and trims spaces", () => {
+    it("accepts six digits and strips spaces around and inside the code", () => {
         expect(verifyCodeInput.parse(valid)).toEqual(valid);
         expect(verifyCodeInput.parse({ ...valid, code: " 042917 " }).code).toBe("042917");
+        expect(verifyCodeInput.parse({ ...valid, code: "042 917" }).code).toBe("042917");
     });
 
     it("rejects five digits, seven digits and letters", () => {

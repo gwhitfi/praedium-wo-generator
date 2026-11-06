@@ -79,11 +79,10 @@ export default function VerifyBox({
                             type="text"
                             inputMode="numeric"
                             autoComplete="one-time-code"
-                            maxLength={6}
                             pattern="\d{6}"
                             required
                             value={code}
-                            onChange={(e) => setCode(e.target.value.replace(/\D/g, ""))}
+                            onChange={(e) => setCode(e.target.value.replace(/\D/g, "").slice(0, 6))}
                             aria-invalid={error ? true : undefined}
                             aria-describedby={error ? "verify-error" : undefined}
                             className={`${inputClass} font-mono tracking-widest sm:w-40`}

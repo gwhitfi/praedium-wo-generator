@@ -9,9 +9,10 @@ const noteSchema = z
     .max(MAX_NOTE_LENGTH)
     .trim()
     .transform((note) => note || null);
+// Whitespace is stripped first (the email shows the code as "304 504").
 const codeSchema = z
     .string()
-    .trim()
+    .overwrite((code) => code.replace(/\s+/g, ""))
     .regex(/^\d{6}$/);
 
 export const toggleInput = z.object({ token: tokenSchema, lineItemId: idSchema });
