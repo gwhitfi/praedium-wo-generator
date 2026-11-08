@@ -7,13 +7,14 @@ vi.mock("@/lib/prisma", () => ({
     default: {
         apiKey: { create: vi.fn(), updateMany: vi.fn() },
         organization: { update: vi.fn() },
+        user: { update: vi.fn() },
     },
 }));
 
 import { clerkClient } from "@clerk/nextjs/server";
 import { getCurrentUser } from "@/lib/auth";
 import prisma from "@/lib/prisma";
-import { createApiKey, revokeApiKey, updateOrganization } from "./actions";
+import { createApiKey, revokeApiKey, setNotificationPreferences, updateOrganization } from "./actions";
 
 function signedInAs(role: "ADMIN" | "USER") {
     vi.mocked(getCurrentUser).mockResolvedValue({
@@ -134,5 +135,44 @@ describe("revokeApiKey", () => {
         signedInAs("ADMIN");
         await expect(revokeApiKey(form({}))).rejects.toThrow("Invalid API key");
         expect(prisma.apiKey.updateMany).not.toHaveBeenCalled();
+    });
+});
+
+describe("setNotificationPreferences", () => {
+    function checked(...types: string[]) {
+        const formData = new FormData();
+        for (const type of types) formData.append("types", type);
+        return formData;
+    }
+
+    it("saves the ticked options on the signed-in user, for any role", async () => {
+        signedInAs("USER");
+        expect(await setNotificationPreferences({}, checked("overdue", "created"))).toEqual({ ok: true });
+        expect(prisma.user.update).toHaveBeenCalledWith({
+            where: { id: "user1" },
+            data: { notificationTypes: ["overdue", "created"] },
+        });
+    });
+
+    it("saves the all-off marker when nothing is ticked", async () => {
+        signedInAs("USER");
+        await setNotificationPreferences({}, checked());
+        expect(prisma.user.update).toHaveBeenCalledWith({
+            where: { id: "user1" },
+            data: { notificationTypes: ["none"] },
+        });
+    });
+
+    it("refuses unknown options without saving", async () => {
+        signedInAs("USER");
+        const state = await setNotificationPreferences({}, checked("completed", "everything"));
+        expect(state.error).toBeDefined();
+        expect(prisma.user.update).not.toHaveBeenCalled();
+    });
+
+    it("requires a signed-in user", async () => {
+        vi.mocked(getCurrentUser).mockResolvedValue({ state: "signed-out" });
+        await expect(setNotificationPreferences({}, checked("completed"))).rejects.toThrow("Not authorized");
+        expect(prisma.user.update).not.toHaveBeenCalled();
     });
 });

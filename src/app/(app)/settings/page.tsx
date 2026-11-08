@@ -7,6 +7,8 @@ import prisma from "@/lib/prisma";
 import OrganizationContactForm from "./OrganizationContactForm";
 import AiPreferenceForm from "./AiPreferenceForm";
 import AppearanceSettings from "./AppearanceSettings";
+import NotificationSettings from "./NotificationSettings";
+import { resolveNotificationTypes } from "@/lib/notificationTypes";
 import ApiKeyForm from "./ApiKeyForm";
 import RevokeApiKeyButton from "./RevokeApiKeyButton";
 
@@ -112,6 +114,7 @@ export default async function Settings() {
                 />
                 <div className="flex flex-col gap-6">
                     <AppearanceSettings />
+                    <NotificationSettings selected={resolveNotificationTypes(user.notificationTypes)} />
                     <AiPreferenceForm aiEnabled={user.aiEnabled !== false} />
                 </div>
             </section>

@@ -114,6 +114,9 @@ model User {
   email     String
   // null until the user picks on the dashboard prompt or in Settings; AI is shown unless this is false.
   aiEnabled Boolean?
+  // Notification options this user turned on (keys from src/lib/notificationTypes.ts). Empty means the defaults;
+  // ["none"] means all turned off.
+  notificationTypes String[] @default([])
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
@@ -133,6 +136,8 @@ model User {
 model Membership {
   id        String   @id @default(cuid())
   role      UserRole @default(USER)
+  // When this user last opened the notifications dropdown in this organization; newer matches count as unread.
+  notificationsSeenAt DateTime?
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
@@ -329,6 +334,7 @@ model WorkOrderEvent {
   @@unique([workOrderId, dedupeKey])
   @@index([workOrderId, createdAt])
   @@index([organizationId])
+  @@index([organizationId, createdAt])
 }
 
 model Area {

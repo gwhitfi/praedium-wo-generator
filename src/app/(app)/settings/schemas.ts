@@ -1,5 +1,6 @@
 import { z } from "zod";
 import { optionalEmail, optionalPhone } from "@/lib/validation";
+import { NOTIFICATION_KEYS } from "@/lib/notificationTypes";
 
 export const organizationInput = z.object({
     name: z.string().trim().min(1, "Enter an organization name").max(100),
@@ -11,6 +12,13 @@ export const organizationInput = z.object({
 export const aiPreferenceInput = z.object({
     aiEnabled: z.enum(["on", "off"]).transform((value) => value === "on"),
 });
+
+// The notifications form: one checkbox per option, each named "types" with the option's key as its value.
+export const notificationPreferenceInput = z.object({
+    types: z.array(z.enum(NOTIFICATION_KEYS)).max(NOTIFICATION_KEYS.length),
+});
+
+export type NotificationFormState = { ok?: boolean; error?: string };
 
 export type OrganizationFormState = {
     ok?: boolean;

@@ -9,11 +9,14 @@ import { z } from "zod";
 import {
     aiPreferenceInput,
     apiKeyNameInput,
+    notificationPreferenceInput,
     organizationInput,
     revokeApiKeyInput,
     type ApiKeyFormState,
+    type NotificationFormState,
     type OrganizationFormState,
 } from "./schemas";
+import { storedNotificationTypes } from "@/lib/notificationTypes";
 
 // Sent back on failure so the form can refill what the user typed.
 function submittedValues(formData: FormData) {
@@ -69,6 +72,30 @@ export async function setAiPreference(formData: FormData): Promise<void> {
         data: { aiEnabled: parsed.data.aiEnabled },
     });
     revalidatePath("/", "layout");
+}
+
+// Per user, like the AI switch. Applies in every organization the user belongs to.
+export async function setNotificationPreferences(
+    prevState: NotificationFormState,
+    formData: FormData,
+): Promise<NotificationFormState> {
+    const result = await getCurrentUser();
+    if (result.state !== "ready") throw new Error("Not authorized");
+
+    const parsed = notificationPreferenceInput.safeParse({ types: formData.getAll("types") });
+    if (!parsed.success) return { error: "Could not save. Reload the page and try again." };
+
+    try {
+        await prisma.user.update({
+            where: { id: result.user.id },
+            data: { notificationTypes: storedNotificationTypes(parsed.data.types) },
+        });
+    } catch (error) {
+        console.error("setNotificationPreferences failed", error);
+        return { error: "Could not save. Try again." };
+    }
+    revalidatePath("/", "layout");
+    return { ok: true };
 }
 
 async function requireAdmin() {

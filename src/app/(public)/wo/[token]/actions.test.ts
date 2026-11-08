@@ -12,7 +12,7 @@ vi.mock("@/lib/contractorVerify", () => ({ startVerification: vi.fn(), checkCode
 vi.mock("@clerk/nextjs/server", () => ({ auth: vi.fn() }));
 vi.mock("@/lib/prisma", () => ({
     default: {
-        lineItem: { findFirst: vi.fn(), updateMany: vi.fn() },
+        lineItem: { findFirst: vi.fn(), updateMany: vi.fn(), count: vi.fn() },
         workOrder: { findUnique: vi.fn(), updateMany: vi.fn() },
         $transaction: vi.fn(),
     },
@@ -79,6 +79,7 @@ beforeEach(() => {
     vi.mocked(rateLimit).mockResolvedValue({ ok: true, remaining: 1, retryAfterSeconds: 0 });
     vi.mocked(prisma.lineItem.updateMany).mockResolvedValue({ count: 1 } as never);
     vi.mocked(prisma.workOrder.updateMany).mockResolvedValue({ count: 1 } as never);
+    vi.mocked(prisma.lineItem.count).mockResolvedValue(2);
     vi.mocked(prisma.$transaction).mockImplementation((async (queries: Promise<unknown>[]) =>
         Promise.all(queries)) as never);
 });
@@ -92,6 +93,8 @@ const openFilter = {
 
 describe("toggleLineItem", () => {
     it("logs a check-off with the item and area", async () => {
+        withLineItem({}, { status: "IN_PROGRESS" });
+
         await toggleLineItem("token1", "li1");
 
         expect(logEvent).toHaveBeenCalledWith({
@@ -102,12 +105,45 @@ describe("toggleLineItem", () => {
         });
     });
 
+    it("marks the check-off that started the work order", async () => {
+        await toggleLineItem("token1", "li1");
+
+        expect(logEvent).toHaveBeenCalledWith(
+            expect.objectContaining({ detail: { item: "Replace faucet", area: "Kitchen", started: true } }),
+        );
+    });
+
+    it("doesn't mark it started when the work order had already moved on", async () => {
+        vi.mocked(prisma.workOrder.updateMany).mockResolvedValue({ count: 0 } as never);
+
+        await toggleLineItem("token1", "li1");
+
+        expect(logEvent).toHaveBeenCalledWith(
+            expect.objectContaining({ detail: { item: "Replace faucet", area: "Kitchen" } }),
+        );
+    });
+
+    it("marks the check-off that finished its area", async () => {
+        withLineItem({ areaId: "area1" }, { status: "IN_PROGRESS" });
+        vi.mocked(prisma.lineItem.count).mockResolvedValue(0);
+
+        await toggleLineItem("token1", "li1");
+
+        expect(prisma.lineItem.count).toHaveBeenCalledWith({ where: { areaId: "area1", completed: false } });
+        expect(logEvent).toHaveBeenCalledWith(
+            expect.objectContaining({ detail: { item: "Replace faucet", area: "Kitchen", areaCompleted: true } }),
+        );
+    });
+
     it("logs unchecking", async () => {
         withLineItem({ completed: true });
 
         await toggleLineItem("token1", "li1");
 
-        expect(logEvent).toHaveBeenCalledWith(expect.objectContaining({ type: "ITEM_UNCHECKED" }));
+        expect(logEvent).toHaveBeenCalledWith(
+            expect.objectContaining({ type: "ITEM_UNCHECKED", detail: { item: "Replace faucet", area: "Kitchen" } }),
+        );
+        expect(prisma.lineItem.count).not.toHaveBeenCalled();
     });
 
     it("doesn't log on a wrong token", async () => {

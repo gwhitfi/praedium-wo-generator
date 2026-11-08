@@ -1,10 +1,25 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
-import { formatDueDate, formatTimestamp, todayInAppTimeZone } from "./dates";
+import { formatDueDate, formatFullDate, formatFullTimestamp, formatTimestamp, todayInAppTimeZone } from "./dates";
 
 afterEach(() => {
     vi.useRealTimers();
     vi.unstubAllEnvs();
     vi.restoreAllMocks();
+});
+
+describe("formatFullTimestamp", () => {
+    it("writes the long date and time in APP_TIMEZONE, with no space before AM/PM", () => {
+        vi.stubEnv("APP_TIMEZONE", "America/New_York");
+        expect(formatFullTimestamp(new Date("2026-10-26T16:22:00Z"))).toBe("October 26, 2026 12:22PM");
+        expect(formatFullTimestamp(new Date("2026-11-07T04:05:00Z"))).toBe("November 6, 2026 11:05PM");
+    });
+});
+
+describe("formatFullDate", () => {
+    it("writes a stored date-only value as a long date, whatever APP_TIMEZONE is", () => {
+        vi.stubEnv("APP_TIMEZONE", "America/Los_Angeles");
+        expect(formatFullDate(new Date("2026-11-05T00:00:00Z"))).toBe("November 5, 2026");
+    });
 });
 
 describe("appTimeZone", () => {

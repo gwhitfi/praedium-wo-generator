@@ -1,5 +1,25 @@
 import { describe, expect, it } from "vitest";
-import { aiPreferenceInput, apiKeyNameInput, organizationInput, revokeApiKeyInput } from "./schemas";
+import {
+    aiPreferenceInput,
+    apiKeyNameInput,
+    notificationPreferenceInput,
+    organizationInput,
+    revokeApiKeyInput,
+} from "./schemas";
+
+describe("notificationPreferenceInput", () => {
+    it("accepts known options, including none", () => {
+        expect(notificationPreferenceInput.parse({ types: ["completed", "overdue"] })).toEqual({
+            types: ["completed", "overdue"],
+        });
+        expect(notificationPreferenceInput.parse({ types: [] })).toEqual({ types: [] });
+    });
+
+    it("rejects unknown options", () => {
+        expect(notificationPreferenceInput.safeParse({ types: ["completed", "everything"] }).success).toBe(false);
+        expect(notificationPreferenceInput.safeParse({ types: ["none"] }).success).toBe(false);
+    });
+});
 
 describe("aiPreferenceInput", () => {
     it("turns on and off into a boolean", () => {

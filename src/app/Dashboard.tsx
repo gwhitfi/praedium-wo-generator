@@ -2,6 +2,7 @@ import Link from "next/link";
 import prisma from "@/lib/prisma";
 import type { Organization, User } from "@/generated/prisma/client";
 import Nav from "@/components/Nav";
+import { navUnreadCount } from "@/lib/notifications";
 import AiPrompt from "./AiPrompt";
 import PageHeader from "@/components/list/PageHeader";
 import { WorkOrderList } from "@/components/WorkOrderRow";
@@ -35,6 +36,7 @@ export default async function Dashboard({
         propertyCount,
         contractorCount,
         workOrderCount,
+        unreadCount,
     ] = await Promise.all([
         prisma.workOrder.count({ where: { ...base, ...WORK_ORDER_FILTERS.draft.where() } }),
         prisma.workOrder.count({ where: { ...base, ...WORK_ORDER_FILTERS.active.where() } }),
@@ -56,6 +58,7 @@ export default async function Dashboard({
         prisma.property.count({ where: base }),
         prisma.contact.count({ where: { ...base, contactType: "CONTRACTOR" } }),
         prisma.workOrder.count({ where: { organizationId: organization.id } }),
+        navUnreadCount(user, organization.id),
     ]);
 
     const needsAttention = [...completedOrders, ...overdueOrders].slice(0, 10);
@@ -71,7 +74,7 @@ export default async function Dashboard({
 
     return (
         <div className="text-foreground">
-            <Nav showAi={user.aiEnabled !== false} />
+            <Nav showAi={user.aiEnabled !== false} unreadCount={unreadCount} />
             <main className="mx-auto max-w-5xl px-4 py-10">
                 <PageHeader
                     title={organization.name}

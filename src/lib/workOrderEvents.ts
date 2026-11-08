@@ -35,7 +35,9 @@ type DetailsByType = {
     // `tenantNotified` is set only when the tenant email was queued.
     STARTED: { tenantNotified?: true };
     OPENED: null;
-    ITEM_CHECKED: ItemRef;
+    // Set only by the contractor page: `started` when this check moved the work order from Sent to In progress,
+    // `areaCompleted` when it was the area's last open item. Notifications read both.
+    ITEM_CHECKED: ItemRef & { started?: true; areaCompleted?: true };
     ITEM_UNCHECKED: ItemRef;
     NOTE_SAVED: ItemRef & { note: string };
     COMPLETED_BY_CONTRACTOR: { notes: string | null };

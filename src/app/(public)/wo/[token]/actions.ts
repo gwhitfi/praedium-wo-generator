@@ -169,7 +169,7 @@ export async function toggleLineItem(token: string, lineItemId: string): Promise
 
     // Conditional on the work order still being open under this token, in case it was closed, cancelled, archived or
     // re-tokened since the check above.
-    const [updated] = await prisma.$transaction([
+    const [updated, started] = await prisma.$transaction([
         prisma.lineItem.updateMany({
             where: { id: lineItem.id, area: { workOrder: openWorkOrderWhere(input.token) } },
             data: { completed, completedAt: completed ? new Date() : null },
@@ -184,13 +184,25 @@ export async function toggleLineItem(token: string, lineItemId: string): Promise
             : []),
     ]);
     if (updated.count === 0) throw new Error("Work order is not open");
-    await logEvent({
-        type: completed ? "ITEM_CHECKED" : "ITEM_UNCHECKED",
-        workOrderId: workOrder.id,
-        organizationId: workOrder.organizationId,
-        actor: { kind: "contractor", name: workOrder.contractorName },
-        detail: { item: lineItem.description, area: lineItem.area.name },
-    });
+    const ref = { item: lineItem.description, area: lineItem.area.name };
+    const actor = { kind: "contractor", name: workOrder.contractorName } as const;
+    const ids = { workOrderId: workOrder.id, organizationId: workOrder.organizationId };
+    if (completed) {
+        const areaCompleted =
+            (await prisma.lineItem.count({ where: { areaId: lineItem.areaId, completed: false } })) === 0;
+        await logEvent({
+            type: "ITEM_CHECKED",
+            ...ids,
+            actor,
+            detail: {
+                ...ref,
+                ...(started && started.count > 0 ? { started: true as const } : {}),
+                ...(areaCompleted ? { areaCompleted: true as const } : {}),
+            },
+        });
+    } else {
+        await logEvent({ type: "ITEM_UNCHECKED", ...ids, actor, detail: ref });
+    }
 
     revalidate(input.token, workOrder.id);
 }

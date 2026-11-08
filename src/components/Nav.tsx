@@ -2,6 +2,7 @@ import Link from "next/link";
 import Logo from "./Logo";
 import { type NavLink } from "./MobileMenu";
 import NavMenu from "./NavMenu";
+import NotificationBell from "./NotificationBell";
 import { INFO_LINKS } from "@/lib/defaults";
 
 const links: NavLink[] = [
@@ -10,12 +11,13 @@ const links: NavLink[] = [
     { href: "/properties", label: "Properties" },
 ];
 
+const INBOX_LINK: NavLink = { href: "/inbox", label: "Inbox" };
 const SETTINGS_LINK: NavLink = { href: "/settings", label: "Settings" };
 
 const AI_LINK: NavLink = { href: "/work-orders/new/ai", label: "Praedium Bot: draft a work order with AI" };
 
 // `showAi` is false when the user turned Praedium Bot off in Settings.
-export default function Nav({ showAi }: { showAi: boolean }) {
+export default function Nav({ showAi, unreadCount }: { showAi: boolean; unreadCount: number }) {
     return (
         <header className="sticky top-0 z-40 border-b border-line bg-background print:hidden">
             <div className="mx-auto flex max-w-5xl items-center justify-between gap-4 px-4 py-4">
@@ -40,7 +42,8 @@ export default function Nav({ showAi }: { showAi: boolean }) {
                             <SparklesIcon />
                         </Link>
                     )}
-                    <NavMenu mobileLinks={links} links={[SETTINGS_LINK, ...INFO_LINKS]} />
+                    <NotificationBell unreadCount={unreadCount} />
+                    <NavMenu mobileLinks={links} links={[INBOX_LINK, SETTINGS_LINK, ...INFO_LINKS]} />
                 </div>
             </div>
         </header>
