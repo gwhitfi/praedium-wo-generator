@@ -99,6 +99,7 @@ describe("emailWorkOrderToContractor", () => {
         [{ archived: true }, "Archived work orders can't be emailed"],
         [{ status: "COMPLETED" }, "Only open work orders can be emailed"],
         [{ contractor: null }, "Assign a contractor before sending"],
+        [{ inHouse: true, contractor: null }, "This work order is handled in-house, so there's no contractor to email"],
         [{ contractor: { ...contractor, email: " " } }, "Joe's Plumbing has no email address"],
     ])("refuses %o", async (overrides, error) => {
         withWorkOrder(overrides);

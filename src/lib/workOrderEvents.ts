@@ -32,6 +32,8 @@ type DetailsByType = {
     AREA_ADDED: { area: string };
     AREA_REMOVED: { area: string };
     AREA_RENAMED: { from: string; to: string };
+    // `tenantNotified` is set only when the tenant email was queued.
+    STARTED: { tenantNotified?: true };
     OPENED: null;
     ITEM_CHECKED: ItemRef;
     ITEM_UNCHECKED: ItemRef;

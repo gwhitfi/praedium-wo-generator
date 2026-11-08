@@ -9,17 +9,21 @@ import {
     reopenWorkOrder,
     closeWorkOrder,
     cancelWorkOrder,
+    startWorkOrder,
 } from "../actions";
 import { DeliveryMethod } from "@/generated/prisma/enums";
 
 export default function StatusActions({
     workOrderId,
     status,
+    inHouse,
     hasContractor,
     contractor,
 }: {
     workOrderId: string;
     status: string;
+    // Handled by the office: started instead of sent, with no contractor emails.
+    inHouse: boolean;
     hasContractor: boolean;
     contractor: { id: string; name: string; email: string | null } | null;
 }) {
@@ -111,9 +115,28 @@ export default function StatusActions({
         }
     }
 
+    function handleStart() {
+        run(async () => {
+            const res = await startWorkOrder(workOrderId);
+            if (!res.ok) throw new Error(res.error);
+        });
+    }
+
     return (
         <div className="flex flex-wrap items-center gap-2">
-            {status === "DRAFT" && (
+            {status === "DRAFT" && inHouse && (
+                <>
+                    <button
+                        className="shrink-0 rounded-md bg-accent px-4 py-2 text-sm font-medium text-on-accent hover:bg-accent-hover hover:cursor-pointer disabled:opacity-40 disabled:hover:cursor-not-allowed"
+                        onClick={handleStart}
+                        disabled={pending}
+                    >
+                        Start work
+                    </button>
+                    <span className="text-sm text-subtle">In-house: nothing is sent to a contractor.</span>
+                </>
+            )}
+            {status === "DRAFT" && !inHouse && (
                 <>
                     {hasContractor && emailControls}
                     <button
@@ -129,7 +152,7 @@ export default function StatusActions({
             )}
             {(status === "SENT" || status === "IN_PROGRESS") && (
                 <>
-                    {emailControls}
+                    {!inHouse && emailControls}
                     <button
                         className="shrink-0 rounded-md border border-line-strong px-4 py-2 text-sm text-foreground hover:bg-surface-hover hover:cursor-pointer disabled:opacity-40 disabled:hover:cursor-not-allowed"
                         onClick={() => run(() => markWorkOrderCompleted(workOrderId))}
@@ -141,9 +164,11 @@ export default function StatusActions({
                         <span className="flex flex-wrap items-center gap-2 text-sm">
                             <span className="text-secondary">
                                 Cancel this work order?{" "}
-                                {contractor?.email
-                                    ? `${contractor.name} will be emailed and their link will stop working.`
-                                    : "The contractor link will stop working."}
+                                {inHouse
+                                    ? ""
+                                    : contractor?.email
+                                      ? `${contractor.name} will be emailed and their link will stop working.`
+                                      : "The contractor link will stop working."}
                             </span>
                             <input
                                 type="text"
@@ -217,7 +242,7 @@ export default function StatusActions({
                     Reopen
                 </button>
             )}
-            {(status === "SENT" || status === "IN_PROGRESS") && missingEmailHint}
+            {(status === "SENT" || status === "IN_PROGRESS") && !inHouse && missingEmailHint}
             {sentTo && <p className="w-full text-sm text-success">Sent to {sentTo}.</p>}
             {error && <p className="w-full text-sm text-danger">{error}</p>}
         </div>

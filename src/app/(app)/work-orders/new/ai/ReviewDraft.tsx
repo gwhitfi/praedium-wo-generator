@@ -2,7 +2,16 @@
 
 import { useRouter } from "next/navigation";
 import { useState, useTransition, type ReactNode } from "react";
-import { inputClass, labelClass, PRIORITY_LABELS, PRIORITY_STYLES, unitLabel } from "@/lib/defaults";
+import {
+    assignableContactLabel,
+    IN_HOUSE,
+    IN_HOUSE_OPTION_LABEL,
+    inputClass,
+    labelClass,
+    PRIORITY_LABELS,
+    PRIORITY_STYLES,
+    unitLabel,
+} from "@/lib/defaults";
 import type { ContractorOption, PropertyOption } from "@/lib/workOrderLookup";
 import type { MatchResult } from "@/lib/workOrderMatch";
 import { createDraftFromBot } from "./actions";
@@ -27,8 +36,10 @@ const stillListed = <T extends { id: string }>(id: string, list: T[]) =>
 const propertyLabel = (p: PropertyOption) =>
     p.displayName === p.addressLine1 ? p.displayName : `${p.displayName} (${p.addressLine1})`;
 
-const contractorLabel = (c: ContractorOption) =>
-    c.company && c.company !== c.displayName ? `${c.displayName} (${c.company})` : c.displayName;
+const contractorLabel = (c: ContractorOption) => {
+    const name = assignableContactLabel(c);
+    return c.company && c.company !== c.displayName ? `${name} (${c.company})` : name;
+};
 
 export default function ReviewDraft({ result, properties, contractors, onCreateStart, onCreateFailed }: Props) {
     const { draft, property: propertyMatch, contractor: contractorMatch } = result;
@@ -50,7 +61,9 @@ export default function ReviewDraft({ result, properties, contractors, onCreateS
     const units = properties.find((p) => p.id === selectedPropertyId)?.units ?? [];
     const selectedUnitId = stillListed(unitId, units);
     const effectiveUnitId = units.length === 1 ? units[0].id : selectedUnitId || null;
-    const selectedContractorId = stillListed(contractorId, contractors);
+    // IN_HOUSE means the office handles it itself: no contractor.
+    const inHouse = contractorId === IN_HOUSE;
+    const selectedContractorId = inHouse ? IN_HOUSE : stillListed(contractorId, contractors);
 
     function changeProperty(id: string) {
         setPropertyId(id);
@@ -65,7 +78,8 @@ export default function ReviewDraft({ result, properties, contractors, onCreateS
             const response = await createDraftFromBot({
                 propertyId: selectedPropertyId,
                 unitId: effectiveUnitId,
-                contractorId: selectedContractorId || null,
+                contractorId: inHouse ? null : selectedContractorId || null,
+                inHouse,
                 title,
                 notes,
                 dueDate: dueDate || null,
@@ -128,6 +142,7 @@ export default function ReviewDraft({ result, properties, contractors, onCreateS
                 value={selectedContractorId}
                 onChange={setContractorId}
                 emptyOption="No contractor yet"
+                extraOption={{ value: IN_HOUSE, label: IN_HOUSE_OPTION_LABEL }}
                 addHref="/contacts/new"
                 onRefresh={refreshLists}
                 refreshing={refreshing}
@@ -210,6 +225,8 @@ type MatchFieldProps<T extends { id: string }> = {
     value: string;
     onChange: (id: string) => void;
     emptyOption?: string;
+    // A choice that isn't a record, listed after the empty option (the contractor field's "In-house").
+    extraOption?: { value: string; label: string };
     addHref: string;
     onRefresh: () => void;
     refreshing: boolean;
@@ -226,6 +243,7 @@ function MatchField<T extends { id: string }>({
     value,
     onChange,
     emptyOption,
+    extraOption,
     addHref,
     onRefresh,
     refreshing,
@@ -272,6 +290,7 @@ function MatchField<T extends { id: string }>({
                 {note && <span className="block text-xs font-normal text-warning">{note}</span>}
                 <select value={value} onChange={(e) => onChange(e.target.value)} className={inputClass}>
                     <option value="">{emptyOption ?? `Select a ${noun}`}</option>
+                    {extraOption && <option value={extraOption.value}>{extraOption.label}</option>}
                     {candidates.length > 0 ? (
                         <>
                             <optgroup label="Best matches">

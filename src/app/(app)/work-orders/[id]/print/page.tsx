@@ -67,7 +67,9 @@ export default async function WorkOrderPrint({ params }: { params: Promise<{ id:
 
                     <div>
                         <h3 className="mb-1 font-semibold text-neutral-600">Contractor</h3>
-                        {workOrder.contractorName ? (
+                        {workOrder.inHouse ? (
+                            <p>In-house</p>
+                        ) : workOrder.contractorName ? (
                             <>
                                 <p>{workOrder.contractorName}</p>
                                 {workOrder.contractorPhone && <p>{formatPhone(workOrder.contractorPhone)}</p>}

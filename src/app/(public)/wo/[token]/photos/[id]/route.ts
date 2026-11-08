@@ -21,6 +21,7 @@ export async function GET(
                     workOrder: {
                         publicToken: input.data.token,
                         archived: false,
+                        inHouse: false,
                         status: { notIn: ["DRAFT", "CANCELLED"] },
                     },
                 },

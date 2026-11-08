@@ -143,7 +143,7 @@ describe("createDraftFromBot", () => {
         expect(createDraftWorkOrder).toHaveBeenCalledWith({
             organizationId: "org1",
             actor: { kind: "office", user: { id: "user1" } },
-            draft: { ...draft, title: "Leak under kitchen sink", notes: null },
+            draft: { ...draft, title: "Leak under kitchen sink", notes: null, inHouse: false },
             source: "bot",
         });
         expect(revalidatePath).toHaveBeenCalledWith("/work-orders");

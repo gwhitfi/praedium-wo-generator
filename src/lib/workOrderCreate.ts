@@ -64,6 +64,9 @@ export async function createDraftWorkOrder(args: {
 }): Promise<CreateDraftWorkOrderResult> {
     const { organizationId, actor, draft, source } = args;
     const { propertyId, unitId, contractorId, dueDate, areas, ...fields } = draft;
+    if (fields.inHouse && contractorId) {
+        return { ok: false, error: "Choose a contractor or in-house, not both." };
+    }
 
     const [property, unit, contractor] = await Promise.all([
         prisma.property.findFirst({ where: { id: propertyId, organizationId, archived: false } }),

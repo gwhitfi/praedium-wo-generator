@@ -183,6 +183,11 @@ export default async function Contacts({ searchParams }: { searchParams: Promise
                                                 <Cell className="basis-full truncate font-medium text-foreground">
                                                     {contact.displayName}
                                                     <Favorite show={contact.favorite} />
+                                                    {contact.inHouse && (
+                                                        <span className="ml-2 rounded-full border border-line-strong px-1.5 py-0.5 text-xs font-normal text-muted">
+                                                            In-house
+                                                        </span>
+                                                    )}
                                                 </Cell>
                                                 <Cell className="basis-full truncate text-muted">
                                                     {section.detail(contact)}

@@ -5,11 +5,13 @@ import { tooLong } from "@/lib/validation";
 const id = z.string().min(1).max(100);
 
 // The draft after the user has confirmed it on the review screen: real IDs instead of the words the AI heard.
-// Like the work order form, the unit and contractor can be left empty and filled in later.
+// Like the work order form, the unit and contractor can be left empty and filled in later. inHouse means the office
+// handles it itself; it can't be combined with a contractorId (createDraftWorkOrder refuses that).
 export const confirmedDraft = z.object({
     propertyId: id,
     unitId: id.nullable(),
     contractorId: id.nullable(),
+    inHouse: z.boolean().default(false),
     title: z.string().trim().min(1, "Enter a title").max(200, tooLong(200)),
     notes: z
         .string()

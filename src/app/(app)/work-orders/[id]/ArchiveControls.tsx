@@ -10,11 +10,14 @@ export default function ArchiveControls({
     workOrderId,
     archived,
     willCancel = false,
+    inHouse = false,
     contractorName = null,
 }: {
     workOrderId: string;
     archived: boolean;
     willCancel?: boolean;
+    // In-house work orders have no contractor to email and no link.
+    inHouse?: boolean;
     contractorName?: string | null;
 }) {
     const [confirming, setConfirming] = useState(false);
@@ -59,9 +62,13 @@ export default function ArchiveControls({
             {confirming ? (
                 <span className="flex flex-wrap items-center gap-2 text-sm">
                     <span className="text-secondary">
-                        {willCancel
-                            ? `Archive this work order? It will be cancelled, ${contractorName ?? "the contractor"} will be emailed, and their link will stop working.`
-                            : "Archive this work order? It will be hidden from lists and the contractor link will stop working."}
+                        {inHouse
+                            ? willCancel
+                                ? "Archive this work order? It will be cancelled and hidden from lists."
+                                : "Archive this work order? It will be hidden from lists."
+                            : willCancel
+                              ? `Archive this work order? It will be cancelled, ${contractorName ?? "the contractor"} will be emailed, and their link will stop working.`
+                              : "Archive this work order? It will be hidden from lists and the contractor link will stop working."}
                     </span>
                     <button
                         className="text-danger hover:text-danger/80 hover:cursor-pointer disabled:opacity-40"

@@ -31,7 +31,8 @@ export default async function NewWorkOrder({ searchParams }: { searchParams: Pro
             archived: false,
             contactType: { in: ["CONTRACTOR", "OTHER"] },
         },
-        orderBy: [{ favorite: "desc" }, { displayName: "asc" }],
+        // In-house staff first, then favorites.
+        orderBy: [{ inHouse: "desc" }, { favorite: "desc" }, { displayName: "asc" }],
     });
 
     const tenants = await prisma.contact.findMany({

@@ -20,6 +20,27 @@ describe("tenantNotifiedEmail", () => {
         );
     });
 
+    it("says the office's own team will be in touch when there's no contractor (in-house)", () => {
+        const email = tenantNotifiedEmail({ ...base, contractor: null });
+        expect(email.subject).toBe(
+            "Acme Property will contact you about a repair at 12 Oak St, Unit 2, Greenville, SC 29601",
+        );
+        expect(email.text).toContain("Acme Property's own team is handling a work order");
+        expect(email.text).not.toContain("Contractor:");
+        expect(email.html).not.toContain("Contractor");
+        expect(email.html).toContain("Acme Property will contact you</h1>");
+    });
+
+    it("escapes the organization's name in the in-house heading", () => {
+        const email = tenantNotifiedEmail({
+            ...base,
+            contractor: null,
+            organization: { ...organization, name: hostile("org") },
+        });
+        expect(email.html).not.toContain(hostile("org"));
+        expect(email.html).toContain(`${escapeHtml(hostile("org"))} will contact you</h1>`);
+    });
+
     it("names the contractor and their company, and the work", () => {
         const email = tenantNotifiedEmail(base);
         expect(email.text).toContain("Contractor: Joe Smith (Joe's Plumbing)\n");

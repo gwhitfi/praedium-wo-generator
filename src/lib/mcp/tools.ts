@@ -28,7 +28,15 @@ import {
     updateProperty,
     updatePropertyInput,
 } from "./records";
-import { archiveWorkOrder, cancelInput, cancelWorkOrder, restoreWorkOrder, sendWorkOrder, statusInput } from "./status";
+import {
+    archiveWorkOrder,
+    cancelInput,
+    cancelWorkOrder,
+    restoreWorkOrder,
+    sendWorkOrder,
+    startWorkOrder,
+    statusInput,
+} from "./status";
 import {
     addLineItem,
     addLineItemInput,
@@ -264,7 +272,9 @@ export function buildMcpServer({
                 "Create a DRAFT work order. It is not sent: nobody, including the contractor and tenant, is " +
                 "notified until it is sent. Get propertyId (and a unitId from that property's units) from " +
                 "search_properties and contractorId from search_contacts with type ASSIGNABLE; unitId, " +
-                "contractorId, notes and dueDate (YYYY-MM-DD) are optional. Each area needs at least one line item. " +
+                "contractorId, notes and dueDate (YYYY-MM-DD) are optional. Set inHouse: true (and no contractorId) " +
+                "when the office's own team does the work: it gets no contractor link and is started with " +
+                "start_work_order instead of sent. Each area needs at least one line item. " +
                 "Returns the new work order's id, job number, status and link.",
             inputSchema: createInput,
         },
@@ -341,7 +351,8 @@ export function buildMcpServer({
                 "Create a contact of type TENANT, CONTRACTOR or OTHER. Call search_contacts first so you don't " +
                 "add a duplicate. A tenant needs unitId, from the property's units in search_properties; it is " +
                 "ignored for the other types. email and phone are optional but validated (phone is a 10-digit US " +
-                "number). Returns { id, displayName, contactType, url }.",
+                "number). inHouse: true marks a contractor or other contact as the organization's own employee " +
+                "(a label; tenants can't be). Returns { id, displayName, contactType, url }.",
             inputSchema: createContactInput,
         },
         async (input) => {
@@ -377,9 +388,12 @@ export function buildMcpServer({
             description:
                 "Edit an open work order (Draft, Sent or In progress, not archived). Only the fields given change; " +
                 "null clears notes, dueDate (YYYY-MM-DD), unitId or contractorId. unitId must be one of the work " +
-                "order's property's units; contractorId comes from search_contacts with type ASSIGNABLE. Changing " +
+                "order's property's units; contractorId comes from search_contacts with type ASSIGNABLE. " +
+                "inHouse: true hands the work order to the office's own team and removes the contractor; giving a " +
+                "contractorId hands it back. Changing " +
                 "the contractor on a work order that was already sent makes a new contractor link, and the old " +
-                "link stops working. To send, cancel, archive or restore, use those tools if this key has them; " +
+                "link stops working. To send, start, cancel, archive or restore, use those tools if this key has " +
+                "them; " +
                 "otherwise it's done in Praedium. Returns { id, jobNumber, status, changed, newContractorLink, url }.",
             inputSchema: updateWorkOrderInput,
         },
@@ -525,7 +539,8 @@ function registerStatusTools(
             description:
                 "Email the contractor the work order link. Works on Draft, Sent and In progress work orders that " +
                 "aren't archived, so it can also re-send, for example after a contractor change. The contractor " +
-                "needs an email address. On the first send, the tenant is emailed too when the work order has " +
+                "needs an email address; in-house work orders can't be sent (use start_work_order). On the first " +
+                "send, the tenant is emailed too when the work order has " +
                 'tenant notification on. Confirm with the user first. Returns { id, jobNumber, status: "SENT", ' +
                 "sentTo, resent, tenantNotified }.",
             inputSchema: statusInput,
@@ -533,6 +548,24 @@ function registerStatusTools(
         async (input) => {
             if (!user) return errorResult(MISSING_CREATOR_ERROR);
             const result = await sendWorkOrder(organization, user, input);
+            if (!result.ok) return errorResult(result.error);
+            return jsonResult(result.workOrder);
+        },
+    );
+
+    server.registerTool(
+        "start_work_order",
+        {
+            description:
+                "Start an in-house Draft work order (inHouse: true), the counterpart of send_work_order for work " +
+                "the office's own team does: it becomes In progress and nothing is sent to a contractor. The " +
+                "tenant is emailed when the work order has tenant notification on. Confirm with the user first. " +
+                'Returns { id, jobNumber, status: "IN_PROGRESS", tenantNotified }.',
+            inputSchema: statusInput,
+        },
+        async (input) => {
+            if (!user) return errorResult(MISSING_CREATOR_ERROR);
+            const result = await startWorkOrder(organization, user, input);
             if (!result.ok) return errorResult(result.error);
             return jsonResult(result.workOrder);
         },

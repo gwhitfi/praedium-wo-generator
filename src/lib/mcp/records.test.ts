@@ -164,6 +164,26 @@ describe("createContact", () => {
         expect(prisma.contact.create).not.toHaveBeenCalled();
     });
 
+    it("marks a contractor in-house, never a tenant, and defaults to not in-house", async () => {
+        vi.mocked(prisma.unit.findFirst).mockResolvedValue({ id: "unit1" } as never);
+        const data = () => vi.mocked(prisma.contact.create).mock.calls.at(-1)?.[0].data;
+
+        await createContact(
+            "org1",
+            createContactInput.parse({ contactType: "CONTRACTOR", displayName: "Sam", inHouse: true }),
+        );
+        expect(data()).toMatchObject({ inHouse: true });
+
+        await createContact(
+            "org1",
+            createContactInput.parse({ contactType: "TENANT", displayName: "Ana", unitId: "unit1", inHouse: true }),
+        );
+        expect(data()).toMatchObject({ inHouse: false });
+
+        await createContact("org1", createContactInput.parse({ contactType: "OTHER", displayName: "Handy Co" }));
+        expect(data()).toMatchObject({ inHouse: false });
+    });
+
     it("drops a unitId given for a non-tenant without looking it up", async () => {
         const input = createContactInput.parse({ contactType: "CONTRACTOR", displayName: "Joe", unitId: "unit1" });
 

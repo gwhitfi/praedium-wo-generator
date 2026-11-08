@@ -49,6 +49,7 @@ const workOrder = {
     organizationId: "org1",
     status: "SENT",
     archived: false,
+    inHouse: false,
     contractorName: "Marcus Hill",
     organization: { clerkOrgId: "clerk_org1", name: "Acme Property", email: null },
     areas: [],
@@ -82,7 +83,12 @@ beforeEach(() => {
         Promise.all(queries)) as never);
 });
 
-const openFilter = { publicToken: "token1", archived: false, status: { in: ["SENT", "IN_PROGRESS"] } };
+const openFilter = {
+    publicToken: "token1",
+    archived: false,
+    inHouse: false,
+    status: { in: ["SENT", "IN_PROGRESS"] },
+};
 
 describe("toggleLineItem", () => {
     it("logs a check-off with the item and area", async () => {
@@ -111,7 +117,7 @@ describe("toggleLineItem", () => {
         expect(logEvent).not.toHaveBeenCalled();
     });
 
-    it.each([{ archived: true }, { status: "COMPLETED" }, { status: "CLOSED" }])(
+    it.each([{ archived: true }, { status: "COMPLETED" }, { status: "CLOSED" }, { inHouse: true }])(
         "doesn't log when the work order isn't open (%o)",
         async (changes) => {
             withLineItem({}, changes);

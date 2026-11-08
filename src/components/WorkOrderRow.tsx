@@ -1,5 +1,5 @@
 import type { Prisma, WorkOrderStatus } from "@/generated/prisma/client";
-import { STATUS_COLORS, unitLabel, WORK_ORDER_STATUS_LABELS } from "@/lib/defaults";
+import { assigneeName, STATUS_COLORS, unitLabel, WORK_ORDER_STATUS_LABELS } from "@/lib/defaults";
 import { isOverdue, type WorkOrderSort } from "@/lib/workOrders";
 import type { SortLabel } from "@/lib/sorting";
 import { List, ListHeader, ListRow, Cell } from "@/components/list/List";
@@ -112,7 +112,7 @@ export default function WorkOrderRow({
                 {workOrder.unit && !workOrder.unit.isDefault && `, ${unitLabel(workOrder.unit.name)}`}
             </Cell>
             {!hideContractor && (
-                <Cell className="basis-full truncate text-muted">{workOrder.contractorName}</Cell>
+                <Cell className="basis-full truncate text-muted">{assigneeName(workOrder)}</Cell>
             )}
         </ListRow>
     );

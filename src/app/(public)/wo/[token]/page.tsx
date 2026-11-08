@@ -47,7 +47,14 @@ export default async function PublicWorkOrder({
         },
     });
 
-    if (!workOrder || workOrder.archived || workOrder.status === "DRAFT" || workOrder.status === "CANCELLED") {
+    // An in-house work order has no contractor, so its link never shows anything.
+    if (
+        !workOrder ||
+        workOrder.archived ||
+        workOrder.inHouse ||
+        workOrder.status === "DRAFT" ||
+        workOrder.status === "CANCELLED"
+    ) {
         notFound();
     }
 

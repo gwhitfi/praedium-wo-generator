@@ -9,6 +9,7 @@ import prisma from "@/lib/prisma";
 import { logEvent, type Actor } from "@/lib/workOrderEvents";
 import { formatWorkOrderAddress } from "@/lib/workOrders";
 import { emailWorkOrderToContractor } from "@/lib/workOrderSend";
+import { startInHouseWorkOrder } from "@/lib/workOrderStart";
 
 type OfficeUser = Extract<Actor, { kind: "office" }>["user"];
 type Failure = { ok: false; error: string };
@@ -58,6 +59,35 @@ export async function sendWorkOrder(
             sentTo: sent.to,
             resent: sent.resent,
             tenantNotified: sent.tenantNotified,
+        },
+    };
+}
+
+export type StartResult =
+    | { ok: true; workOrder: { id: string; jobNumber: string; status: "IN_PROGRESS"; tenantNotified: boolean } }
+    | Failure;
+
+// Starts an in-house draft, as the office's "Start work" button does: nothing goes to a contractor.
+export async function startWorkOrder(
+    organization: StatusOrganization,
+    user: OfficeUser,
+    input: z.output<typeof statusInput>,
+): Promise<StartResult> {
+    const started = await startInHouseWorkOrder({
+        organizationId: organization.id,
+        organization,
+        user,
+        workOrderId: input.id,
+    });
+    if (!started.ok) return started;
+
+    return {
+        ok: true,
+        workOrder: {
+            id: input.id,
+            jobNumber: started.jobNumber,
+            status: "IN_PROGRESS",
+            tenantNotified: started.tenantNotified,
         },
     };
 }

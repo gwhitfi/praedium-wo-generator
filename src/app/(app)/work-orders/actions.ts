@@ -10,6 +10,8 @@ import { DeliveryMethod, LineItemPriority, WorkOrderStatus } from "@/generated/p
 import { notifyContractorsCancelled } from "@/lib/emails/notifyCancelled";
 import { notifyTenant } from "@/lib/emails/notifyTenant";
 import { DELETE_NOT_CONFIRMED, isDeleteConfirmed } from "@/lib/confirmDelete";
+import { IN_HOUSE } from "@/lib/defaults";
+import { startInHouseWorkOrder } from "@/lib/workOrderStart";
 import { COLOR_SECTIONS_COOKIE, formatWorkOrderAddress, OPEN_STATUSES, SPLIT_VIEW_COOKIE } from "@/lib/workOrders";
 import { contractorSnapshot, findTenant, nextJobNumber, tenantSnapshot } from "@/lib/workOrderCreate";
 import { z } from "zod";
@@ -22,7 +24,10 @@ import { tooLong } from "@/lib/validation";
 
 async function readWorkOrderForm(formData: FormData, organizationId: string, propertyId: string) {
     const unitId = (formData.get("unitId") as string) || null;
-    const contractorId = (formData.get("contractorId") as string) || null;
+    // The contractor dropdown sends IN_HOUSE when the office handles the work itself.
+    const contractorValue = (formData.get("contractorId") as string) || null;
+    const inHouse = contractorValue === IN_HOUSE;
+    const contractorId = inHouse ? null : contractorValue;
     const dueDateRaw = (formData.get("dueDate") as string) || null;
 
     if (unitId) {
@@ -50,8 +55,14 @@ async function readWorkOrderForm(formData: FormData, organizationId: string, pro
         notifyTenant: formData.get("tenant") === "on",
         dueDate: dueDateRaw ? new Date(dueDateRaw) : null,
         unitId,
+        inHouse,
         contractor,
     };
+}
+
+// How a work order's assignment reads in the Activity: "In-house", the contractor's name, or null.
+function assignmentName(assignment: { inHouse: boolean; contractorName: string | null }): string | null {
+    return assignment.inHouse ? "In-house" : assignment.contractorName;
 }
 
 // Areas and line items can change only while the work order is open and not archived, matching the page's readOnly.
@@ -157,6 +168,7 @@ export async function updateWorkOrder(workOrderId: string, formData: FormData) {
 
     const { contractor, ...fields } = await readWorkOrderForm(formData, organizationId, workOrder.propertyId);
     const contractorChanged = (contractor?.id ?? null) !== workOrder.contractorId;
+    const inHouseChanged = fields.inHouse !== workOrder.inHouse;
     const unitChanged = fields.unitId !== workOrder.unitId;
     const newLink = contractorChanged && workOrder.status !== "DRAFT";
 
@@ -182,18 +194,21 @@ export async function updateWorkOrder(workOrderId: string, formData: FormData) {
         ].filter((field) => field !== false);
 
         if (changed.length > 0) await logEvent({ ...event, type: "EDITED", detail: { fields: changed } });
-        if (contractorChanged) {
+        if (contractorChanged || inHouseChanged) {
             await logEvent({
                 ...event,
                 type: "CONTRACTOR_CHANGED",
-                detail: { from: workOrder.contractorName, to: contractor?.displayName ?? null },
+                detail: {
+                    from: assignmentName(workOrder),
+                    to: assignmentName({ inHouse: fields.inHouse, contractorName: contractor?.displayName ?? null }),
+                },
             });
         }
     }
 
     revalidatePath(`/work-orders/${workOrderId}`);
     revalidatePath("/work-orders");
-    if (newLink) revalidatePath(`/wo/${workOrder.publicToken}`);
+    if (newLink || inHouseChanged) revalidatePath(`/wo/${workOrder.publicToken}`);
     redirect(`/work-orders/${workOrderId}${newLink && contractor ? "?contractorChanged=1" : ""}`);
 }
 
@@ -735,6 +750,7 @@ export async function sendWorkOrder(workOrderId: string, deliveryMethod: Deliver
     });
 
     if (!workOrder) throw new Error("Invalid work order");
+    if (workOrder.inHouse) throw new Error("In-house work orders are started, not sent");
     if (!workOrder.contractorId) throw new Error("Assign a contractor before sending");
     if (workOrder.archived) throw new Error("Archived work orders can't be sent");
     if (workOrder.status !== "DRAFT") throw new Error("Only draft work orders can be marked as sent");
@@ -788,6 +804,71 @@ export async function emailWorkOrder(workOrderId: string): Promise<EmailResult> 
     return { ok: true, to: sent.to };
 }
 
+// "Start work" on an in-house draft: it moves to In progress without sending anything to a contractor.
+export async function startWorkOrder(workOrderId: string): Promise<{ ok: true } | { ok: false; error: string }> {
+    const result = await getCurrentUser();
+    if (result.state !== "ready") return { ok: false, error: "Not authorized" };
+
+    const id = z.string().min(1).max(100).safeParse(workOrderId);
+    if (!id.success) return { ok: false, error: "Work order not found" };
+
+    const started = await startInHouseWorkOrder({
+        organizationId: result.organization.id,
+        organization: result.organization,
+        user: result.user,
+        workOrderId: id.data,
+    });
+    if (!started.ok) return started;
+
+    revalidatePath(`/work-orders/${id.data}`);
+    revalidatePath("/work-orders");
+    revalidatePath("/");
+    return { ok: true };
+}
+
+const checkOffInput = z.object({ lineItemId: z.string().min(1).max(100), completed: z.boolean() });
+
+// The office checks off line items itself on an in-house work order that has started (Sent or In progress, not
+// archived). Contractor work orders are checked off from the contractor page instead.
+export async function setLineItemCompleted(lineItemId: string, completed: boolean): Promise<void> {
+    const result = await getCurrentUser();
+    if (result.state !== "ready") throw new Error("Not authorized");
+
+    const input = checkOffInput.parse({ lineItemId, completed });
+    const organizationId = result.organization.id;
+    const lineItem = await prisma.lineItem.findFirst({
+        where: { id: input.lineItemId, area: { workOrder: { organizationId } } },
+        include: { area: { include: { workOrder: true } } },
+    });
+    if (!lineItem) throw new Error("Invalid line item");
+
+    const workOrder = lineItem.area.workOrder;
+    const started: WorkOrderStatus[] = ["SENT", "IN_PROGRESS"];
+    const startedInHouse = { inHouse: true, archived: false, status: { in: started } };
+    if (!workOrder.inHouse || workOrder.archived || !started.includes(workOrder.status)) {
+        throw new Error("Only started in-house work orders can be checked off here");
+    }
+    if (lineItem.completed === input.completed) return;
+
+    // Conditional, in case the work order was completed, cancelled or handed to a contractor since the check above.
+    const updated = await prisma.lineItem.updateMany({
+        where: { id: lineItem.id, area: { workOrder: { id: workOrder.id, organizationId, ...startedInHouse } } },
+        data: { completed: input.completed, completedAt: input.completed ? new Date() : null },
+    });
+    if (updated.count === 0) throw new Error("Only started in-house work orders can be checked off here");
+
+    await logEvent({
+        type: input.completed ? "ITEM_CHECKED" : "ITEM_UNCHECKED",
+        workOrderId: workOrder.id,
+        organizationId,
+        actor: { kind: "office", user: result.user },
+        detail: { item: lineItem.description, area: lineItem.area.name },
+    });
+
+    revalidatePath(`/work-orders/${workOrder.id}`);
+    revalidatePath("/work-orders");
+}
+
 export async function markWorkOrderCompleted(workOrderId: string) {
     const result = await getCurrentUser();
     if (result.state !== "ready") throw new Error("Not authorized");
@@ -829,7 +910,8 @@ export async function reopenWorkOrder(workOrderId: string) {
     await prisma.workOrder.update({
         where: { id: workOrderId },
         data: {
-            status: workOrder.sentAt ? "SENT" : "DRAFT",
+            // A started in-house work order goes back to In progress, since it's never sent.
+            status: workOrder.sentAt ? "SENT" : workOrder.startedAt ? "IN_PROGRESS" : "DRAFT",
             closedAt: null,
             completedAt: null,
             cancelledAt: null,
@@ -934,6 +1016,7 @@ export async function regeneratePublicToken(workOrderId: string) {
     });
 
     if (!workOrder) throw new Error("Invalid work order");
+    if (workOrder.inHouse) throw new Error("In-house work orders have no contractor link");
 
     await prisma.workOrder.update({
         where: { id: workOrderId },

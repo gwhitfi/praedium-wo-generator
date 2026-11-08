@@ -43,6 +43,9 @@ export async function emailWorkOrderToContractor({
     if (!["DRAFT", "SENT", "IN_PROGRESS"].includes(workOrder.status)) {
         return { ok: false, error: "Only open work orders can be emailed" };
     }
+    if (workOrder.inHouse) {
+        return { ok: false, error: "This work order is handled in-house, so there's no contractor to email" };
+    }
     if (!workOrder.contractor) return { ok: false, error: "Assign a contractor before sending" };
 
     const to = workOrder.contractor.email?.trim();

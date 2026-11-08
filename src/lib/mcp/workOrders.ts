@@ -4,7 +4,7 @@
 import type { DeliveryMethod, LineItemPriority, WorkOrderEventType, WorkOrderStatus } from "@/generated/prisma/client";
 import prisma from "@/lib/prisma";
 import { describeEvent } from "@/lib/activity";
-import { unitLabel } from "@/lib/defaults";
+import { assigneeName, unitLabel } from "@/lib/defaults";
 
 // Most history entries returned, as on the work order page.
 const ACTIVITY_LIMIT = 200;
@@ -28,6 +28,7 @@ export type WorkOrderRow = {
     title: string;
     property: string;
     unit: string | null;
+    // "In-house" for a work order the office handles itself.
     contractor: string | null;
     dueDate: string | null;
     createdAt: string;
@@ -46,6 +47,8 @@ export type WorkOrderDetail = {
     dueDate: string | null;
     deliveryMethod: DeliveryMethod | null;
     notifyTenant: boolean;
+    // Handled by the office: no contractor and no contractor link. Started with start_work_order, not sent.
+    inHouse: boolean;
     property: {
         id: string;
         name: string;
@@ -124,6 +127,7 @@ export async function listWorkOrders(organizationId: string, filters: WorkOrderL
             createdAt: true,
             updatedAt: true,
             contractorName: true,
+            inHouse: true,
             property: { select: { displayName: true } },
             unit: { select: { name: true } },
         },
@@ -137,7 +141,7 @@ export async function listWorkOrders(organizationId: string, filters: WorkOrderL
         title: row.title,
         property: row.property.displayName,
         unit: row.unit ? unitLabel(row.unit.name) : null,
-        contractor: row.contractorName,
+        contractor: assigneeName(row),
         dueDate: isoDate(row.dueDate),
         createdAt: row.createdAt.toISOString(),
         updatedAt: row.updatedAt.toISOString(),
@@ -177,6 +181,7 @@ export async function getWorkOrder(organizationId: string, id: string): Promise<
         dueDate: isoDate(workOrder.dueDate),
         deliveryMethod: workOrder.deliveryMethod,
         notifyTenant: workOrder.notifyTenant,
+        inHouse: workOrder.inHouse,
         property: {
             id: property.id,
             name: property.displayName,

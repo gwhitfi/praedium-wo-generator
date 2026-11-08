@@ -52,6 +52,7 @@ function workOrder(overrides: Record<string, unknown> = {}) {
         notes: null,
         dueDate: new Date("2026-11-20"),
         notifyTenant: false,
+        inHouse: false,
         contractorId: "joes",
         contractorName: "Joe's Plumbing",
         publicToken: "old-token",
@@ -150,6 +151,42 @@ describe("updateWorkOrder", () => {
             actor,
             detail: { from: "Joe's Plumbing", to: "Ace Electric" },
         });
+    });
+
+    it("hands a sent work order to the office: drops the contractor, kills the link, logs it", async () => {
+        vi.mocked(prisma.workOrder.findFirst).mockResolvedValue(workOrder() as never);
+
+        const result = await updateWorkOrder("org1", user, { id: "wo1", inHouse: true });
+
+        expect(result).toMatchObject({ ok: true, changed: ["contractor"], newContractorLink: true });
+        expect(prisma.contact.findFirst).not.toHaveBeenCalled();
+        const data = vi.mocked(prisma.workOrder.update).mock.calls[0][0].data;
+        expect(data).toMatchObject({ inHouse: true, contractorId: null, contractorName: null, contractorEmail: null });
+        expect(data.publicToken).not.toBe("old-token");
+        expect(logEvent).toHaveBeenCalledWith(
+            expect.objectContaining({ type: "CONTRACTOR_CHANGED", detail: { from: "Joe's Plumbing", to: "In-house" } }),
+        );
+    });
+
+    it("hands an in-house work order to a contractor, which ends in-house", async () => {
+        vi.mocked(prisma.workOrder.findFirst).mockResolvedValue(
+            workOrder({ inHouse: true, contractorId: null, contractorName: null, status: "IN_PROGRESS" }) as never,
+        );
+        vi.mocked(prisma.contact.findFirst).mockResolvedValue(ace as never);
+
+        const result = await updateWorkOrder("org1", user, { id: "wo1", contractorId: "ace" });
+
+        expect(result).toMatchObject({ ok: true, changed: ["contractor"], newContractorLink: true });
+        const data = vi.mocked(prisma.workOrder.update).mock.calls[0][0].data;
+        expect(data).toMatchObject({ inHouse: false, contractorId: "ace", contractorName: "Ace Electric" });
+        expect(logEvent).toHaveBeenCalledWith(
+            expect.objectContaining({ detail: { from: "In-house", to: "Ace Electric" } }),
+        );
+    });
+
+    it("won't take a contractor and inHouse: true together", () => {
+        expect(updateWorkOrderInput.safeParse({ id: "wo1", inHouse: true, contractorId: "ace" }).success).toBe(false);
+        expect(updateWorkOrderInput.safeParse({ id: "wo1", inHouse: false, contractorId: "ace" }).success).toBe(true);
     });
 
     it("changes the contractor on a draft without a new link or any event", async () => {

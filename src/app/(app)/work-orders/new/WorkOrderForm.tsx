@@ -2,7 +2,7 @@
 
 import { useState } from "react";
 import { createWorkOrder } from "../actions";
-import { inputClass, labelClass } from "@/lib/defaults";
+import { assignableContactLabel, IN_HOUSE, IN_HOUSE_OPTION_LABEL, inputClass, labelClass } from "@/lib/defaults";
 import { useRouter } from "next/navigation";
 
 type UnitOption = { id: string; name: string };
@@ -15,6 +15,7 @@ type ContactOption = {
     id: string;
     displayName: string;
     company: string | null;
+    inHouse: boolean;
 };
 type TenantOption = {
     id: string;
@@ -26,6 +27,7 @@ export type WorkOrderFormValues = {
     title: string;
     propertyId: string;
     unitId: string;
+    // A contact's id, IN_HOUSE, or "" for "Assign later".
     contractorId: string;
     notes: string;
     dueDate: string; // YYYY-MM-DD
@@ -137,9 +139,10 @@ export default function WorkOrderForm({
                     onChange={(e) => setSelectedContractor(e.target.value)}
                 >
                     <option value="">Assign later</option>
+                    <option value={IN_HOUSE}>{IN_HOUSE_OPTION_LABEL}</option>
                     {contractors.map((contractor) => (
                         <option key={contractor.id} value={contractor.id}>
-                            {contractor.displayName}
+                            {assignableContactLabel(contractor)}
                             {contractor.company ? ` — ${contractor.company}` : ""}
                         </option>
                     ))}

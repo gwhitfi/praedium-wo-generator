@@ -17,6 +17,8 @@ export const contactInput = z.object({
     phone,
     notes: optionalText(5000),
     unitId: optionalText(100),
+    // An employee rather than an outside contractor; only a label. Tenants are never in-house.
+    inHouse: z.boolean(),
 });
 
 export type ContactFormState = {

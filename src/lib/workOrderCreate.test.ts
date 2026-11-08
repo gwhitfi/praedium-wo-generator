@@ -20,6 +20,7 @@ const draft: ParsedConfirmedDraft = {
     propertyId: "prop1",
     unitId: "unit1",
     contractorId: "joes",
+    inHouse: false,
     title: "Leak under kitchen sink",
     notes: "Tenant home after 3pm",
     dueDate: "2026-11-05",
@@ -178,5 +179,24 @@ describe("createDraftWorkOrder", () => {
             tenantId: null,
             tenantName: null,
         });
+    });
+
+    it("creates an in-house draft with no contractor", async () => {
+        await run({ contractorId: null, inHouse: true });
+
+        expect(create.mock.calls[0][0].data).toMatchObject({
+            inHouse: true,
+            contractorId: null,
+            contractorName: null,
+            // The unit's tenant is still copied, so they can be notified when the work starts.
+            tenantId: "tenant1",
+        });
+    });
+
+    it("refuses a contractor on an in-house draft", async () => {
+        const result = await run({ inHouse: true });
+
+        expect(result).toEqual({ ok: false, error: "Choose a contractor or in-house, not both." });
+        expect(prisma.$transaction).not.toHaveBeenCalled();
     });
 });

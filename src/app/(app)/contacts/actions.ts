@@ -22,7 +22,11 @@ function submittedValues(formData: FormData) {
 }
 
 async function readContactForm(formData: FormData, organizationId: string) {
-    const parsed = contactInput.safeParse(Object.fromEntries(formData));
+    // A checkbox sends "on" when ticked and nothing otherwise.
+    const parsed = contactInput.safeParse({
+        ...Object.fromEntries(formData),
+        inHouse: formData.get("inHouse") === "on",
+    });
     if (!parsed.success) {
         const state: ContactFormState = {
             errors: z.flattenError(parsed.error).fieldErrors,
@@ -47,7 +51,9 @@ async function readContactForm(formData: FormData, organizationId: string) {
         }
     }
 
-    return { ok: true as const, fields: { ...fields, unitId } };
+    // Tenants are never in-house; only contractors and other contacts can be.
+    const inHouse = fields.contactType !== "TENANT" && fields.inHouse;
+    return { ok: true as const, fields: { ...fields, unitId, inHouse } };
 }
 
 async function findContact(contactId: string) {

@@ -11,7 +11,14 @@ vi.mock("@/lib/prisma", () => ({
         contact: { findFirst: vi.fn() },
         workOrder: { findFirst: vi.fn(), update: vi.fn() },
         area: { findFirst: vi.fn(), create: vi.fn(), delete: vi.fn(), update: vi.fn() },
-        lineItem: { count: vi.fn(), findFirst: vi.fn(), create: vi.fn(), delete: vi.fn(), update: vi.fn() },
+        lineItem: {
+            count: vi.fn(),
+            findFirst: vi.fn(),
+            create: vi.fn(),
+            delete: vi.fn(),
+            update: vi.fn(),
+            updateMany: vi.fn(),
+        },
         $transaction: vi.fn(),
     },
 }));
@@ -27,6 +34,7 @@ vi.mock("@/lib/workOrderCreate", async (importOriginal) => ({
     nextJobNumber: vi.fn(),
 }));
 vi.mock("@/lib/workOrderEvents", () => ({ logEvent: vi.fn() }));
+vi.mock("@/lib/workOrderStart", () => ({ startInHouseWorkOrder: vi.fn() }));
 vi.mock("@/lib/photos", () => ({
     checkPhoto: vi.fn(() => ({ ok: true, type: { mimeType: "image/jpeg" } })),
     MAX_PHOTO_BYTES: 3 * 1024 * 1024,
@@ -37,6 +45,8 @@ import prisma from "@/lib/prisma";
 import { sendEmail } from "@/lib/email";
 import { logEvent } from "@/lib/workOrderEvents";
 import { notifyTenant } from "@/lib/emails/notifyTenant";
+import { IN_HOUSE } from "@/lib/defaults";
+import { startInHouseWorkOrder } from "@/lib/workOrderStart";
 import {
     addArea,
     addLineItem,
@@ -56,7 +66,9 @@ import {
     reopenWorkOrder,
     restoreWorkOrder,
     sendWorkOrder,
+    setLineItemCompleted,
     setLineItemPhoto,
+    startWorkOrder,
     updateLineItem,
     updateWorkOrder,
 } from "./actions";
@@ -77,7 +89,9 @@ const workOrder = {
     dueDate: null,
     unitId: null,
     notifyTenant: false,
+    inHouse: false,
     sentAt: null,
+    startedAt: null,
     deliveryMethod: null,
     contractorId: "joes",
     contractorName: "Joe's Plumbing",
@@ -379,6 +393,125 @@ describe("updateWorkOrder", () => {
         await updateWorkOrder("wo1", editForm({ title: "Fix kitchen sink", contractorId: "ana" }));
 
         expect(logEvent).not.toHaveBeenCalled();
+    });
+
+    it("hands a sent work order to the office: drops the contractor and kills their link", async () => {
+        await updateWorkOrder("wo1", editForm({ contractorId: IN_HOUSE }));
+
+        const { data } = vi.mocked(prisma.workOrder.update).mock.calls[0][0];
+        expect(data).toMatchObject({ inHouse: true, contractorId: null, contractorEmail: null, deliveryMethod: null });
+        expect(data.publicToken).not.toBe("token1");
+        expect(prisma.contact.findFirst).not.toHaveBeenCalled();
+        expect(vi.mocked(logEvent).mock.calls).toEqual([
+            [{ ...ids, type: "CONTRACTOR_CHANGED", actor: office, detail: { from: "Joe's Plumbing", to: "In-house" } }],
+        ]);
+    });
+});
+
+describe("in-house work orders", () => {
+    const inHouse = {
+        inHouse: true,
+        contractorId: null,
+        contractorName: null,
+        contractorEmail: null,
+        contractor: null,
+    };
+
+    it("can't be marked as sent", async () => {
+        withWorkOrder(inHouse);
+
+        await expect(sendWorkOrder("wo1", "PRINT")).rejects.toThrow("started, not sent");
+        expect(prisma.workOrder.update).not.toHaveBeenCalled();
+    });
+
+    it("have no contractor link to regenerate", async () => {
+        withWorkOrder(inHouse);
+
+        await expect(regeneratePublicToken("wo1")).rejects.toThrow("no contractor link");
+        expect(prisma.workOrder.update).not.toHaveBeenCalled();
+    });
+
+    it("start through the shared helper", async () => {
+        vi.mocked(startInHouseWorkOrder).mockResolvedValue({ ok: true, jobNumber: "2026-1001", tenantNotified: false });
+
+        expect(await startWorkOrder("wo1")).toEqual({ ok: true });
+        expect(startInHouseWorkOrder).toHaveBeenCalledWith(
+            expect.objectContaining({ organizationId: "org1", user, workOrderId: "wo1" }),
+        );
+    });
+
+    it("reopen to In progress once started", async () => {
+        withWorkOrder({ ...inHouse, status: "COMPLETED", startedAt: new Date("2026-11-07") });
+
+        await reopenWorkOrder("wo1");
+
+        expect(vi.mocked(prisma.workOrder.update).mock.calls[0][0].data).toMatchObject({ status: "IN_PROGRESS" });
+    });
+
+    describe("setLineItemCompleted", () => {
+        function withItem(workOrderChanges: Record<string, unknown> = {}, completed = false) {
+            vi.mocked(prisma.lineItem.findFirst).mockResolvedValue({
+                id: "li1",
+                description: "Replace faucet",
+                completed,
+                area: {
+                    name: "Kitchen",
+                    workOrder: { ...workOrder, ...inHouse, status: "IN_PROGRESS", ...workOrderChanges },
+                },
+            } as never);
+        }
+
+        beforeEach(() => {
+            vi.mocked(prisma.lineItem.updateMany).mockResolvedValue({ count: 1 } as never);
+        });
+
+        it("checks off an item on a started in-house work order, scoped to the organization, and logs it", async () => {
+            withItem();
+
+            await setLineItemCompleted("li1", true);
+
+            expect(prisma.lineItem.findFirst).toHaveBeenCalledWith(
+                expect.objectContaining({ where: { id: "li1", area: { workOrder: { organizationId: "org1" } } } }),
+            );
+            expect(prisma.lineItem.updateMany).toHaveBeenCalledWith({
+                where: {
+                    id: "li1",
+                    area: {
+                        workOrder: {
+                            id: "wo1",
+                            organizationId: "org1",
+                            inHouse: true,
+                            archived: false,
+                            status: { in: ["SENT", "IN_PROGRESS"] },
+                        },
+                    },
+                },
+                data: { completed: true, completedAt: expect.any(Date) },
+            });
+            expect(logEvent).toHaveBeenCalledWith({
+                ...ids,
+                type: "ITEM_CHECKED",
+                actor: office,
+                detail: { item: "Replace faucet", area: "Kitchen" },
+            });
+        });
+
+        it.each([{ inHouse: false }, { status: "DRAFT" }, { status: "COMPLETED" }, { archived: true }])(
+            "refuses when the work order isn't a started in-house one (%o)",
+            async (changes) => {
+                withItem(changes);
+
+                await expect(setLineItemCompleted("li1", true)).rejects.toThrow();
+                expect(prisma.lineItem.updateMany).not.toHaveBeenCalled();
+                expect(logEvent).not.toHaveBeenCalled();
+            },
+        );
+
+        it("refuses another organization's line item", async () => {
+            vi.mocked(prisma.lineItem.findFirst).mockResolvedValue(null);
+
+            await expect(setLineItemCompleted("li1", true)).rejects.toThrow("Invalid line item");
+        });
     });
 });
 

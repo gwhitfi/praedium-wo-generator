@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import { addArea, removeArea, moveArea, renameArea } from "../actions";
+import { addArea, removeArea, moveArea, renameArea, setLineItemCompleted } from "../actions";
 import { inputClass } from "@/lib/defaults";
 import SpaceCard from "./SpaceCard";
 
@@ -23,11 +23,14 @@ export default function AreaBuilder({
     workOrderId,
     areas,
     readOnly = false,
+    canCheckOff = false,
     notice,
 }: {
     workOrderId: string;
     areas: AreaRow[];
     readOnly?: boolean;
+    // A started in-house work order: the office checks off the line items itself.
+    canCheckOff?: boolean;
     notice?: string;
 }) {
     const [name, setName] = useState("");
@@ -132,6 +135,7 @@ export default function AreaBuilder({
                             onRename={handleRename}
                             busy={busyId === area.id}
                             readOnly={readOnly}
+                            onToggleItem={canCheckOff ? setLineItemCompleted : undefined}
                         />
                     ))}
                 </ul>

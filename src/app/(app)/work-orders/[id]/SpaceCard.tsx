@@ -34,6 +34,7 @@ export default function SpaceCard({
     readOnly,
     actions = { addLineItem, removeLineItem, moveLineItem, updateLineItem },
     showPhotos = true,
+    onToggleItem,
 }: {
     area: AreaRow;
     index: number;
@@ -50,6 +51,8 @@ export default function SpaceCard({
         updateLineItem: (id: string, description: string, priority: LineItemPriority) => Promise<unknown>;
     };
     showPhotos?: boolean;
+    // Set on a started in-house work order: the done circles become buttons the office can check off.
+    onToggleItem?: (lineItemId: string, completed: boolean) => Promise<unknown>;
 }) {
     const [adding, setAdding] = useState(false);
     const [description, setDescription] = useState("");
@@ -120,6 +123,19 @@ export default function SpaceCard({
             setError(null);
         } catch {
             setError("Could not move that item.");
+        } finally {
+            setBusyItemId(null);
+        }
+    }
+
+    async function handleToggleItem(item: LineItemRow) {
+        if (!onToggleItem) return;
+        setBusyItemId(item.id);
+        try {
+            await onToggleItem(item.id, !item.completed);
+            setError(null);
+        } catch {
+            setError("Could not update that item.");
         } finally {
             setBusyItemId(null);
         }
@@ -230,16 +246,34 @@ export default function SpaceCard({
                     {area.lineItems.map((item, i) => (
                         <li key={item.id} className="group py-2.5">
                             <div className="flex items-center gap-2">
-                                <span
-                                    aria-label={item.completed ? "Done" : "Not done"}
-                                    className={`flex h-5 w-5 shrink-0 items-center justify-center rounded-full border text-xs ${
-                                        item.completed
-                                            ? "border-success/50 bg-success/15 text-success"
-                                            : "border-line-strong"
-                                    }`}
-                                >
-                                    {item.completed && "✓"}
-                                </span>
+                                {onToggleItem ? (
+                                    <button
+                                        type="button"
+                                        role="checkbox"
+                                        aria-checked={item.completed}
+                                        aria-label={`Done: ${item.description}`}
+                                        onClick={() => handleToggleItem(item)}
+                                        disabled={busyItemId === item.id}
+                                        className={`flex h-5 w-5 shrink-0 items-center justify-center rounded-full border text-xs hover:cursor-pointer disabled:opacity-50 ${
+                                            item.completed
+                                                ? "border-success/50 bg-success/15 text-success"
+                                                : "border-line-strong hover:border-success/60"
+                                        }`}
+                                    >
+                                        {item.completed && "✓"}
+                                    </button>
+                                ) : (
+                                    <span
+                                        aria-label={item.completed ? "Done" : "Not done"}
+                                        className={`flex h-5 w-5 shrink-0 items-center justify-center rounded-full border text-xs ${
+                                            item.completed
+                                                ? "border-success/50 bg-success/15 text-success"
+                                                : "border-line-strong"
+                                        }`}
+                                    >
+                                        {item.completed && "✓"}
+                                    </span>
+                                )}
                                 {editingId === item.id ? (
                                     <div
                                         className="flex flex-1 items-center gap-2"

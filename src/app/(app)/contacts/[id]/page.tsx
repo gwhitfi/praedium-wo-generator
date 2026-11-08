@@ -86,6 +86,11 @@ export default async function ContactDetail({ params }: { params: Promise<{ id: 
                 <span className="mb-2 inline-block rounded-full border border-line-strong px-2 py-0.5 text-xs text-muted">
                     {CONTACT_TYPE_LABELS[contact.contactType]}
                 </span>
+                {contact.inHouse && (
+                    <span className="mb-2 ml-2 inline-block rounded-full border border-line-strong px-2 py-0.5 text-xs text-muted">
+                        In-house
+                    </span>
+                )}
                 <div className="mb-4 flex items-start justify-between gap-4">
                     <h1 className="text-2xl font-semibold">
                         {contact.displayName}

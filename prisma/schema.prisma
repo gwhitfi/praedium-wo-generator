@@ -70,6 +70,7 @@ enum WorkOrderEventType {
   AREA_ADDED
   AREA_REMOVED
   AREA_RENAMED
+  STARTED // an in-house work order was started; nothing is sent
   // Contractor
   OPENED
   ITEM_CHECKED
@@ -164,6 +165,7 @@ model Contact {
   updatedAt    DateTime    @updatedAt
   favorite     Boolean     @default(false)
   archived     Boolean     @default(false)
+  inHouse      Boolean     @default(false) // an employee rather than an outside contractor; a label only
 
   contractorWorkOrders WorkOrder[]  @relation("WorkOrderContractor")
   tenantWorkOrders     WorkOrder[]  @relation("WorkOrderTenant")
@@ -252,8 +254,10 @@ model WorkOrder {
   updatedAt       DateTime        @updatedAt
   archived        Boolean         @default(false)
   notifyTenant    Boolean         @default(false)
+  inHouse         Boolean         @default(false) // handled by the office: no contractor, no contractor link
   dueDate         DateTime?
   sentAt          DateTime?
+  startedAt       DateTime? // when an in-house work order was started (it is never sent)
   completedAt     DateTime?
   closedAt        DateTime?
   cancelledAt     DateTime?

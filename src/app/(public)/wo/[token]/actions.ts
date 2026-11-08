@@ -27,9 +27,10 @@ function isOpen(status: string) {
     return (OPEN_STATUSES as readonly string[]).includes(status);
 }
 
-// The same rule as isOpen, as a filter for the writes, so they only apply while it still holds.
+// The same rule as isOpen, as a filter for the writes, so they only apply while it still holds. In-house work orders
+// have no contractor, so their link never works.
 function openWorkOrderWhere(token: string) {
-    return { publicToken: token, archived: false, status: { in: [...OPEN_STATUSES] } };
+    return { publicToken: token, archived: false, inHouse: false, status: { in: [...OPEN_STATUSES] } };
 }
 
 // The mutations need a verified contractor session. A work order with no contractor email can't be verified, so it
@@ -38,14 +39,20 @@ async function requireVerified(workOrder: { contractorEmail: string | null }): P
     if (workOrder.contractorEmail && !(await isVerifiedFor(workOrder))) throw new Error("Verification required");
 }
 
-// The work order a contractor link shows, with what verification needs. Null when missing, archived, a draft or
-// cancelled, the same rule as the page.
+// The work order a contractor link shows, with what verification needs. Null when missing, archived, in-house, a
+// draft or cancelled, the same rule as the page.
 async function loadContractorWorkOrder(token: string) {
     const workOrder = await prisma.workOrder.findUnique({
         where: { publicToken: token },
         include: { organization: { select: { name: true, email: true } } },
     });
-    if (!workOrder || workOrder.archived || workOrder.status === "DRAFT" || workOrder.status === "CANCELLED") {
+    if (
+        !workOrder ||
+        workOrder.archived ||
+        workOrder.inHouse ||
+        workOrder.status === "DRAFT" ||
+        workOrder.status === "CANCELLED"
+    ) {
         return null;
     }
     return workOrder;
@@ -133,7 +140,8 @@ async function getOpenLineItem(token: string, lineItemId: string) {
     });
 
     if (!lineItem) throw new Error("Invalid line item");
-    if (lineItem.area.workOrder.archived || !isOpen(lineItem.area.workOrder.status)) {
+    const { workOrder } = lineItem.area;
+    if (workOrder.archived || workOrder.inHouse || !isOpen(workOrder.status)) {
         throw new Error("Work order is not open");
     }
 
@@ -229,11 +237,18 @@ export async function recordOpen(token: string): Promise<void> {
                 organizationId: true,
                 status: true,
                 archived: true,
+                inHouse: true,
                 contractorName: true,
                 organization: { select: { clerkOrgId: true } },
             },
         });
-        if (!workOrder || workOrder.archived || workOrder.status === "DRAFT" || workOrder.status === "CANCELLED") {
+        if (
+            !workOrder ||
+            workOrder.archived ||
+            workOrder.inHouse ||
+            workOrder.status === "DRAFT" ||
+            workOrder.status === "CANCELLED"
+        ) {
             return;
         }
 
@@ -274,7 +289,7 @@ export async function completeWorkOrder(token: string, completionNotes: string):
     const workOrder = await loadForCompletion(input.token);
 
     if (!workOrder) throw new Error("Invalid work order");
-    if (workOrder.archived || !isOpen(workOrder.status)) throw new Error("Work order is not open");
+    if (workOrder.archived || workOrder.inHouse || !isOpen(workOrder.status)) throw new Error("Work order is not open");
     await requireVerified(workOrder);
 
     const completedAt = new Date();

@@ -11,13 +11,19 @@ export type ContractorWorkOrder = Prisma.WorkOrderGetPayload<{
 }>;
 
 // The work order a contractor link points at, with the organization's name, or null if the link doesn't work
-// (missing, archived, draft or cancelled). Same rule as the contractor page.
+// (missing, archived, in-house, draft or cancelled). Same rule as the contractor page.
 export async function getContractorWorkOrder(token: string): Promise<ContractorWorkOrder | null> {
     const workOrder = await prisma.workOrder.findUnique({
         where: { publicToken: token },
         include: { organization: { select: { name: true } } },
     });
-    if (!workOrder || workOrder.archived || workOrder.status === "DRAFT" || workOrder.status === "CANCELLED") {
+    if (
+        !workOrder ||
+        workOrder.archived ||
+        workOrder.inHouse ||
+        workOrder.status === "DRAFT" ||
+        workOrder.status === "CANCELLED"
+    ) {
         return null;
     }
     return workOrder;

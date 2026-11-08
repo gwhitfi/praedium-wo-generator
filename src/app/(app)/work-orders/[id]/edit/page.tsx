@@ -2,6 +2,7 @@ import Link from "next/link";
 import { notFound, redirect } from "next/navigation";
 import { getCurrentUser } from "@/lib/auth";
 import prisma from "@/lib/prisma";
+import { IN_HOUSE } from "@/lib/defaults";
 import WorkOrderForm from "../../new/WorkOrderForm";
 import { updateWorkOrder } from "../../actions";
 
@@ -37,7 +38,8 @@ export default async function EditWorkOrder({ params }: { params: Promise<{ id: 
     const [contractors, tenants] = await Promise.all([
         prisma.contact.findMany({
             where: { organizationId, archived: false, contactType: { in: ["CONTRACTOR", "OTHER"] } },
-            orderBy: [{ favorite: "desc" }, { displayName: "asc" }],
+            // In-house staff first, then favorites.
+            orderBy: [{ inHouse: "desc" }, { favorite: "desc" }, { displayName: "asc" }],
         }),
         prisma.contact.findMany({
             where: {
@@ -60,7 +62,7 @@ export default async function EditWorkOrder({ params }: { params: Promise<{ id: 
                     title: workOrder.title ?? "",
                     propertyId: workOrder.propertyId,
                     unitId: workOrder.unitId ?? "",
-                    contractorId: workOrder.contractorId ?? "",
+                    contractorId: workOrder.inHouse ? IN_HOUSE : (workOrder.contractorId ?? ""),
                     notes: workOrder.notes ?? "",
                     dueDate: workOrder.dueDate ? workOrder.dueDate.toISOString().slice(0, 10) : "",
                     notifyTenant: workOrder.notifyTenant,

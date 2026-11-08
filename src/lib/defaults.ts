@@ -120,3 +120,17 @@ export const INFO_LINKS: { href: string; label: string }[] = [
 export function unitLabel(name: string): string {
     return /\s/.test(name.trim()) ? name.trim() : `Unit ${name.trim()}`;
 }
+
+// The contractor dropdown's value for a work order the office handles itself (WorkOrder.inHouse).
+export const IN_HOUSE = "in-house";
+export const IN_HOUSE_OPTION_LABEL = "In-house (our team)";
+
+// Who a work order is with, for lists and cards: "In-house", the contractor's name, or null if nobody yet.
+export function assigneeName(workOrder: { inHouse: boolean; contractorName: string | null }): string | null {
+    return workOrder.inHouse ? "In-house" : workOrder.contractorName;
+}
+
+// A contact in the contractor dropdowns, marked when they're an employee.
+export function assignableContactLabel(contact: { displayName: string; inHouse: boolean }): string {
+    return contact.inHouse ? `${contact.displayName} (in-house)` : contact.displayName;
+}

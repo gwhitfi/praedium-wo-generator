@@ -212,7 +212,13 @@ const BASE_TOOLS = [
     "update_property",
     "update_work_order",
 ];
-const STATUS_TOOLS = ["archive_work_order", "cancel_work_order", "restore_work_order", "send_work_order"];
+const STATUS_TOOLS = [
+    "archive_work_order",
+    "cancel_work_order",
+    "restore_work_order",
+    "send_work_order",
+    "start_work_order",
+];
 
 describe("search_properties over MCP", () => {
     it("lists every tool, marking the reads read-only and only the removes and cancel destructive", async () => {
@@ -315,13 +321,13 @@ describe("create_draft_work_order over MCP", () => {
         expect(createDraftWorkOrder).toHaveBeenCalledWith({
             organizationId: "org1",
             actor: { kind: "office", user: creator },
-            draft: { ...draft, title: "Fix leak", notes: null },
+            draft: { ...draft, title: "Fix leak", notes: null, inHouse: false },
             source: "mcp",
         });
         vi.unstubAllEnvs();
     });
 
-    it("treats left-out unitId, contractorId, notes and dueDate as null", async () => {
+    it("treats left-out unitId, contractorId, notes and dueDate as null, and inHouse as false", async () => {
         vi.stubEnv("APP_URL", "");
         vi.mocked(createDraftWorkOrder).mockResolvedValue({
             ok: true,
@@ -334,7 +340,7 @@ describe("create_draft_work_order over MCP", () => {
         expect(result.isError).toBeFalsy();
         expect(createDraftWorkOrder).toHaveBeenCalledWith(
             expect.objectContaining({
-                draft: { ...minimal, unitId: null, contractorId: null, notes: null, dueDate: null },
+                draft: { ...minimal, unitId: null, contractorId: null, inHouse: false, notes: null, dueDate: null },
             }),
         );
         vi.unstubAllEnvs();

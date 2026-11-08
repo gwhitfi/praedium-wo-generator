@@ -3,9 +3,10 @@
 
 export function serverInstructions(canChangeStatus: boolean): string {
     const status = canChangeStatus
-        ? "This key can also send, cancel, archive and restore work orders with send_work_order, " +
-          "cancel_work_order, archive_work_order and restore_work_order. They email the contractor (and on a " +
-          "first send, sometimes the tenant), so confirm with the user before calling them."
+        ? "This key can also send, start, cancel, archive and restore work orders with send_work_order, " +
+          "start_work_order (in-house work orders), cancel_work_order, archive_work_order and restore_work_order. " +
+          "They email the contractor (and on a first send or start, sometimes the tenant), so confirm with the " +
+          "user before calling them."
         : "This key can't send, cancel, archive or restore work orders; a person does that in Praedium.";
     return [
         "Praedium manages maintenance work orders for property managers.",
@@ -27,6 +28,8 @@ export function assistantGuide(canChangeStatus: boolean): string {
               "- send_work_order emails the contractor the work order link. It works on Draft, Sent and In progress " +
                   "work orders, so it also re-sends after a contractor change. On the first send, the tenant is " +
                   "emailed too when the work order has tenant notification on. Confirm with the user first.",
+              "- start_work_order is the in-house counterpart: it moves an in-house Draft to In progress without " +
+                  "sending anything, and emails the tenant when tenant notification is on. Confirm first.",
               "- cancel_work_order works only on Sent or In progress work orders and emails the contractor. " +
                   "Archive a draft instead.",
               "- archive_work_order hides a work order. A Sent or In progress one is also cancelled and its " +
@@ -53,7 +56,8 @@ export function assistantGuide(canChangeStatus: boolean): string {
         "1. Call search_properties with the address or name the user gave. If it returns 'ambiguous', ask which " +
             "one. Pick the unit from the property's units if one was named; get_property also lists each unit's " +
             "tenants.",
-        "2. Only if the user named a contractor, call search_contacts with type ASSIGNABLE. If it's ambiguous, ask.",
+        "2. Only if the user named a contractor, call search_contacts with type ASSIGNABLE. If it's ambiguous, ask. " +
+            "If the office's own team will do the work, set inHouse: true instead of a contractor.",
         "3. Call create_draft_work_order with those ids, a short title, the description as notes, and one area " +
             "per room with one line item per problem (priority LOW, MEDIUM, HIGH or EMERGENCY).",
         "4. Reply with the job number and the link.",
@@ -65,7 +69,8 @@ export function assistantGuide(canChangeStatus: boolean): string {
         "",
         "- Find it with list_work_orders (by job number, title, property, contractor or unit), then read it with " +
             "get_work_order for its area and line item ids.",
-        "- update_work_order changes the title, notes, due date, unit, contractor or tenant notification. " +
+        "- update_work_order changes the title, notes, due date, unit, contractor (or inHouse) or tenant " +
+            "notification. " +
             "Changing the contractor on a sent work order makes a new contractor link; the old one stops working.",
         "- add_line_item, update_line_item, rename_area, move_area and move_line_item edit the work. Use " +
             "move_line_item to move an item to another area instead of removing and re-adding it, which would " +

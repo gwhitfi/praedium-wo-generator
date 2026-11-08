@@ -39,6 +39,7 @@ function officeActor(user: OfficeUser): Actor {
 }
 
 // Patch semantics: a field left out stays as it is; null clears notes, dueDate, unitId or contractorId.
+// inHouse: true hands the work order to the office (it drops the contractor); a contractorId hands it back.
 export const updateWorkOrderInput = z
     .object({
         id,
@@ -53,12 +54,22 @@ export const updateWorkOrderInput = z
         dueDate: z.iso.date().nullable().optional(),
         unitId: id.nullable().optional(),
         contractorId: id.nullable().optional(),
+        inHouse: z.boolean().optional(),
         notifyTenant: z.boolean().optional(),
     })
     .refine(
         (input) => Object.entries(input).some(([key, value]) => key !== "id" && value !== undefined),
         "Give at least one field to change besides id.",
+    )
+    .refine(
+        (input) => !(input.inHouse === true && input.contractorId),
+        "Give a contractorId or inHouse: true, not both.",
     );
+
+// How the assignment reads in the Activity: "In-house", the contractor's name, or null.
+function assignmentName(assignment: { inHouse: boolean; contractorName: string | null }): string | null {
+    return assignment.inHouse ? "In-house" : assignment.contractorName;
+}
 
 export type UpdateWorkOrderResult =
     | {
@@ -97,7 +108,15 @@ export async function updateWorkOrder(
         : null;
     if (input.contractorId && !contractor) return { ok: false, error: "That contractor wasn't found." };
 
-    const contractorChanged = input.contractorId !== undefined && input.contractorId !== workOrder.contractorId;
+    // Choosing a contractor ends in-house; going in-house drops the contractor.
+    const inHouse = input.inHouse ?? (input.contractorId ? false : workOrder.inHouse);
+    const contractorId = inHouse
+        ? null
+        : input.contractorId !== undefined
+          ? input.contractorId
+          : workOrder.contractorId;
+    const contractorChanged = contractorId !== workOrder.contractorId;
+    const inHouseChanged = inHouse !== workOrder.inHouse;
     const unitChanged = input.unitId !== undefined && input.unitId !== workOrder.unitId;
     const newLink = contractorChanged && workOrder.status !== "DRAFT";
     // Stored as midnight UTC, like the form and createDraftWorkOrder.
@@ -110,6 +129,7 @@ export async function updateWorkOrder(
             notes: input.notes,
             dueDate,
             notifyTenant: input.notifyTenant,
+            inHouse,
             ...(unitChanged
                 ? { unitId: input.unitId, ...tenantSnapshot(await findTenant(input.unitId ?? null, organizationId)) }
                 : {}),
@@ -130,11 +150,14 @@ export async function updateWorkOrder(
     if (workOrder.status !== "DRAFT") {
         const event = { workOrderId: workOrder.id, organizationId, actor: officeActor(user) };
         if (fields.length > 0) await logEvent({ ...event, type: "EDITED", detail: { fields } });
-        if (contractorChanged) {
+        if (contractorChanged || inHouseChanged) {
             await logEvent({
                 ...event,
                 type: "CONTRACTOR_CHANGED",
-                detail: { from: workOrder.contractorName, to: contractor?.displayName ?? null },
+                detail: {
+                    from: assignmentName(workOrder),
+                    to: assignmentName({ inHouse, contractorName: contractor?.displayName ?? null }),
+                },
             });
         }
     }
@@ -142,7 +165,7 @@ export async function updateWorkOrder(
     return {
         ok: true,
         workOrder: { id: workOrder.id, jobNumber: workOrder.jobNumber, status: workOrder.status },
-        changed: contractorChanged ? [...fields, "contractor"] : fields,
+        changed: contractorChanged || inHouseChanged ? [...fields, "contractor"] : fields,
         newContractorLink: newLink,
     };
 }

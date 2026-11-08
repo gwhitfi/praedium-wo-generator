@@ -19,6 +19,7 @@ export type ContractorOption = {
     firstName: string | null;
     lastName: string | null;
     company: string | null;
+    inHouse: boolean;
 };
 
 // `unit` is null until the property is matched, since units are only looked for within it.
@@ -55,7 +56,7 @@ export async function contractorLookup(
 ): Promise<MatchResult<ContractorOption>> {
     const contacts = await prisma.contact.findMany({
         where: { organizationId, archived: false, contactType: { in: ["CONTRACTOR", "OTHER"] } },
-        select: { id: true, displayName: true, firstName: true, lastName: true, company: true },
+        select: { id: true, displayName: true, firstName: true, lastName: true, company: true, inHouse: true },
     });
 
     return matchContact(contractorText, contacts);

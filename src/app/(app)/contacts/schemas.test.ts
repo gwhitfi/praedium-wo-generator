@@ -7,6 +7,8 @@ const contractor = {
     displayName: "Bob's Plumbing",
     email: "bob@example.com",
     phone: "555-123-4567",
+    // The form action always sets it from the checkbox.
+    inHouse: false,
 };
 
 describe("contactInput", () => {

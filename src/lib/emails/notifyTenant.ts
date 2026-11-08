@@ -9,10 +9,12 @@ type SentWorkOrder = {
     address: string;
     notifyTenant: boolean;
     tenantEmail: string | null;
-    contractor: { displayName: string; company: string | null };
+    // Null for an in-house work order: the email says the office's own team will be in touch.
+    contractor: { displayName: string; company: string | null } | null;
 };
 
-// Emails the tenant that their work order went to a contractor. Call it only when a work order is first sent.
+// Emails the tenant that their work order went to a contractor (or, for an in-house work order, that the office
+// is handling it). Call it only when a work order is first sent or started.
 // Sends after the response, so a slow or failed email never blocks sending. Returns whether an email was queued.
 export function notifyTenant(organization: Organization, workOrder: SentWorkOrder): boolean {
     const to = workOrder.tenantEmail?.trim();
@@ -24,7 +26,10 @@ export function notifyTenant(organization: Organization, workOrder: SentWorkOrde
                 organization,
                 title: workOrder.title,
                 address: workOrder.address,
-                contractor: { name: workOrder.contractor.displayName, company: workOrder.contractor.company },
+                contractor: workOrder.contractor && {
+                    name: workOrder.contractor.displayName,
+                    company: workOrder.contractor.company,
+                },
             });
             await sendEmail({ to, ...email, replyTo: organization.email, fromName: organization.name });
         } catch (error) {

@@ -45,7 +45,7 @@ export async function createProperty(
 
 // The contact form's fields, except that email and phone are optional: an assistant often doesn't have them.
 export const createContactInput = contactInput
-    .extend({ email: optionalEmail, phone: optionalPhone })
+    .extend({ email: optionalEmail, phone: optionalPhone, inHouse: z.boolean().default(false) })
     .superRefine((contact, ctx) => {
         if (contact.contactType === "TENANT" && !contact.unitId) {
             ctx.addIssue({
@@ -72,7 +72,8 @@ export async function createContact(
         if (!unit) return { ok: false, error: "That unit wasn't found. Choose it again from search_properties." };
     }
 
-    const contact = await prisma.contact.create({ data: { organizationId, ...input, unitId } });
+    const inHouse = input.contactType !== "TENANT" && input.inHouse;
+    const contact = await prisma.contact.create({ data: { organizationId, ...input, unitId, inHouse } });
     return {
         ok: true,
         contact: { id: contact.id, displayName: contact.displayName, contactType: contact.contactType },
@@ -92,6 +93,7 @@ export type ContactResult = {
     displayName: string;
     contactType: ContactType;
     company: string | null;
+    inHouse: boolean;
     unit: UnitRef | null;
 };
 
@@ -115,6 +117,7 @@ export async function searchContacts(
             lastName: true,
             company: true,
             contactType: true,
+            inHouse: true,
             unit: unitRefSelect,
         },
     });
@@ -125,6 +128,7 @@ export async function searchContacts(
         displayName: contact.displayName,
         contactType: contact.contactType,
         company: contact.company,
+        inHouse: contact.inHouse,
         unit: contact.unit,
     });
     if (result.status === "matched") return { status: "matched", match: compact(result.match) };
@@ -216,6 +220,7 @@ export type ContactDetail = {
     phone: string | null;
     notes: string | null;
     favorite: boolean;
+    inHouse: boolean;
     archived: boolean;
     createdAt: string;
     updatedAt: string;
@@ -257,6 +262,7 @@ export async function getContact(organizationId: string, contactId: string): Pro
         phone: contact.phone,
         notes: contact.notes,
         favorite: contact.favorite,
+        inHouse: contact.inHouse,
         archived: contact.archived,
         createdAt: contact.createdAt.toISOString(),
         updatedAt: contact.updatedAt.toISOString(),
@@ -361,8 +367,11 @@ export async function updateContact(
     const snapshotChanged = name !== contact.displayName || phone !== contact.phone || email !== contact.email;
     const openWorkOrders = { organizationId, archived: false, status: { in: OPEN_STATUSES } };
 
+    // Tenants are never in-house; for the other types, a missing inHouse leaves it as it is.
+    const inHouse = contactType === "TENANT" ? false : fields.inHouse;
+
     await prisma.$transaction([
-        prisma.contact.update({ where: { id: contact.id }, data: { ...fields, unitId } }),
+        prisma.contact.update({ where: { id: contact.id }, data: { ...fields, unitId, inHouse } }),
         ...(snapshotChanged
             ? [
                   prisma.workOrder.updateMany({

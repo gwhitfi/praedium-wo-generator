@@ -66,6 +66,7 @@ export default async function EditContact({ params }: { params: Promise<{ id: st
                     notes: contact.notes ?? "",
                     propertyId: unit?.propertyId ?? "",
                     unitId: unit?.id ?? "",
+                    inHouse: contact.inHouse,
                 }}
                 action={updateContact.bind(null, contact.id)}
                 submitLabel="Save changes"

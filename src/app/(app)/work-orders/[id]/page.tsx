@@ -2,7 +2,7 @@ import { getCurrentUser } from "@/lib/auth";
 import prisma from "@/lib/prisma";
 import { redirect, notFound } from "next/navigation";
 import Link from "next/link";
-import { STATUS_COLORS, unitLabel, WORK_ORDER_STATUS_LABELS } from "@/lib/defaults";
+import { assigneeName, STATUS_COLORS, unitLabel, WORK_ORDER_STATUS_LABELS } from "@/lib/defaults";
 import InfoCard from "@/components/InfoCard";
 import AreaBuilder from "./AreaBuilder";
 import StatusActions from "./StatusActions";
@@ -77,8 +77,11 @@ export default async function WorkOrderDetail({
     const finished = workOrder.status === "COMPLETED" || workOrder.status === "CLOSED";
     const cancelled = workOrder.status === "CANCELLED";
     const readOnly = finished || cancelled || workOrder.archived;
-    const contractorWorking =
-        !workOrder.archived && (workOrder.status === "SENT" || workOrder.status === "IN_PROGRESS");
+    const underway = !workOrder.archived && (workOrder.status === "SENT" || workOrder.status === "IN_PROGRESS");
+    // Sent or in progress with a contractor: they have the link and are emailed if it's cancelled.
+    const contractorWorking = underway && !workOrder.inHouse;
+    // An in-house work order the office has started: the office checks off its own line items.
+    const canCheckOff = underway && workOrder.inHouse;
     const canEdit = !readOnly;
 
     return (
@@ -152,9 +155,10 @@ export default async function WorkOrderDetail({
 
                     <InfoCard
                         label="Contractor"
-                        title={workOrder.contractorName ?? "Not assigned"}
+                        title={assigneeName(workOrder) ?? "Not assigned"}
                         href={workOrder.contractorId ? `/contacts/${workOrder.contractorId}` : undefined}
                     >
+                        {workOrder.inHouse && <p>Handled by your team. There&apos;s no contractor link.</p>}
                         {workOrder.contractorPhone && <p>{formatPhone(workOrder.contractorPhone)}</p>}
                         {workOrder.contractorEmail && <p>{workOrder.contractorEmail}</p>}
                     </InfoCard>
@@ -210,7 +214,7 @@ export default async function WorkOrderDetail({
                 </section>
             )}
 
-            {!workOrder.archived && !cancelled && (
+            {!workOrder.archived && !cancelled && !workOrder.inHouse && (
                 <section className="mb-8">
                     <p className="mb-2 text-xs uppercase tracking-wide text-subtle">Contractor link</p>
                     <ContractorLink
@@ -232,6 +236,7 @@ export default async function WorkOrderDetail({
                 workOrderId={workOrder.id}
                 areas={workOrder.areas}
                 readOnly={readOnly}
+                canCheckOff={canCheckOff}
                 notice={contractorWorking ? "The contractor can see changes immediately." : undefined}
             />
             <div className="mt-8 flex flex-wrap items-center gap-3 border-t border-line pt-6">
@@ -245,6 +250,7 @@ export default async function WorkOrderDetail({
                     <StatusActions
                         workOrderId={workOrder.id}
                         status={workOrder.status}
+                        inHouse={workOrder.inHouse}
                         hasContractor={!!workOrder.contractorId}
                         contractor={
                             workOrder.contractor && {
@@ -286,7 +292,8 @@ export default async function WorkOrderDetail({
                         <ArchiveControls
                             workOrderId={workOrder.id}
                             archived={false}
-                            willCancel={contractorWorking}
+                            willCancel={underway}
+                            inHouse={workOrder.inHouse}
                             contractorName={workOrder.contractorName}
                         />
                     )}

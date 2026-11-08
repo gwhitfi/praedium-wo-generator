@@ -31,8 +31,8 @@ export default async function NewWorkOrderWithAi() {
         }),
         prisma.contact.findMany({
             where: { organizationId, archived: false, contactType: { in: ["CONTRACTOR", "OTHER"] } },
-            orderBy: [{ favorite: "desc" }, { displayName: "asc" }],
-            select: { id: true, displayName: true, firstName: true, lastName: true, company: true },
+            orderBy: [{ inHouse: "desc" }, { favorite: "desc" }, { displayName: "asc" }],
+            select: { id: true, displayName: true, firstName: true, lastName: true, company: true, inHouse: true },
         }),
     ]);
 

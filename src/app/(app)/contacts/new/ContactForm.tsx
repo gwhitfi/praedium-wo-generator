@@ -27,6 +27,7 @@ export type ContactFormValues = {
     notes: string;
     propertyId: string;
     unitId: string;
+    inHouse: boolean;
 };
 
 export default function ContactForm({
@@ -44,7 +45,8 @@ export default function ContactForm({
 }) {
     const [state, formAction, pending] = useActionState(action, {});
     // React resets the form after each submit, so refill it with what was sent.
-    const value = (name: keyof ContactFormValues) => state.values?.[name] ?? initial?.[name];
+    const value = (name: Exclude<keyof ContactFormValues, "inHouse">) => state.values?.[name] ?? initial?.[name];
+    const inHouseChecked = state.values ? state.values.inHouse === "on" : (initial?.inHouse ?? false);
     const editing = !!initial;
     const [contactType, setContactType] = useState(initial?.contactType ?? "CONTRACTOR");
     const [selectedProperty, setSelectedProperty] = useState(initial?.propertyId ?? "");
@@ -107,6 +109,20 @@ export default function ContactForm({
                         Company
                         <input name="company" maxLength={100} defaultValue={value("company")} className={inputClass} />
                         <FieldError errors={state.errors?.company} />
+                    </label>
+                    <label className="flex items-start gap-2 text-sm text-secondary">
+                        <input
+                            type="checkbox"
+                            name="inHouse"
+                            defaultChecked={inHouseChecked}
+                            className="mt-0.5 h-4 w-4 rounded border-line-strong bg-surface"
+                        />
+                        <span>
+                            <span className="font-medium">In-house (our employee)</span>
+                            <span className="block text-xs text-subtle">
+                                Listed first when assigning work orders. They still get the work order link by email.
+                            </span>
+                        </span>
                     </label>
                     <label className={labelClass}>
                         Address
