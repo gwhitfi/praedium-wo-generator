@@ -6,7 +6,7 @@ export default function AiPrompt(): React.ReactElement {
     return (
         <div className="mb-8">
             <AiFeatureCard
-                title="Praedium can use AI to draft your work orders"
+                title="Praedium Bot can draft your work orders with AI"
                 note="This is the only place AI is used in this application. You can change your choice anytime in Settings."
                 demoLabel="Watch a quick demo before deciding"
                 actions={
@@ -17,7 +17,7 @@ export default function AiPrompt(): React.ReactElement {
                             value="on"
                             className="rounded-md bg-accent px-5 py-2 text-sm font-medium text-on-accent hover:bg-accent-hover hover:cursor-pointer"
                         >
-                            Use AI
+                            Use Praedium Bot
                         </button>
                         <button
                             type="submit"
@@ -25,7 +25,7 @@ export default function AiPrompt(): React.ReactElement {
                             value="off"
                             className="rounded-md border border-line-strong bg-surface px-5 py-2 text-sm font-medium text-foreground hover:bg-surface-hover hover:cursor-pointer"
                         >
-                            No AI
+                            No thanks
                         </button>
                     </form>
                 }

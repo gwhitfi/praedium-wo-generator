@@ -16,7 +16,7 @@ import { formatDueDate, formatTimestamp } from "@/lib/dates";
 import { formatPhone } from "@/lib/phone";
 
 export const metadata: Metadata = {
-    title: "Work Order",
+    title: "Work order",
     robots: { index: false, follow: false },
     referrer: "no-referrer",
 };

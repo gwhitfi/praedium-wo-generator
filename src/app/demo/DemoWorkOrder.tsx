@@ -38,7 +38,7 @@ export function DemoProvider({ children }: { children: React.ReactNode }) {
     return ready ? (
         <BrowserDemoProvider>{children}</BrowserDemoProvider>
     ) : (
-        <p className="p-10 text-muted">Loading demo…</p>
+        <p className="p-10 text-muted">Loading demo...</p>
     );
 }
 
@@ -344,7 +344,7 @@ export default function DemoWorkOrder({ contractor = false }: { contractor?: boo
                     <section className="mt-8 border-t border-line pt-6">
                         <h2 className="text-lg font-semibold">Finish up</h2>
                         <p className="mb-4 mt-1 text-sm text-subtle">
-                            Add any final notes for the office, then mark the work order complete.
+                            Add any final notes for the office, then mark the work order as completed.
                         </p>
                         <textarea
                             data-demo-guide="finish"
@@ -366,7 +366,7 @@ export default function DemoWorkOrder({ contractor = false }: { contractor?: boo
                         <div className="mt-3 flex flex-wrap items-center gap-3">
                             {confirming ? (
                                 <>
-                                    <span className="text-sm">Mark this work order complete?</span>
+                                    <span className="text-sm">Mark this work order as completed?</span>
                                     <button
                                         className={button}
                                         onClick={() => {
@@ -383,7 +383,7 @@ export default function DemoWorkOrder({ contractor = false }: { contractor?: boo
                                         Yes, complete
                                     </button>
                                     <button className={secondary} onClick={() => setConfirming(false)}>
-                                        Cancel
+                                        Go back
                                     </button>
                                 </>
                             ) : (
@@ -392,7 +392,7 @@ export default function DemoWorkOrder({ contractor = false }: { contractor?: boo
                                     disabled={items.length === 0}
                                     onClick={() => setConfirming(true)}
                                 >
-                                    Mark work order complete
+                                    Mark as completed
                                 </button>
                             )}
                         </div>

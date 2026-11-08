@@ -33,7 +33,7 @@ export default function ContactForm({
     properties,
     initial,
     action = createContact,
-    submitLabel = "Save Contact",
+    submitLabel = "Save contact",
     lockType = false,
 }: {
     properties: PropertyOption[];
@@ -53,7 +53,7 @@ export default function ContactForm({
     return (
         <form action={formAction} autoComplete="off" noValidate className="flex flex-col gap-4">
             <label className={labelClass}>
-                Display Name
+                Display name
                 <input
                     name="displayName"
                     required
@@ -64,7 +64,7 @@ export default function ContactForm({
                 <FieldError errors={state.errors?.displayName} />
             </label>
             <label className={labelClass}>
-                Contact Type
+                Contact type
                 <select
                     name={lockType ? undefined : "contactType"}
                     required
@@ -91,12 +91,12 @@ export default function ContactForm({
             </label>
             <div className="grid grid-cols-2 gap-3">
                 <label className={labelClass}>
-                    First Name
+                    First name
                     <input name="firstName" maxLength={50} defaultValue={value("firstName")} className={inputClass} />
                     <FieldError errors={state.errors?.firstName} />
                 </label>
                 <label className={labelClass}>
-                    Last Name
+                    Last name
                     <input name="lastName" maxLength={50} defaultValue={value("lastName")} className={inputClass} />
                     <FieldError errors={state.errors?.lastName} />
                 </label>
@@ -195,7 +195,7 @@ export default function ContactForm({
             )}
             <div className="grid grid-cols-2 gap-3">
                 <label className={labelClass}>
-                    Phone Number
+                    Phone number
                     <input type="tel" name="phone" required defaultValue={value("phone")} className={inputClass} />
                     <FieldError errors={state.errors?.phone} />
                 </label>

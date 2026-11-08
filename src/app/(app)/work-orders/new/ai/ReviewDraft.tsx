@@ -194,7 +194,7 @@ export default function ReviewDraft({ result, properties, contractors, onCreateS
                 disabled={pending || !selectedPropertyId || !title.trim()}
                 className="self-start rounded-md bg-accent px-4 py-2 text-sm font-medium text-on-accent hover:bg-accent-hover hover:cursor-pointer disabled:cursor-not-allowed disabled:opacity-40"
             >
-                {pending ? "Creating draft…" : "Create draft"}
+                {pending ? "Creating draft..." : "Create draft"}
             </button>
         </section>
     );
@@ -309,7 +309,7 @@ function MatchField<T extends { id: string }>({
                     disabled={refreshing}
                     className="text-muted underline hover:text-foreground hover:cursor-pointer disabled:no-underline"
                 >
-                    {refreshing ? "Refreshing…" : "Refresh list"}
+                    {refreshing ? "Refreshing..." : "Refresh list"}
                 </button>
             </p>
         </div>

@@ -26,7 +26,7 @@ export default async function NewContact() {
     });
     return (
         <main className="mx-auto max-w-5xl px-4 py-10 text-foreground">
-            <h1 className="text-2xl font-semibold mb-6">Add a new contact</h1>
+            <h1 className="text-2xl font-semibold mb-6">Create contact</h1>
             <ContactForm properties={properties} />
             <Link href="/contacts" className="text-sm text-muted hover:text-foreground">
                 Cancel

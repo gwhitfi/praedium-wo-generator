@@ -47,7 +47,7 @@ export default async function NewWorkOrder({ searchParams }: { searchParams: Pro
 
     return (
         <main className="mx-auto max-w-5xl px-4 py-10 text-foreground">
-            <h1 className="text-2xl font-semibold mb-6">Create Work Order</h1>
+            <h1 className="text-2xl font-semibold mb-6">Create work order</h1>
             <WorkOrderForm
                 properties={properties}
                 contractors={contacts}

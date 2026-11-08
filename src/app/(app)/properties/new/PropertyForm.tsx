@@ -18,7 +18,7 @@ export type PropertyFormValues = {
 export default function PropertyForm({
     initial,
     action = createProperty,
-    submitLabel = "Save Property",
+    submitLabel = "Save property",
     returnTo,
 }: {
     initial?: PropertyFormValues;
@@ -56,7 +56,7 @@ export default function PropertyForm({
     return (
         <form action={formAction} autoComplete="off" noValidate className="flex flex-col gap-4">
             <label className={labelClass}>
-                Display Name
+                Display name
                 <input
                     name="displayName"
                     required
@@ -67,7 +67,7 @@ export default function PropertyForm({
                 <FieldError errors={state.errors?.displayName} />
             </label>
             <label className={labelClass}>
-                Property Type
+                Property type
                 <select
                     name="propertyType"
                     required
@@ -163,7 +163,7 @@ export default function PropertyForm({
                         onClick={addUnit}
                         className="shrink-0 rounded-md border border-line-strong px-4 py-2 text-sm text-foreground hover:bg-surface-hover hover:cursor-pointer"
                     >
-                        Add Unit
+                        + Add unit
                     </button>
                     {units.length > 0 && (
                         <ul className="flex flex-wrap gap-2">

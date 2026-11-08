@@ -72,7 +72,7 @@ export default function HowItWorks() {
             aria-roledescription="carousel"
         >
             <h2 id="how-it-works-title" className="text-center text-4xl font-semibold sm:text-5xl">
-                How it Works
+                How it works
             </h2>
             <div
                 id="how-it-works-slide"

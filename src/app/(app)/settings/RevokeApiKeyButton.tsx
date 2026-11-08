@@ -40,7 +40,7 @@ export default function RevokeApiKeyButton({ id, name }: { id: string; name: str
                         onClick={() => setConfirming(false)}
                         disabled={pending}
                     >
-                        Cancel
+                        Go back
                     </button>
                 </span>
             ) : (

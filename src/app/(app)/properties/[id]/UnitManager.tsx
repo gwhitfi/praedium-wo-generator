@@ -88,7 +88,7 @@ function UnitCard({ unit, canArchive }: { unit: UnitRow; canArchive: boolean }) 
                                 disabled={pending}
                                 className="text-subtle hover:text-foreground hover:cursor-pointer"
                             >
-                                Cancel
+                                Go back
                             </button>
                         </div>
                     ) : (

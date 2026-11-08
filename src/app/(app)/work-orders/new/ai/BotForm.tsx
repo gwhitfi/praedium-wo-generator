@@ -77,7 +77,7 @@ export default function BotForm({
                 disabled={pending}
                 className="self-start rounded-md bg-accent px-4 py-2 text-sm font-medium text-on-accent hover:bg-accent-hover hover:cursor-pointer disabled:opacity-60"
             >
-                {pending ? "Reading your description…" : state.result ? "Read it again" : "Review work order"}
+                {pending ? "Reading your description..." : state.result ? "Read it again" : "Review work order"}
             </button>
 
             {state.result && (

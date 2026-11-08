@@ -75,7 +75,7 @@ export default function ArchiveControls({
                         onClick={() => setConfirming(false)}
                         disabled={pending}
                     >
-                        Cancel
+                        Go back
                     </button>
                 </span>
             ) : (

@@ -167,7 +167,7 @@ export default async function ContactDetail({ params }: { params: Promise<{ id: 
                             href={`/work-orders/new?propertyId=${property.id}`}
                             className="shrink-0 text-sm text-muted hover:text-foreground"
                         >
-                            + Create work order
+                            + New work order
                         </Link>
                     )}
                 </div>

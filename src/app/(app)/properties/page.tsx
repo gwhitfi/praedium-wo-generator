@@ -73,7 +73,7 @@ export default async function Properties({ searchParams }: { searchParams: Promi
                 title="Properties"
                 subtitle={`${properties.length} ${showArchived ? "archived " : ""}${properties.length === 1 ? "property" : "properties"}`}
                 actionHref="/properties/new"
-                actionLabel="Add Property"
+                actionLabel="New property"
             />
 
             <div className="-mt-4 mb-4 flex justify-end">

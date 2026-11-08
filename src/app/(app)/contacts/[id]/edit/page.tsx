@@ -47,7 +47,7 @@ export default async function EditContact({ params }: { params: Promise<{ id: st
 
     return (
         <main className="mx-auto max-w-5xl px-4 py-10 text-foreground">
-            <h1 className="text-2xl font-semibold mb-6">Edit Contact</h1>
+            <h1 className="text-2xl font-semibold mb-6">Edit contact</h1>
             <ContactForm
                 properties={properties}
                 initial={{

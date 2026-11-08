@@ -100,7 +100,7 @@ export default function ContractorLink({
                             disabled={pending}
                             className="text-subtle hover:text-foreground hover:cursor-pointer"
                         >
-                            Cancel
+                            Go back
                         </button>
                     </>
                 ) : (

@@ -41,10 +41,10 @@ export default async function WorkOrder({ searchParams }: { searchParams: Promis
     return (
         <main className="mx-auto max-w-5xl px-4 py-10 text-foreground">
             <PageHeader
-                title="Work Orders"
+                title="Work orders"
                 subtitle={`${workOrders.length} ${noun}`}
                 actionHref="/work-orders/new"
-                actionLabel="Add Work Order"
+                actionLabel="New work order"
             />
 
             <div className="mb-4 flex items-center gap-2">

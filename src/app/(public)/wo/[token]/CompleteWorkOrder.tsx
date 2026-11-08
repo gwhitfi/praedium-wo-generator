@@ -27,7 +27,7 @@ export default function CompleteWorkOrder({ token, remainingCount }: { token: st
         <section className="mt-8 border-t border-line pt-6">
             <h2 className="text-lg font-semibold text-foreground">Finish up</h2>
             <p className="mt-1 mb-4 text-sm text-subtle">
-                Add any final notes for the office, then mark the work order complete.
+                Add any final notes for the office, then mark the work order as completed.
             </p>
 
             <textarea
@@ -48,7 +48,7 @@ export default function CompleteWorkOrder({ token, remainingCount }: { token: st
             <div className="mt-3 flex flex-wrap items-center gap-2">
                 {confirming ? (
                     <>
-                        <span className="text-sm text-secondary">Mark this work order complete?</span>
+                        <span className="text-sm text-secondary">Mark this work order as completed?</span>
                         <button
                             type="button"
                             onClick={handleComplete}
@@ -63,7 +63,7 @@ export default function CompleteWorkOrder({ token, remainingCount }: { token: st
                             disabled={pending}
                             className="shrink-0 px-2 text-sm text-subtle hover:text-foreground hover:cursor-pointer"
                         >
-                            Cancel
+                            Go back
                         </button>
                     </>
                 ) : (
@@ -72,7 +72,7 @@ export default function CompleteWorkOrder({ token, remainingCount }: { token: st
                         onClick={() => setConfirming(true)}
                         className="shrink-0 rounded-md bg-accent px-4 py-2 text-sm font-medium text-on-accent hover:bg-accent-hover hover:cursor-pointer"
                     >
-                        Mark work order complete
+                        Mark as completed
                     </button>
                 )}
             </div>

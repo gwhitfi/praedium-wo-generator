@@ -46,11 +46,11 @@ export default function AiDemoVideo({
                 onClick={(e) => {
                     if (e.target === dialogRef.current) close();
                 }}
-                aria-label="AI work order demo"
+                aria-label="Praedium Bot demo"
                 className="m-auto w-[min(1100px,calc(100vw-2rem))] rounded-lg border border-line bg-surface p-0 text-foreground shadow-xl backdrop:bg-black/70"
             >
                 <div className="flex items-center justify-between border-b border-line px-4 py-2">
-                    <p className="text-sm font-medium">Creating a work order with AI</p>
+                    <p className="text-sm font-medium">Creating a work order with Praedium Bot</p>
                     <button
                         type="button"
                         onClick={close}

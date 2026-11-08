@@ -31,13 +31,13 @@ export default function OrganizationContactForm({
 
                 <div className="mt-5 flex flex-col gap-4">
                     <label className={labelClass}>
-                        Organization Name
+                        Organization name
                         <input name="name" defaultValue={values?.name ?? name} required className={inputClass} />
                         <FieldError errors={state.errors?.name} />
                     </label>
                     <div className="grid gap-4 sm:grid-cols-2">
                         <label className={labelClass}>
-                            Office Phone
+                            Office phone
                             <input
                                 type="tel"
                                 name="phone"
@@ -47,7 +47,7 @@ export default function OrganizationContactForm({
                             <FieldError errors={state.errors?.phone} />
                         </label>
                         <label className={labelClass}>
-                            Office Email
+                            Office email
                             <input
                                 type="email"
                                 name="email"

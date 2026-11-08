@@ -122,7 +122,7 @@ export default async function Contacts({ searchParams }: { searchParams: Promise
                 title="Contacts"
                 subtitle={`${contacts.length} ${showArchived ? "archived " : ""}${contacts.length === 1 ? "contact" : "contacts"}`}
                 actionHref="/contacts/new"
-                actionLabel="Add Contact"
+                actionLabel="New contact"
             />
 
             <div className="-mt-4 mb-4 flex justify-end">

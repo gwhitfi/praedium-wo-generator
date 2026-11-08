@@ -102,7 +102,7 @@ export function ArchivePropertyButton({
                             disabled={pending}
                             className="shrink-0 rounded-md bg-danger-strong px-4 py-2 text-sm font-medium text-white hover:bg-danger-strong/85 hover:cursor-pointer disabled:opacity-40"
                         >
-                            {pending ? "Archiving..." : "Archive property"}
+                            {pending ? "Archiving..." : "Yes, archive"}
                         </button>
                     </div>
                 </div>

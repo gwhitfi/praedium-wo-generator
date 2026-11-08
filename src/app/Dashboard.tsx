@@ -77,7 +77,7 @@ export default async function Dashboard({
                     title={organization.name}
                     subtitle="Dashboard"
                     actionHref="/work-orders/new"
-                    actionLabel="Create work order"
+                    actionLabel="New work order"
                     mobileLabel="+ New"
                 />
 

@@ -62,7 +62,7 @@ export default function StatusActions({
                 onClick={() => setConfirmingEmail(false)}
                 disabled={pending}
             >
-                Cancel
+                Go back
             </button>
         </>
     ) : (
@@ -135,7 +135,7 @@ export default function StatusActions({
                         onClick={() => run(() => markWorkOrderCompleted(workOrderId))}
                         disabled={pending}
                     >
-                        Mark completed
+                        Mark as completed
                     </button>
                     {confirmingCancel ? (
                         <span className="flex flex-wrap items-center gap-2 text-sm">

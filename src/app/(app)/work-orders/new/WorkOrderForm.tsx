@@ -41,7 +41,7 @@ export default function WorkOrderForm({
     defaultPropertyId,
     initial,
     action = createWorkOrder,
-    submitLabel = "Save and Continue",
+    submitLabel = "Save and continue",
     lockProperty = false,
     sent = false,
 }: {
@@ -69,7 +69,7 @@ export default function WorkOrderForm({
     return (
         <form action={action} autoComplete="off" className="flex flex-col gap-4">
             <label className={labelClass}>
-                Work Order Title
+                Work order title
                 <input name="title" required defaultValue={initial?.title} className={inputClass} />
             </label>
 
@@ -84,7 +84,7 @@ export default function WorkOrderForm({
                     </div>
                 ) : (
                     <label className={labelClass}>
-                        Select a property
+                        Property
                         <select
                             name="propertyId"
                             required
@@ -129,7 +129,7 @@ export default function WorkOrderForm({
                 )}
             </div>
             <label className={labelClass}>
-                Select a contractor
+                Contractor
                 <select
                     name="contractorId"
                     className={inputClass}

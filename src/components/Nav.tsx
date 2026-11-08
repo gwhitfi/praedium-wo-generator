@@ -5,16 +5,16 @@ import NavMenu from "./NavMenu";
 import { INFO_LINKS } from "@/lib/defaults";
 
 const links: NavLink[] = [
-    { href: "/work-orders", label: "Work Orders" },
+    { href: "/work-orders", label: "Work orders" },
     { href: "/contacts", label: "Contacts" },
     { href: "/properties", label: "Properties" },
 ];
 
 const SETTINGS_LINK: NavLink = { href: "/settings", label: "Settings" };
 
-const AI_LINK: NavLink = { href: "/work-orders/new/ai", label: "Create work order with AI" };
+const AI_LINK: NavLink = { href: "/work-orders/new/ai", label: "Praedium Bot: draft a work order with AI" };
 
-// `showAi` is false when the user turned on "No AI" in Settings.
+// `showAi` is false when the user turned Praedium Bot off in Settings.
 export default function Nav({ showAi }: { showAi: boolean }) {
     return (
         <header className="sticky top-0 z-40 border-b border-line bg-background print:hidden">
