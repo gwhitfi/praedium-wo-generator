@@ -114,12 +114,11 @@ export default function WorkOrderForm({
                         Unit
                         <select
                             name="unitId"
-                            required
                             className={inputClass}
                             value={selectedUnit}
                             onChange={(e) => setSelectedUnit(e.target.value)}
                         >
-                            <option value="">Select a unit</option>
+                            <option value="">No unit (whole property)</option>
                             {units.map((unit) => (
                                 <option key={unit.id} value={unit.id}>
                                     {unit.name}
@@ -169,6 +168,8 @@ export default function WorkOrderForm({
                     <p className="text-sm text-muted">
                         This work order has already been sent, so the tenant won&apos;t be emailed.
                     </p>
+                ) : !selectedUnitId ? (
+                    <p className="text-sm text-warning">No unit chosen, so there&apos;s no tenant to notify.</p>
                 ) : !tenant ? (
                     <p className="text-sm text-warning">No tenant on file for this unit.</p>
                 ) : !tenant.email?.trim() ? (

@@ -108,7 +108,7 @@ export default function ReviewDraft({ result, properties, contractors, onCreateS
                         </span>
                     )}
                     <select value={selectedUnitId} onChange={(e) => setUnitId(e.target.value)} className={inputClass}>
-                        <option value="">No unit</option>
+                        <option value="">No unit (whole property)</option>
                         {units.map((unit) => (
                             <option key={unit.id} value={unit.id}>
                                 {unitLabel(unit.name)}
