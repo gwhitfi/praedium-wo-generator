@@ -50,7 +50,7 @@ import { generateApiKey } from "@/lib/apiKeys";
 import { rateLimit } from "@/lib/rateLimit";
 import { createDraftWorkOrder } from "@/lib/workOrderCreate";
 import { assistantGuide } from "./guide";
-import { bearerToken, handleMcpRequest } from "./handler";
+import { authFailureReason, bearerToken, handleMcpRequest } from "./handler";
 import { createContact, createProperty, getProperty, searchContacts, updateContact } from "./records";
 import { cancelWorkOrder, sendWorkOrder } from "./status";
 import { MISSING_CREATOR_ERROR } from "./tools";
@@ -109,7 +109,37 @@ describe("bearerToken", () => {
     });
 });
 
+describe("authFailureReason", () => {
+    const request = (value?: string) => new Request("http://localhost", value === undefined ? {} : { headers: { authorization: value } });
+    it("names the problem without revealing the key", () => {
+        expect(authFailureReason(request(), null)).toBe("no Authorization header");
+        expect(authFailureReason(request("Basic abc"), null)).toContain('does not start with "Bearer"');
+        expect(authFailureReason(request("Bearer Bearer pr_abc"), null)).toContain("followed by 2 words");
+        expect(authFailureReason(request("Bearer abc"), "abc")).toContain("does not start with pr_");
+        expect(authFailureReason(request("Bearer pr_short"), "pr_short")).toContain("pr_ + 5 chars, expected 43");
+        const reason = authFailureReason(request(`Bearer ${key}`), key);
+        expect(reason).toBe(`unknown or revoked key (prefix ${key.slice(3, 11)})`);
+        expect(reason).not.toContain(key);
+    });
+});
+
 describe("handleMcpRequest auth gate", () => {
+    it("logs why a request was refused, with the key prefix only", async () => {
+        const warn = vi.spyOn(console, "warn").mockImplementation(() => {});
+        try {
+            await handleMcpRequest(mcpRequest(initialize, {}));
+            expect(warn).toHaveBeenLastCalledWith("MCP auth refused", expect.objectContaining({ reason: "no Authorization header", method: "POST" }));
+            vi.mocked(prisma.apiKey.findFirst).mockResolvedValue(null);
+            await handleMcpRequest(mcpRequest(initialize));
+            const [, details] = warn.mock.calls.at(-1)!;
+            expect(details).toMatchObject({ reason: `unknown or revoked key (prefix ${key.slice(3, 11)})` });
+            expect(JSON.stringify(details)).not.toContain(key);
+        } finally {
+            warn.mockRestore();
+        }
+    });
+
+
     it("returns 401 JSON without a key, without touching the database", async () => {
         const response = await handleMcpRequest(mcpRequest(initialize, {}));
         expect(response.status).toBe(401);
