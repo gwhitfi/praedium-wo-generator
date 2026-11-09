@@ -10,14 +10,15 @@ const base = {
 };
 
 describe("verifyCodeEmail", () => {
-    it("puts the code in the subject split in two", () => {
-        expect(verifyCodeEmail(base).subject).toBe("Your Praedium code: 042 917");
+    it("puts the code in the subject as one string", () => {
+        expect(verifyCodeEmail(base).subject).toBe("Your Praedium code: 042917");
     });
 
     it("includes the code, the link and the job in both versions", () => {
         const email = verifyCodeEmail(base);
         for (const body of [email.html, email.text]) {
-            expect(body).toContain("042 917");
+            expect(body).toContain("042917");
+            expect(body).not.toContain("042 917");
             expect(body).toContain("#2026-1001");
             expect(body).toContain("expires in 10 minutes");
         }

@@ -9,16 +9,15 @@ type VerifyCodeEmailInput = {
 
 // The 6-digit code a contractor enters to verify a browser, with a link to the confirm page as an alternative.
 export function verifyCodeEmail(input: VerifyCodeEmailInput): { subject: string; html: string; text: string } {
-    const spaced = `${input.code.slice(0, 3)} ${input.code.slice(3)}`;
     const context = `${input.organizationName} · #${input.jobNumber}`;
-    const subject = `Your Praedium code: ${spaced}`;
+    const subject = `Your Praedium code: ${input.code}`;
 
     const text = [
         context,
         "",
         "Enter this code on the work order page to verify it's you:",
         "",
-        spaced,
+        input.code,
         "",
         "It expires in 10 minutes. If you didn't request it, ignore this email.",
         "",
@@ -35,7 +34,7 @@ export function verifyCodeEmail(input: VerifyCodeEmailInput): { subject: string;
         <tr><td style="padding:24px 24px 8px">
           <p style="margin:0 0 12px;font-size:12px;letter-spacing:.05em;text-transform:uppercase;color:#737373">${escapeHtml(context)}</p>
           <p style="margin:0;font-size:14px;color:#171717">Enter this code on the work order page to verify it&#39;s you:</p>
-          <p style="margin:16px 0;font-family:ui-monospace,SFMono-Regular,Menlo,Consolas,monospace;font-size:32px;font-weight:700;letter-spacing:.15em;color:#171717">${escapeHtml(spaced)}</p>
+          <p style="margin:16px 0;font-family:ui-monospace,SFMono-Regular,Menlo,Consolas,monospace;font-size:32px;font-weight:700;color:#171717">${escapeHtml(input.code)}</p>
           <p style="margin:0;font-size:14px;color:#525252">It expires in 10 minutes. If you didn&#39;t request it, ignore this email.</p>
         </td></tr>
         <tr><td style="padding:16px 24px 24px">
