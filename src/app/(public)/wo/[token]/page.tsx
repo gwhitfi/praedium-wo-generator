@@ -2,9 +2,11 @@ import type { Metadata } from "next";
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import prisma from "@/lib/prisma";
-import { STATUS_COLORS, unitLabel, WORK_ORDER_STATUS_LABELS } from "@/lib/defaults";
-import InfoCard from "@/components/InfoCard";
+import { unitLabel } from "@/lib/defaults";
 import ThemeToggle from "@/components/ThemeToggle";
+import DetailList, { ContactLine, type Detail } from "@/components/DetailList";
+import { StatusBadge } from "@/components/StatusBadge";
+import { ChevronRightIcon, LockIcon } from "@/components/Icons";
 import ContractorSpaceCard from "./ContractorSpaceCard";
 import CompleteWorkOrder from "./CompleteWorkOrder";
 import RecordOpen from "./RecordOpen";
@@ -14,6 +16,7 @@ import { openInput } from "./schemas";
 import { isVerifiedFor } from "@/lib/contractorAccess";
 import { formatDueDate, formatTimestamp } from "@/lib/dates";
 import { formatPhone } from "@/lib/phone";
+import { cardClass, cardTitleClass, noticeClass } from "@/lib/ui";
 
 export const metadata: Metadata = {
     title: "Work order",
@@ -73,145 +76,181 @@ export default async function PublicWorkOrder({
     const hideSensitive = gated || closed;
     const areas = hideSensitive ? summaryAreas(workOrder.areas) : workOrder.areas;
     const otherCount = verified && canLookup(workOrder) ? await countContractorWorkOrders(workOrder) : 0;
+    const address = `${workOrder.property.addressLine1}${
+        workOrder.unit && !workOrder.unit.isDefault ? `, ${unitLabel(workOrder.unit.name)}` : ""
+    }`;
+    const mapsHref = `https://maps.google.com/?q=${encodeURIComponent(
+        `${workOrder.property.addressLine1}, ${workOrder.property.city}, ${workOrder.property.state} ${workOrder.property.zipCode}`,
+    )}`;
 
-    return (
-        <main className="mx-auto max-w-3xl px-4 py-10 text-foreground">
-            <div className="mb-8">
-                {/* Standard light/dark only: the theme script never applies Settings palettes on /wo/ pages. */}
-                <div className="mb-2 flex items-center justify-between gap-3">
-                    <p className="text-xs uppercase tracking-wide text-subtle">
-                        {workOrder.organization.name} · #{workOrder.jobNumber}
+    const details: Detail[] = [
+        {
+            label: "Where",
+            value: (
+                <a
+                    href={mapsHref}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="underline decoration-line-strong underline-offset-4 hover:text-accent hover:decoration-current"
+                >
+                    {address}
+                    <span className="sr-only"> (opens a map)</span>
+                </a>
+            ),
+            extra: (
+                <>
+                    {workOrder.property.addressLine2 && <p>{workOrder.property.addressLine2}</p>}
+                    <p>
+                        {workOrder.property.city}, {workOrder.property.state} {workOrder.property.zipCode}
                     </p>
-                    <div className="print:hidden">
-                        <ThemeToggle />
-                    </div>
-                </div>
-
-                {otherCount > 0 && (
-                    <Link
-                        href={`/wo/${token}/list`}
-                        className="mb-5 block rounded-lg border border-accent/40 bg-accent/10 px-4 py-3 text-sm font-medium text-foreground hover:bg-accent/20 print:hidden"
-                    >
-                        {otherCount === 1 ? "View your other work order" : `View your other ${otherCount} work orders`}{" "}
-                        →
-                    </Link>
-                )}
-                {gated && !closed && workOrder.contractorEmail && (
-                    <VerifyBox token={token} emailHint={maskEmail(workOrder.contractorEmail)} />
-                )}
-
-                <div className="mb-1 flex items-center gap-3">
-                    <span className={`rounded-full border px-2 py-0.5 text-xs ${STATUS_COLORS[workOrder.status]}`}>
-                        {WORK_ORDER_STATUS_LABELS[workOrder.status]}
-                    </span>
-                    {workOrder.dueDate && (
-                        <span className="text-sm text-subtle">Due by {formatDueDate(workOrder.dueDate)}</span>
-                    )}
-                </div>
-
-                <h1 className="mb-4 text-2xl font-semibold">{workOrder.title ?? "Work order"}</h1>
-
-                {workOrder.status === "COMPLETED" && (
-                    <p className="mb-4 rounded-md border border-status-completed/40 bg-status-completed/10 px-3 py-2 text-sm text-status-completed">
-                        Marked complete{workOrder.completedAt && ` on ${formatTimestamp(workOrder.completedAt)}`}.
-                        Contact the office if anything needs to change.
-                    </p>
-                )}
-                {workOrder.status === "CLOSED" && (
-                    <p className="mb-4 rounded-md border border-status-closed/40 bg-status-closed/10 px-3 py-2 text-sm text-status-closed">
-                        This work order has been closed out. No further work is needed.
-                    </p>
-                )}
-
-                <div className="grid gap-4 sm:grid-cols-3">
-                    <InfoCard
-                        label="Property"
-                        title={`${workOrder.property.addressLine1}${
-                            workOrder.unit && !workOrder.unit.isDefault ? `, ${unitLabel(workOrder.unit.name)}` : ""
-                        }`}
-                    >
-                        {workOrder.property.addressLine2 && <p>{workOrder.property.addressLine2}</p>}
-                        <p>
-                            {workOrder.property.city}, {workOrder.property.state} {workOrder.property.zipCode}
-                        </p>
-                    </InfoCard>
-
-                    {hideSensitive ? (
-                        <InfoCard label="Tenant" title="Tenant">
-                            <p className="text-subtle">
-                                {closed ? "Not shown on closed work orders" : "Verify to see contact details"}
-                            </p>
-                        </InfoCard>
-                    ) : (
-                        <InfoCard label="Tenant" title={workOrder.tenantName ?? "No tenant on file"}>
-                            {workOrder.tenantPhone && (
-                                <a href={`tel:${workOrder.tenantPhone}`} className="block hover:text-foreground">
-                                    {formatPhone(workOrder.tenantPhone)}
-                                </a>
-                            )}
-                            {workOrder.tenantEmail && (
-                                <a
-                                    href={`mailto:${workOrder.tenantEmail}`}
-                                    className="block break-all hover:text-foreground"
-                                >
-                                    {workOrder.tenantEmail}
-                                </a>
-                            )}
-                        </InfoCard>
-                    )}
-
-                    <InfoCard label="Office" title={workOrder.organization.name}>
+                </>
+            ),
+        },
+        hideSensitive
+            ? {
+                  label: "Tenant",
+                  value: closed ? "Not shown on closed work orders" : "Verify to see contact details",
+                  empty: true,
+              }
+            : {
+                  label: "Tenant",
+                  value: workOrder.tenantName ?? "No tenant on file",
+                  empty: !workOrder.tenantName,
+                  extra: (workOrder.tenantPhone || workOrder.tenantEmail) && (
+                      <>
+                          {workOrder.tenantPhone && (
+                              <ContactLine href={`tel:${workOrder.tenantPhone}`}>
+                                  {formatPhone(workOrder.tenantPhone)}
+                              </ContactLine>
+                          )}
+                          {workOrder.tenantEmail && (
+                              <ContactLine href={`mailto:${workOrder.tenantEmail}`}>{workOrder.tenantEmail}</ContactLine>
+                          )}
+                      </>
+                  ),
+              },
+        {
+            label: "Office",
+            value: workOrder.organization.name,
+            extra:
+                workOrder.organization.phone || workOrder.organization.email ? (
+                    <>
                         {workOrder.organization.phone && (
-                            <a href={`tel:${workOrder.organization.phone}`} className="block hover:text-foreground">
+                            <ContactLine href={`tel:${workOrder.organization.phone}`}>
                                 {formatPhone(workOrder.organization.phone)}
-                            </a>
+                            </ContactLine>
                         )}
                         {workOrder.organization.email && (
-                            <a
-                                href={`mailto:${workOrder.organization.email}`}
-                                className="block break-all hover:text-foreground"
-                            >
+                            <ContactLine href={`mailto:${workOrder.organization.email}`}>
                                 {workOrder.organization.email}
-                            </a>
+                            </ContactLine>
                         )}
-                        {!workOrder.organization.phone && !workOrder.organization.email && (
-                            <p className="text-subtle">No contact info on file</p>
-                        )}
-                    </InfoCard>
+                    </>
+                ) : (
+                    <p>No contact info on file</p>
+                ),
+        },
+    ];
+
+    return (
+        <main id="main" className="mx-auto max-w-2xl px-4 pt-5 pb-12 text-foreground sm:pt-8">
+            {/* Standard light/dark only: the theme script never applies Settings palettes on /wo/ pages. */}
+            <div className="mb-4 flex items-center justify-between gap-3">
+                <p className="min-w-0 truncate text-sm font-medium text-muted">{workOrder.organization.name}</p>
+                <div className="-mr-2 shrink-0 print:hidden">
+                    <ThemeToggle />
                 </div>
             </div>
 
+            {otherCount > 0 && (
+                <Link
+                    href={`/wo/${token}/list`}
+                    className={`${cardClass} mb-4 flex items-center justify-between gap-3 px-4 py-3 text-sm font-medium text-foreground hover:border-line-hover print:hidden`}
+                >
+                    {otherCount === 1 ? "You have 1 other work order" : `You have ${otherCount} other work orders`}
+                    <ChevronRightIcon size={16} className="text-subtle" />
+                </Link>
+            )}
+            {gated && !closed && workOrder.contractorEmail && (
+                <VerifyBox token={token} emailHint={maskEmail(workOrder.contractorEmail)} />
+            )}
+
+            <div className="mb-1 flex flex-wrap items-center gap-x-3 gap-y-1">
+                <span className="text-sm tabular-nums text-subtle">#{workOrder.jobNumber}</span>
+                <StatusBadge status={workOrder.status} />
+                {workOrder.dueDate && (
+                    <span className="text-sm text-subtle">Due {formatDueDate(workOrder.dueDate, { weekday: true })}</span>
+                )}
+            </div>
+            <h1 className="text-2xl font-semibold tracking-tight [overflow-wrap:anywhere]">
+                {workOrder.title ?? "Work order"}
+            </h1>
+
+            {itemCount > 0 && (
+                <div className="mt-3 flex items-center gap-3">
+                    <div
+                        role="progressbar"
+                        aria-label="Items done"
+                        aria-valuemin={0}
+                        aria-valuemax={itemCount}
+                        aria-valuenow={completedCount}
+                        aria-valuetext={`${completedCount} of ${itemCount} items done`}
+                        className="h-2 flex-1 overflow-hidden rounded-full bg-line"
+                    >
+                        <div
+                            className="h-full rounded-full bg-success"
+                            style={{ width: `${(completedCount / itemCount) * 100}%` }}
+                        />
+                    </div>
+                    <span className="shrink-0 text-sm tabular-nums text-muted">
+                        {completedCount} of {itemCount} done
+                    </span>
+                </div>
+            )}
+
+            {workOrder.status === "COMPLETED" && (
+                <p role="status" className={`${noticeClass.success} mt-4`}>
+                    Marked complete{workOrder.completedAt && ` on ${formatTimestamp(workOrder.completedAt)}`}. Contact
+                    the office if anything needs to change.
+                </p>
+            )}
+            {workOrder.status === "CLOSED" && (
+                <p role="status" className={`${noticeClass.info} mt-4`}>
+                    This work order has been closed out. No further work is needed.
+                </p>
+            )}
+
+            <DetailList details={details} className="mt-5" />
+
             {workOrder.notes &&
                 (hideSensitive ? (
-                    !closed && <p className="mb-6 text-sm text-subtle">Notes are shown after you verify.</p>
+                    !closed && <p className="mt-4 text-sm text-subtle">Notes from the office show after you verify.</p>
                 ) : (
-                    <div className="mb-6 text-sm text-muted leading-relaxed">
-                        <p className="text-xs uppercase tracking-wide text-subtle">Notes</p>
-                        <p className="mt-1 whitespace-pre-line">{workOrder.notes}</p>
-                    </div>
+                    <section aria-label="Notes from the office" className={`${cardClass} mt-4 p-4`}>
+                        <p className={cardTitleClass}>Notes from the office</p>
+                        <p className="mt-1.5 whitespace-pre-line text-sm leading-relaxed text-secondary">
+                            {workOrder.notes}
+                        </p>
+                    </section>
                 ))}
 
-            <div className="border-t border-line pt-6">
-                <div className="flex items-baseline justify-between">
-                    <h2 className="text-lg font-semibold text-foreground">Work items</h2>
-                    {itemCount > 0 && (
-                        <span className="text-sm text-subtle">
-                            {completedCount} of {itemCount} done
-                        </span>
-                    )}
-                </div>
+            <section aria-labelledby="items-title" className="mt-8">
+                <h2 id="items-title" className="text-lg font-semibold text-foreground">
+                    The work
+                </h2>
                 {!readOnly && (
-                    <p className="mt-1 mb-4 text-sm text-subtle">
+                    <p className="mt-1 flex items-center gap-1.5 text-sm text-muted">
+                        {gated && <LockIcon size={14} className="shrink-0" />}
                         {gated
-                            ? "Verify above to check off items."
-                            : "Check off each item as you finish it. Add a note if anything needs explaining."}
+                            ? "Locked until you confirm it's you above."
+                            : "Tap an item when it's done. Add a note if anything needs explaining."}
                     </p>
                 )}
 
                 {areas.length === 0 ? (
                     <p className="mt-4 text-sm text-subtle">No work items listed.</p>
                 ) : (
-                    <ul className="mt-4 flex flex-col gap-2">
+                    <ul className="mt-4 flex flex-col gap-3">
                         {areas.map((area) => (
                             <ContractorSpaceCard
                                 key={area.id}
@@ -223,13 +262,13 @@ export default async function PublicWorkOrder({
                         ))}
                     </ul>
                 )}
-            </div>
+            </section>
 
             {hideSensitive ? null : readOnly ? (
                 workOrder.completionNotes && (
-                    <section className="mt-8 border-t border-line pt-6 text-sm">
-                        <p className="text-xs uppercase tracking-wide text-subtle">Completion notes</p>
-                        <p className="mt-1 whitespace-pre-line leading-relaxed text-secondary">
+                    <section aria-label="Completion notes" className={`${cardClass} mt-8 p-4 text-sm`}>
+                        <p className={cardTitleClass}>Your completion notes</p>
+                        <p className="mt-1.5 whitespace-pre-line leading-relaxed text-secondary">
                             {workOrder.completionNotes}
                         </p>
                     </section>
@@ -238,14 +277,15 @@ export default async function PublicWorkOrder({
                 <CompleteWorkOrder token={token} remainingCount={itemCount - completedCount} />
             )}
 
-            <p className="mt-10 text-center text-xs text-subtle print:hidden">
-                {workOrder.organization.name} can see when this page is opened and what&apos;s been checked off.
-            </p>
-            <p className="mt-2 text-center text-xs text-subtle print:hidden">
-                <Link href="/privacy" className="underline hover:text-foreground">
-                    Privacy Policy
-                </Link>
-            </p>
+            <footer className="mt-12 border-t border-line pt-6 text-center text-xs text-subtle print:hidden">
+                <p>{workOrder.organization.name} can see when this page is opened and what&apos;s been checked off.</p>
+                <p className="mt-2">
+                    Sent with Praedium ·{" "}
+                    <Link href="/privacy" className="underline hover:text-foreground">
+                        Privacy Policy
+                    </Link>
+                </p>
+            </footer>
             <RecordOpen token={token} />
         </main>
     );

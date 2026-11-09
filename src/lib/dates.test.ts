@@ -1,5 +1,28 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
-import { formatDueDate, formatFullDate, formatFullTimestamp, formatTimestamp, todayInAppTimeZone } from "./dates";
+import {
+    formatDueDate,
+    formatFullDate,
+    formatFullTimestamp,
+    formatShortDate,
+    formatTimestamp,
+    todayInAppTimeZone,
+} from "./dates";
+
+describe("formatShortDate", () => {
+    const now = new Date("2026-11-08T12:00:00Z");
+
+    it("leaves out the year for dates in the current year", () => {
+        expect(formatShortDate(new Date("2026-11-03T15:00:00Z"), now, "UTC")).toBe("Nov 3");
+    });
+
+    it("adds the year for other years", () => {
+        expect(formatShortDate(new Date("2025-12-30T15:00:00Z"), now, "UTC")).toBe("Dec 30, 2025");
+    });
+
+    it("uses the given time zone for the day", () => {
+        expect(formatShortDate(new Date("2026-11-04T02:00:00Z"), now, "America/New_York")).toBe("Nov 3");
+    });
+});
 
 afterEach(() => {
     vi.useRealTimers();

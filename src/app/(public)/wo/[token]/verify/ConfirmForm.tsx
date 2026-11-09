@@ -4,6 +4,7 @@ import { useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { verifyCode } from "../actions";
+import { Button } from "@/components/Button";
 
 // The magic link's confirm step. The code is only checked when the contractor taps Confirm, so a link scanner
 // opening the URL never uses it up.
@@ -40,23 +41,19 @@ export default function ConfirmForm({
 
     return (
         <form onSubmit={handleConfirm} className="flex flex-col gap-4">
-            <label className="flex items-center gap-2 text-sm text-secondary">
+            <label className="flex min-h-10 items-center gap-3 text-sm text-secondary hover:cursor-pointer">
                 <input
                     type="checkbox"
                     checked={remember}
                     onChange={(e) => setRemember(e.target.checked)}
-                    className="h-4 w-4 rounded border-line-strong bg-surface"
+                    className="h-5 w-5 rounded border-line-strong bg-surface accent-accent"
                 />
                 Remember this device
             </label>
             <div>
-                <button
-                    type="submit"
-                    disabled={pending}
-                    className="shrink-0 rounded-md bg-accent px-4 py-2 text-sm font-medium text-on-accent hover:bg-accent-hover hover:cursor-pointer disabled:opacity-40"
-                >
-                    {pending ? "Confirming..." : "Confirm"}
-                </button>
+                <Button type="submit" variant="primary" size="lg" pending={pending} pendingLabel="Confirming…">
+                    Confirm
+                </Button>
             </div>
             {error && (
                 <p role="alert" className="text-sm text-danger">

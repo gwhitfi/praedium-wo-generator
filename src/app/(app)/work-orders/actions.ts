@@ -10,7 +10,6 @@ import { DeliveryMethod, LineItemPriority, WorkOrderStatus } from "@/generated/p
 import { notifyContractorsCancelled } from "@/lib/emails/notifyCancelled";
 import { notifyTenant } from "@/lib/emails/notifyTenant";
 import { DELETE_NOT_CONFIRMED, isDeleteConfirmed } from "@/lib/confirmDelete";
-import { IN_HOUSE } from "@/lib/defaults";
 import { startInHouseWorkOrder } from "@/lib/workOrderStart";
 import { COLOR_SECTIONS_COOKIE, formatWorkOrderAddress, OPEN_STATUSES, SPLIT_VIEW_COOKIE } from "@/lib/workOrders";
 import { contractorSnapshot, findTenant, nextJobNumber, tenantSnapshot } from "@/lib/workOrderCreate";
@@ -21,20 +20,42 @@ import { attachmentKeys, onWorkOrders } from "@/lib/attachments";
 import { logEvent } from "@/lib/workOrderEvents";
 import { emailWorkOrderToContractor } from "@/lib/workOrderSend";
 import { tooLong } from "@/lib/validation";
+import {
+    firstItemInput,
+    readFirstItemFormData,
+    readWorkOrderFormData,
+    submittedValues,
+    workOrderFormInput,
+    type WorkOrderFormFields,
+    type WorkOrderFormState,
+} from "./schemas";
 
-async function readWorkOrderForm(formData: FormData, organizationId: string, propertyId: string) {
-    const unitId = (formData.get("unitId") as string) || null;
-    // The contractor dropdown sends IN_HOUSE when the office handles the work itself.
-    const contractorValue = (formData.get("contractorId") as string) || null;
-    const inHouse = contractorValue === IN_HOUSE;
-    const contractorId = inHouse ? null : contractorValue;
-    const dueDateRaw = (formData.get("dueDate") as string) || null;
+type ContractorContact = NonNullable<Awaited<ReturnType<typeof prisma.contact.findFirst>>>;
 
-    if (unitId) {
+type ReadForm =
+    | {
+          ok: true;
+          fields: Omit<WorkOrderFormFields, "propertyId" | "contractorId">;
+          contractor: ContractorContact | null;
+      }
+    | { ok: false; state: WorkOrderFormState };
+
+// Validates the work order form with Zod, then checks that the unit and contractor belong to this organization
+// (and the unit to `propertyId`). Problems come back as field errors so the form can show them in place.
+async function readWorkOrderForm(formData: FormData, organizationId: string, propertyId: string): Promise<ReadForm> {
+    const values = submittedValues(formData);
+    const parsed = workOrderFormInput.safeParse(readWorkOrderFormData(formData));
+    if (!parsed.success) {
+        return { ok: false, state: { errors: z.flattenError(parsed.error).fieldErrors, values } };
+    }
+    const { title, unitId, notes, dueDate, notifyTenant, inHouse, contractorId } = parsed.data;
+    const fields = { title, unitId, notes, dueDate, notifyTenant, inHouse };
+
+    if (fields.unitId) {
         const unit = await prisma.unit.findFirst({
-            where: { id: unitId, propertyId, organizationId, archived: false },
+            where: { id: fields.unitId, propertyId, organizationId, archived: false },
         });
-        if (!unit) throw new Error("Invalid unit");
+        if (!unit) return { ok: false, state: { errors: { unitId: ["Choose a unit at this property"] }, values } };
     }
 
     const contractor = contractorId
@@ -47,17 +68,11 @@ async function readWorkOrderForm(formData: FormData, organizationId: string, pro
               },
           })
         : null;
-    if (contractorId && !contractor) throw new Error("Invalid contractor");
+    if (contractorId && !contractor) {
+        return { ok: false, state: { errors: { contractorId: ["That contractor is no longer available"] }, values } };
+    }
 
-    return {
-        title: formData.get("title") as string,
-        notes: (formData.get("notes") as string) || null,
-        notifyTenant: formData.get("tenant") === "on",
-        dueDate: dueDateRaw ? new Date(dueDateRaw) : null,
-        unitId,
-        inHouse,
-        contractor,
-    };
+    return { ok: true, fields, contractor };
 }
 
 // How a work order's assignment reads in the Activity: "In-house", the contractor's name, or null.
@@ -106,7 +121,10 @@ export async function setColorSections(enabled: boolean): Promise<void> {
     revalidatePath("/work-orders");
 }
 
-export async function createWorkOrder(formData: FormData) {
+export async function createWorkOrder(
+    prevState: WorkOrderFormState,
+    formData: FormData,
+): Promise<WorkOrderFormState> {
     const result = await getCurrentUser();
 
     if (result.state !== "ready") {
@@ -114,15 +132,33 @@ export async function createWorkOrder(formData: FormData) {
     }
 
     const organizationId = result.organization.id;
-    const propertyId = formData.get("propertyId") as string;
+    const rawPropertyId = formData.get("propertyId");
+    const propertyId = typeof rawPropertyId === "string" ? rawPropertyId.trim() : "";
 
-    const property = await prisma.property.findFirst({
-        where: { id: propertyId, organizationId, archived: false },
-    });
+    const property = propertyId
+        ? await prisma.property.findFirst({
+              where: { id: propertyId, organizationId, archived: false },
+          })
+        : null;
 
-    if (!property) throw new Error("Invalid property");
+    const form = await readWorkOrderForm(formData, organizationId, propertyId);
+    // The optional first area and item (a one-line job), checked along with the rest so all errors show at once.
+    const first = firstItemInput.safeParse(readFirstItemFormData(formData));
+    const firstErrors = first.success ? {} : z.flattenError(first.error).fieldErrors;
+    if (!property || !form.ok || !first.success) {
+        const state = form.ok ? { values: submittedValues(formData) } : form.state;
+        return {
+            ...state,
+            errors: {
+                ...state.errors,
+                ...firstErrors,
+                ...(property ? {} : { propertyId: ["Choose a property"] }),
+            },
+        };
+    }
 
-    const { contractor, ...fields } = await readWorkOrderForm(formData, organizationId, propertyId);
+    const { contractor, fields } = form;
+    const firstItem = first.data;
     const tenant = await findTenant(fields.unitId, organizationId);
 
     const workOrder = await prisma.$transaction(async (tx) =>
@@ -136,6 +172,17 @@ export async function createWorkOrder(formData: FormData) {
                 status: "DRAFT",
                 ...contractorSnapshot(contractor),
                 ...tenantSnapshot(tenant),
+                ...(firstItem && {
+                    areas: {
+                        create: {
+                            name: firstItem.areaName,
+                            sortOrder: 0,
+                            ...(firstItem.item && {
+                                lineItems: { create: { ...firstItem.item, sortOrder: 0 } },
+                            }),
+                        },
+                    },
+                }),
             },
         }),
     );
@@ -149,10 +196,14 @@ export async function createWorkOrder(formData: FormData) {
     });
 
     revalidatePath("/work-orders");
-    redirect(`/work-orders/${workOrder.id}`);
+    redirect(`/work-orders/${workOrder.id}?flash=work-order-created`);
 }
 
-export async function updateWorkOrder(workOrderId: string, formData: FormData) {
+export async function updateWorkOrder(
+    workOrderId: string,
+    prevState: WorkOrderFormState,
+    formData: FormData,
+): Promise<WorkOrderFormState> {
     const result = await getCurrentUser();
     if (result.state !== "ready") throw new Error("Not authorized");
 
@@ -163,10 +214,15 @@ export async function updateWorkOrder(workOrderId: string, formData: FormData) {
 
     if (!workOrder) throw new Error("Invalid work order");
     if (!["DRAFT", "SENT", "IN_PROGRESS"].includes(workOrder.status)) {
-        throw new Error("Only open work orders can be edited");
+        return {
+            error: "This work order is no longer open, so it can't be edited. Reopen it first.",
+            values: submittedValues(formData),
+        };
     }
 
-    const { contractor, ...fields } = await readWorkOrderForm(formData, organizationId, workOrder.propertyId);
+    const form = await readWorkOrderForm(formData, organizationId, workOrder.propertyId);
+    if (!form.ok) return form.state;
+    const { contractor, fields } = form;
     const contractorChanged = (contractor?.id ?? null) !== workOrder.contractorId;
     const inHouseChanged = fields.inHouse !== workOrder.inHouse;
     const unitChanged = fields.unitId !== workOrder.unitId;
@@ -209,7 +265,7 @@ export async function updateWorkOrder(workOrderId: string, formData: FormData) {
     revalidatePath(`/work-orders/${workOrderId}`);
     revalidatePath("/work-orders");
     if (newLink || inHouseChanged) revalidatePath(`/wo/${workOrder.publicToken}`);
-    redirect(`/work-orders/${workOrderId}${newLink && contractor ? "?contractorChanged=1" : ""}`);
+    redirect(`/work-orders/${workOrderId}?flash=work-order-saved${newLink && contractor ? "&contractorChanged=1" : ""}`);
 }
 
 export async function archiveWorkOrder(workOrderId: string) {
@@ -754,6 +810,9 @@ export async function sendWorkOrder(workOrderId: string, deliveryMethod: Deliver
     if (!workOrder.contractorId) throw new Error("Assign a contractor before sending");
     if (workOrder.archived) throw new Error("Archived work orders can't be sent");
     if (workOrder.status !== "DRAFT") throw new Error("Only draft work orders can be marked as sent");
+    // Nothing to send without work in it (the same rule as emailing it, in src/lib/workOrderSend.ts).
+    const itemCount = await prisma.lineItem.count({ where: { area: { workOrderId } } });
+    if (itemCount === 0) throw new Error("Add at least one line item before sending");
 
     await prisma.workOrder.update({
         where: { id: workOrderId },

@@ -1,6 +1,20 @@
 @import "tailwindcss";
 @source "../lib";
 
+/* Lists (src/components/list/List.tsx) are a table when they have room and stacked cards when they don't, decided
+   by the list's own width rather than the window's, so a list in a narrow column (a property's work orders) stacks
+   too. `list-wide:` applies to the table layout and `list-narrow:` to the cards. */
+@custom-variant list-wide {
+    @container list (width >= 44rem) {
+        @slot;
+    }
+}
+@custom-variant list-narrow {
+    @container list (width < 44rem) {
+        @slot;
+    }
+}
+
 /* Theme colors: each is set once per theme here and used through the named classes in @theme below
    (bg-surface, text-muted, border-line, ...). Dark is the default; light applies with data-theme="light" on <html>,
    which the script in layout.tsx sets from the saved choice or the device setting (src/lib/theme.ts). */
@@ -11,17 +25,18 @@
     /* Page and text, brightest to dimmest */
     --background: #0a0a0a;
     --foreground: var(--color-neutral-100);
-    --secondary: var(--color-neutral-300);
-    --muted: var(--color-neutral-400);
-    --subtle: var(--color-neutral-500);
-    --faint: var(--color-neutral-600);
+    /* Text on cards (--surface) stays at least 4.5:1 down to --subtle; --faint is for decoration only. */
+    --secondary: var(--color-neutral-200);
+    --muted: #b5b5b5;
+    --subtle: #959595;
+    --faint: #737373;
 
-    /* Cards, inputs and borders */
+    /* Cards, inputs and borders. --line-strong outlines controls (inputs, checkboxes) at about 3:1. */
     --surface: var(--color-neutral-900);
     --surface-hover: var(--color-neutral-800);
-    --line: var(--color-neutral-800);
-    --line-strong: var(--color-neutral-700);
-    --line-hover: var(--color-neutral-600);
+    --line: #2e2e2e;
+    --line-strong: #666666;
+    --line-hover: #7a7a7a;
 
     /* Primary buttons, links, focus rings and selected states */
     --accent: var(--color-emerald-400);
@@ -40,7 +55,11 @@
     --status-in-progress: var(--color-amber-400);
     --status-completed: var(--color-green-400);
     --status-closed: var(--color-violet-400);
-    --status-cancelled: var(--color-red-400);
+    /* Cancelled is neutral: red is kept for overdue, emergency and deleting */
+    --status-cancelled: #959595;
+
+    /* High priority: orange, so it isn't confused with the amber "In progress" status */
+    --priority-high: var(--color-orange-400);
 }
 
 [data-theme="light"] {
@@ -56,7 +75,7 @@
     --surface: #ffffff;
     --surface-hover: var(--color-neutral-200);
     --line: var(--color-neutral-300);
-    --line-strong: var(--color-neutral-400);
+    --line-strong: #8f8f8f;
     --line-hover: var(--color-neutral-600);
 
     --accent: var(--color-emerald-700);
@@ -73,7 +92,9 @@
     --status-in-progress: var(--color-amber-700);
     --status-completed: var(--color-green-700);
     --status-closed: var(--color-violet-700);
-    --status-cancelled: var(--color-red-700);
+    --status-cancelled: var(--color-neutral-500);
+
+    --priority-high: var(--color-orange-700);
 }
 
 /* Palettes the user can pick in Settings, one for each theme (src/lib/palettes.ts). Each overrides the light or
@@ -83,13 +104,13 @@
     --foreground: #16231b;
     --secondary: #24342a;
     --muted: #43554a;
-    --subtle: #57695e;
-    --faint: #77897e;
+    --subtle: #506257;
+    --faint: #6c7e73;
     --surface: #eff6f1;
     --surface-hover: #d4e2d8;
     --line: #c6d8cb;
-    --line-strong: #a4bcab;
-    --line-hover: #77897e;
+    --line-strong: #7d9585;
+    --line-hover: #5f7366;
     --accent: #046c4e;
     --accent-hover: #065442;
     --on-accent: #ffffff;
@@ -102,7 +123,9 @@
     --status-in-progress: #c2410c;
     --status-completed: #15803d;
     --status-closed: #6d28d9;
-    --status-cancelled: #b91c1c;
+    --status-cancelled: #6c7e73;
+    /* In progress is orange in this palette, so High priority is pink */
+    --priority-high: #be185d;
 }
 
 [data-theme="light"][data-palette-light="lavender"] {
@@ -111,12 +134,12 @@
     --secondary: #2e1d52;
     --muted: #4c3a78;
     --subtle: #5f4d8c;
-    --faint: #8676b0;
+    --faint: #7a6aa6;
     --surface: #f5f0ff;
     --surface-hover: #dccff8;
     --line: #d3c4f3;
-    --line-strong: #b19ce6;
-    --line-hover: #8676b0;
+    --line-strong: #9580cf;
+    --line-hover: #6f5fa0;
     --accent: #7c3aed;
     --accent-hover: #6d28d9;
     --on-accent: #ffffff;
@@ -129,7 +152,8 @@
     --status-in-progress: #c2410c;
     --status-completed: #047857;
     --status-closed: #a21caf;
-    --status-cancelled: #be123c;
+    --status-cancelled: #7a6aa6;
+    --priority-high: #be185d;
 }
 
 [data-theme="light"][data-palette-light="blue"] {
@@ -138,12 +162,12 @@
     --secondary: #13295a;
     --muted: #2c4677;
     --subtle: #3f5a8c;
-    --faint: #6a83ad;
+    --faint: #5f78a3;
     --surface: #eef4fc;
     --surface-hover: #c6d9f2;
     --line: #bcd2ef;
-    --line-strong: #8fb1e0;
-    --line-hover: #6a83ad;
+    --line-strong: #6f8fbf;
+    --line-hover: #4f6894;
     --accent: #c2410c;
     --accent-hover: #9a3412;
     --on-accent: #ffffff;
@@ -156,7 +180,9 @@
     --status-in-progress: #b45309;
     --status-completed: #15803d;
     --status-closed: #7e22ce;
-    --status-cancelled: #b91c1c;
+    --status-cancelled: #5f78a3;
+    /* The buttons are orange in this palette, so High priority is pink */
+    --priority-high: #be185d;
 }
 
 [data-theme="dark"][data-palette-dark="navy"] {
@@ -164,13 +190,13 @@
     --foreground: #e6ebf5;
     --secondary: #c6cfdf;
     --muted: #9aa6bd;
-    --subtle: #7c88a0;
-    --faint: #5c6780;
+    --subtle: #8692aa;
+    --faint: #66718b;
     --surface: #121b2e;
     --surface-hover: #1b2740;
-    --line: #1f2b44;
-    --line-strong: #2c3a58;
-    --line-hover: #44537a;
+    --line: #253250;
+    --line-strong: #5a6a8c;
+    --line-hover: #7383a6;
     --accent: #34d399;
     --accent-hover: #6ee7b7;
     --on-accent: #06281d;
@@ -183,7 +209,7 @@
     --status-in-progress: #fbbf24;
     --status-completed: #4ade80;
     --status-closed: #a78bfa;
-    --status-cancelled: #f87171;
+    --status-cancelled: #8692aa;
 }
 
 [data-theme="dark"][data-palette-dark="forest"] {
@@ -191,13 +217,13 @@
     --foreground: #e3efe7;
     --secondary: #c3d6ca;
     --muted: #94ab9c;
-    --subtle: #76907f;
-    --faint: #56705f;
+    --subtle: #7f9a89;
+    --faint: #5f7a69;
     --surface: #0f1c16;
     --surface-hover: #172a20;
-    --line: #1a2d23;
-    --line-strong: #26402f;
-    --line-hover: #3b5c47;
+    --line: #20362a;
+    --line-strong: #4f6e5a;
+    --line-hover: #6a8b76;
     --accent: #34d399;
     --accent-hover: #6ee7b7;
     --on-accent: #052e1c;
@@ -210,7 +236,7 @@
     --status-in-progress: #fbbf24;
     --status-completed: #4ade80;
     --status-closed: #a78bfa;
-    --status-cancelled: #f87171;
+    --status-cancelled: #7f9a89;
 }
 
 [data-theme="dark"][data-palette-dark="espresso"] {
@@ -218,13 +244,13 @@
     --foreground: #f1ebe3;
     --secondary: #d9cfc2;
     --muted: #ab9f90;
-    --subtle: #8c8072;
-    --faint: #6b6155;
+    --subtle: #9a8e80;
+    --faint: #766b5e;
     --surface: #1c1915;
     --surface-hover: #27221c;
-    --line: #2b261f;
-    --line-strong: #3b342b;
-    --line-hover: #5a5043;
+    --line: #332d25;
+    --line-strong: #6b604f;
+    --line-hover: #8a7d6a;
     --accent: #2dd4bf;
     --accent-hover: #5eead4;
     --on-accent: #042f2a;
@@ -237,7 +263,7 @@
     --status-in-progress: #fbbf24;
     --status-completed: #4ade80;
     --status-closed: #a78bfa;
-    --status-cancelled: #f87171;
+    --status-cancelled: #9a8e80;
 }
 
 @media print {
@@ -271,8 +297,27 @@
     --color-status-completed: var(--status-completed);
     --color-status-closed: var(--status-closed);
     --color-status-cancelled: var(--status-cancelled);
+    --color-priority-high: var(--priority-high);
     --font-sans: var(--font-geist-sans);
     --font-mono: var(--font-geist-mono);
+}
+
+/* The theme colors under names only Clerk's widgets use (see clerkAppearance in layout.tsx). Clerk defines its own
+   --accent and similar inside the widget, which would hide ours; these resolve on <html>, so the widget gets the real
+   colors for the current theme and palette. */
+:root {
+    --ck-accent: var(--accent);
+    --ck-accent-hover: var(--accent-hover);
+    --ck-on-accent: var(--on-accent);
+    --ck-background: var(--background);
+    --ck-surface: var(--surface);
+    --ck-surface-hover: var(--surface-hover);
+    --ck-foreground: var(--foreground);
+    --ck-muted: var(--muted);
+    --ck-line-strong: var(--line-strong);
+    --ck-danger: var(--danger);
+    --ck-success: var(--success);
+    --ck-warning: var(--warning);
 }
 
 /* Keeps anchor jumps and focused fields from landing under the sticky signed-in nav. */
@@ -280,8 +325,57 @@ html {
     scroll-padding-top: 5rem;
 }
 
+/* On phones the signed-in header has a second row (the page tabs). */
+@media (width < 48rem) {
+    html {
+        scroll-padding-top: 7.5rem;
+    }
+}
+
 body {
     background: var(--background);
     color: var(--foreground);
     font-family: var(--font-sans), system-ui, sans-serif;
+}
+
+/* One visible focus ring for every keyboard-focused control. In the base layer, so a component's own
+   focus-visible utilities still win. Text inputs show their ring through inputClass instead. */
+@layer base {
+    :focus-visible {
+        outline: 2px solid var(--accent);
+        outline-offset: 2px;
+    }
+    input:focus-visible,
+    textarea:focus-visible,
+    select:focus-visible {
+        outline-offset: 0;
+    }
+}
+
+/* Toasts slide up and fade in. */
+@keyframes toast-in {
+    from {
+        opacity: 0;
+        transform: translateY(0.5rem);
+    }
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
+}
+
+@theme {
+    --animate-toast-in: toast-in 160ms ease-out;
+}
+
+/* Respect the device's reduced motion setting everywhere: no transitions, animations or smooth scrolling. */
+@media (prefers-reduced-motion: reduce) {
+    *,
+    ::before,
+    ::after {
+        animation-duration: 0.01ms !important;
+        animation-iteration-count: 1 !important;
+        transition-duration: 0.01ms !important;
+        scroll-behavior: auto !important;
+    }
 }

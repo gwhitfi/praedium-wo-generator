@@ -1,4 +1,5 @@
 import { describeEvent, formatEventTime, type ActivityEvent } from "@/lib/activity";
+import { cardClass, sectionTitleClass } from "@/lib/ui";
 
 // Shown before "Show older events".
 const RECENT_COUNT = 5;
@@ -6,19 +7,35 @@ const RECENT_COUNT = 5;
 // The work order's history, newest first. `limit` is how many events the page loaded; if it got that many,
 // there may be older ones that aren't shown.
 export default function ActivityLog({ events, limit }: { events: ActivityEvent[]; limit: number }) {
-    if (events.length === 0) return null;
+    if (events.length === 0) {
+        return (
+            <section aria-labelledby="activity-title" className="mt-10">
+                <h2 id="activity-title" className={`${sectionTitleClass} mb-3`}>
+                    Activity
+                </h2>
+                <p className="rounded-xl border border-dashed border-line-strong/60 px-4 py-4 text-sm text-muted">
+                    No activity recorded yet. Changes, emails and the contractor&apos;s progress will show up here.
+                </p>
+            </section>
+        );
+    }
 
     const recent = events.slice(0, RECENT_COUNT);
     const older = events.slice(RECENT_COUNT);
 
     return (
-        <section className="mt-10">
-            <p className="mb-2 text-xs uppercase tracking-wide text-subtle">Activity</p>
+        <section aria-labelledby="activity-title" className="mt-10">
+            <h2 id="activity-title" className={`${sectionTitleClass} mb-3`}>
+                Activity
+            </h2>
             <EventList events={recent} />
             {older.length > 0 && (
-                <details className="mt-2">
-                    <summary className="cursor-pointer text-sm text-muted hover:text-foreground">
-                        Show {older.length} older {older.length === 1 ? "event" : "events"}
+                <details className="group mt-2">
+                    <summary className="inline-flex cursor-pointer list-none items-center gap-1 rounded px-1 py-1 text-sm font-medium text-muted hover:text-foreground [&::-webkit-details-marker]:hidden">
+                        <span className="group-open:hidden">
+                            Show {older.length} older {older.length === 1 ? "event" : "events"}
+                        </span>
+                        <span className="hidden group-open:inline">Hide older events</span>
                     </summary>
                     <div className="mt-2">
                         <EventList events={older} />
@@ -34,15 +51,18 @@ export default function ActivityLog({ events, limit }: { events: ActivityEvent[]
 
 function EventList({ events }: { events: ActivityEvent[] }) {
     return (
-        <ul className="divide-y divide-line rounded-lg border border-line bg-surface/40 text-sm">
+        <ol className={`${cardClass} divide-y divide-line text-sm`}>
             {events.map((event) => {
                 const line = describeEvent(event);
                 return (
-                    <li key={event.id} className="flex flex-col gap-0.5 px-4 py-2.5 sm:flex-row sm:gap-4">
-                        <time dateTime={event.createdAt.toISOString()} className="shrink-0 text-subtle sm:w-44">
+                    <li key={event.id} className="flex flex-col gap-0.5 px-4 py-3 sm:flex-row sm:gap-4 sm:px-5">
+                        <time
+                            dateTime={event.createdAt.toISOString()}
+                            className="shrink-0 text-[0.8125rem] text-muted sm:w-40 sm:pt-px"
+                        >
                             {formatEventTime(event.createdAt)}
                         </time>
-                        <div className="min-w-0 break-words">
+                        <div className="min-w-0 [overflow-wrap:anywhere]">
                             <p className="text-foreground">
                                 {line.text}
                                 {line.backfilled && (
@@ -56,6 +76,6 @@ function EventList({ events }: { events: ActivityEvent[] }) {
                     </li>
                 );
             })}
-        </ul>
+        </ol>
     );
 }

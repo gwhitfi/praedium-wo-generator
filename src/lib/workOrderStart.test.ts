@@ -1,7 +1,7 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
 vi.mock("@/lib/prisma", () => ({
-    default: { workOrder: { findFirst: vi.fn(), updateMany: vi.fn() } },
+    default: { workOrder: { findFirst: vi.fn(), updateMany: vi.fn() }, lineItem: { count: vi.fn() } },
 }));
 vi.mock("@/lib/emails/notifyTenant", () => ({ notifyTenant: vi.fn(() => false) }));
 vi.mock("@/lib/workOrderEvents", () => ({ logEvent: vi.fn() }));
@@ -36,9 +36,23 @@ beforeEach(() => {
     vi.clearAllMocks();
     withWorkOrder();
     vi.mocked(prisma.workOrder.updateMany).mockResolvedValue({ count: 1 } as never);
+    vi.mocked(prisma.lineItem.count).mockResolvedValue(2);
 });
 
 describe("startInHouseWorkOrder", () => {
+    it("refuses to start a draft with no line items", async () => {
+        vi.mocked(prisma.lineItem.count).mockResolvedValue(0);
+
+        await expect(startInHouseWorkOrder(start)).resolves.toEqual({
+            ok: false,
+            error: "Add at least one line item before starting",
+        });
+        expect(prisma.lineItem.count).toHaveBeenCalledWith({ where: { area: { workOrderId: "wo1" } } });
+        expect(prisma.workOrder.updateMany).not.toHaveBeenCalled();
+        expect(notifyTenant).not.toHaveBeenCalled();
+        expect(logEvent).not.toHaveBeenCalled();
+    });
+
     it("moves an in-house draft to In progress, only while it's still one, scoped to the organization", async () => {
         const result = await startInHouseWorkOrder(start);
 

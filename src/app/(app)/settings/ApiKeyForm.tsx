@@ -3,6 +3,7 @@
 import { useActionState, useState } from "react";
 import { createApiKey } from "./actions";
 import { inputClass, labelClass } from "@/lib/defaults";
+import { Button } from "@/components/Button";
 
 // The full key comes back only from the create that made it, so it's shown here once and never again.
 export default function ApiKeyForm(): React.ReactElement {
@@ -33,13 +34,7 @@ export default function ApiKeyForm(): React.ReactElement {
                             onFocus={(e) => e.target.select()}
                             className={`${inputClass} font-mono`}
                         />
-                        <button
-                            type="button"
-                            onClick={() => copy(newKey)}
-                            className="shrink-0 rounded-md border border-line-strong px-3 py-2 text-sm text-foreground hover:bg-surface-hover hover:cursor-pointer"
-                        >
-                            {copied === newKey ? "Copied" : "Copy"}
-                        </button>
+                        <Button onClick={() => copy(newKey)}>{copied === newKey ? "Copied" : "Copy"}</Button>
                     </div>
                 </div>
             )}
@@ -55,24 +50,20 @@ export default function ApiKeyForm(): React.ReactElement {
                         className={inputClass}
                     />
                 </label>
-                <button
-                    type="submit"
-                    disabled={pending}
-                    className="shrink-0 rounded-md bg-accent px-4 py-2 text-sm font-medium text-on-accent hover:bg-accent-hover hover:cursor-pointer disabled:opacity-40"
-                >
-                    {pending ? "Creating..." : "Create key"}
-                </button>
+                <Button type="submit" variant="primary" pending={pending} pendingLabel="Creating…">
+                    Create key
+                </Button>
             </div>
-            {state.errors?.name && <p className="mt-1 text-sm text-danger">{state.errors.name[0]}</p>}
-            <label className="mt-3 flex items-start gap-2 text-sm text-foreground">
-                <input
-                    name="canChangeStatus"
-                    type="checkbox"
-                    className="mt-0.5 h-4 w-4 shrink-0 rounded border-line-strong bg-surface"
-                />
+            {state.errors?.name && (
+                <p role="alert" className="mt-1 text-sm text-danger">
+                    {state.errors.name[0]}
+                </p>
+            )}
+            <label className="mt-3 flex items-start gap-3 text-sm text-foreground hover:cursor-pointer">
+                <input name="canChangeStatus" type="checkbox" className="mt-0.5 h-4 w-4 shrink-0 accent-accent" />
                 <span>
                     Allow this key to send, cancel, archive and restore work orders
-                    <span className="block text-xs text-muted">
+                    <span className="block text-[0.8125rem] text-muted">
                         These email contractors, and sometimes tenants. To change this later, revoke the key and create
                         a new one.
                     </span>

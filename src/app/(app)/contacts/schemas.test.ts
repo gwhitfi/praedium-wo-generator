@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { z } from "zod";
-import { contactInput } from "./schemas";
+import { contactFormInput, contactInput } from "./schemas";
 
 const contractor = {
     contactType: "CONTRACTOR",
@@ -45,7 +45,11 @@ describe("phone", () => {
     it("rejects too few or too many digits", () => {
         expect(contactInput.safeParse({ ...contractor, phone: "123-4567" }).success).toBe(false);
         expect(contactInput.safeParse({ ...contractor, phone: "25551234567" }).success).toBe(false);
-        expect(contactInput.safeParse({ ...contractor, phone: "" }).success).toBe(false);
+    });
+
+    it("is optional: blank or missing becomes null", () => {
+        expect(contactInput.parse({ ...contractor, phone: "" }).phone).toBeNull();
+        expect(contactInput.parse({ ...contractor, phone: undefined }).phone).toBeNull();
     });
 });
 
@@ -65,9 +69,33 @@ describe("blank required fields", () => {
         const result = contactInput.safeParse({ ...contractor, displayName: "", phone: " ", email: "" });
         expect(z.flattenError(result.error!).fieldErrors).toEqual({
             displayName: ["Enter a name"],
-            phone: ["Enter a phone number"],
             email: ["Enter an email"],
         });
+    });
+});
+
+describe("contactFormInput", () => {
+    const blank = { ...contractor, displayName: "" };
+
+    it("keeps a typed display name", () => {
+        expect(contactFormInput.parse({ ...contractor, firstName: "Bob" }).displayName).toBe("Bob's Plumbing");
+    });
+
+    it("fills a blank display name from the person's name, then the company", () => {
+        expect(contactFormInput.parse({ ...blank, firstName: " Bob ", lastName: "Hill" }).displayName).toBe(
+            "Bob Hill",
+        );
+        expect(contactFormInput.parse({ ...blank, company: "Hill Plumbing" }).displayName).toBe("Hill Plumbing");
+    });
+
+    it("doesn't name a tenant after a company", () => {
+        const result = contactFormInput.safeParse({ ...blank, contactType: "TENANT", company: "Acme" });
+        expect(z.flattenError(result.error!).fieldErrors).toEqual({ firstName: ["Enter a name"] });
+    });
+
+    it("asks for a name or company when there's nothing to name the contact by", () => {
+        const result = contactFormInput.safeParse(blank);
+        expect(z.flattenError(result.error!).fieldErrors).toEqual({ firstName: ["Enter a name or a company"] });
     });
 });
 

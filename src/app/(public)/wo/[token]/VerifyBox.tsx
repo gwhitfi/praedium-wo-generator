@@ -4,9 +4,10 @@ import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { sendCode, verifyCode } from "./actions";
 import { inputClass } from "@/lib/defaults";
+import { buttonClass } from "@/lib/ui";
+import { ShieldIcon } from "@/components/Icons";
 
-const accentButton =
-    "shrink-0 rounded-md bg-accent px-4 py-2 text-sm font-medium text-on-accent hover:bg-accent-hover hover:cursor-pointer disabled:opacity-40";
+const accentButton = buttonClass({ variant: "primary", className: "w-full sm:w-auto" });
 
 // Shown at the top of the contractor page until the browser is verified: sends a code to the contractor email on
 // file, then checks it. On success the server sets the session cookie and the page reloads in full.
@@ -66,12 +67,15 @@ export default function VerifyBox({
     }
 
     return (
-        <div className="mb-5 rounded-lg border border-accent/40 bg-accent/10 p-4 print:hidden">
+        <div className="mb-5 rounded-xl border border-accent/40 bg-accent/[0.07] p-4 print:hidden">
             {challengeId ? (
                 <form onSubmit={handleVerify} className="flex flex-col gap-3">
                     <label htmlFor="verify-code" className="text-sm text-foreground">
-                        We emailed a code to <span className="font-medium">{emailHint}</span>. Enter it here:
+                        We emailed a 6-digit code to <span className="font-medium">{emailHint}</span>. Enter it here:
                     </label>
+                    <p id="verify-help" className="-mt-1 text-[0.8125rem] text-muted">
+                        It can take a minute. Not there? Check your spam folder, or send a new code below.
+                    </p>
                     <div className="flex flex-col gap-2 sm:flex-row sm:items-center">
                         <input
                             id="verify-code"
@@ -84,7 +88,9 @@ export default function VerifyBox({
                             value={code}
                             onChange={(e) => setCode(e.target.value.replace(/\D/g, "").slice(0, 6))}
                             aria-invalid={error ? true : undefined}
-                            aria-describedby={error ? "verify-error" : undefined}
+                            aria-describedby={error ? "verify-help verify-error" : "verify-help"}
+                            // The code box appears after "Send code"; put the cursor in it right away.
+                            autoFocus
                             className={`${inputClass} font-mono tracking-widest sm:w-40`}
                         />
                         <button type="submit" disabled={pending || code.length !== 6} className={accentButton}>
@@ -97,15 +103,15 @@ export default function VerifyBox({
                                 type="checkbox"
                                 checked={remember}
                                 onChange={(e) => setRemember(e.target.checked)}
-                                className="h-4 w-4 rounded border-line-strong bg-surface"
+                                className="h-4 w-4 accent-accent"
                             />
-                            Remember this device
+                            Remember this device for 30 days
                         </label>
                         <button
                             type="button"
                             onClick={handleSend}
                             disabled={pending}
-                            className="text-sm text-subtle underline hover:text-foreground hover:cursor-pointer disabled:opacity-40"
+                            className="min-h-9 text-sm text-muted underline underline-offset-4 hover:text-foreground hover:cursor-pointer disabled:opacity-40"
                         >
                             Send a new code
                         </button>
@@ -113,10 +119,16 @@ export default function VerifyBox({
                 </form>
             ) : (
                 <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-                    <p className="text-sm text-foreground">
-                        Verify it&apos;s you to see tenant details, photos and notes and to check off work. We&apos;ll
-                        send a code to <span className="font-medium">{emailHint}</span>.
-                    </p>
+                    <div className="flex gap-3">
+                        <ShieldIcon size={20} className="mt-0.5 shrink-0 text-accent" />
+                        <p className="text-sm text-foreground">
+                            <span className="block font-semibold">Confirm it&apos;s you to start</span>
+                            <span className="text-secondary">
+                                We&apos;ll email a 6-digit code to <span className="font-medium">{emailHint}</span>.
+                                Then you can check off work and see tenant details, photos and notes.
+                            </span>
+                        </p>
+                    </div>
                     <button type="button" onClick={handleSend} disabled={pending} className={accentButton}>
                         {pending ? "Sending..." : "Send code"}
                     </button>

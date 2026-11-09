@@ -11,6 +11,8 @@ export type PropertyOption = {
     addressLine1: string;
     city: string;
     units: UnitOption[];
+    // Starred in the app; the review screen's dropdowns show a ★. Not needed for matching.
+    favorite?: boolean;
 };
 
 export type ContractorOption = {
@@ -20,6 +22,7 @@ export type ContractorOption = {
     lastName: string | null;
     company: string | null;
     inHouse: boolean;
+    favorite?: boolean;
 };
 
 // `unit` is null until the property is matched, since units are only looked for within it.

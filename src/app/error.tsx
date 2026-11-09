@@ -2,6 +2,8 @@
 
 import { useEffect } from "react";
 import Link from "next/link";
+import { AlertIcon } from "@/components/Icons";
+import { buttonClass } from "@/lib/ui";
 
 export default function Error({ error, retry }: { error: Error & { digest?: string }; retry: () => void }) {
     useEffect(() => {
@@ -9,24 +11,23 @@ export default function Error({ error, retry }: { error: Error & { digest?: stri
     }, [error]);
 
     return (
-        <main className="mx-auto max-w-md px-4 py-24 text-center text-foreground">
-            <h1 className="text-2xl font-semibold">Something went wrong</h1>
-            <p className="mt-4 text-muted">Try again, or go back to the dashboard.</p>
-            <div className="mt-8 flex items-center justify-center gap-4">
-                <button
-                    onClick={() => retry()}
-                    className="rounded-md bg-accent px-6 py-3 text-sm font-medium text-on-accent hover:bg-accent-hover"
-                >
+        <main id="main" className="mx-auto flex max-w-md flex-col items-center px-4 py-24 text-center text-foreground">
+            <div className="flex h-12 w-12 items-center justify-center rounded-full bg-danger/10 text-danger">
+                <AlertIcon size={22} />
+            </div>
+            <h1 className="mt-6 text-2xl font-semibold tracking-tight">Something went wrong</h1>
+            <p className="mt-3 text-muted">
+                That didn&apos;t work, but nothing you saved before is lost. Try again, or go back to the dashboard.
+            </p>
+            <div className="mt-8 flex flex-col gap-2 sm:flex-row">
+                <button type="button" onClick={() => retry()} className={buttonClass({ variant: "primary" })}>
                     Try again
                 </button>
-                <Link
-                    href="/"
-                    className="rounded-md border border-line-strong px-6 py-3 text-sm font-medium hover:bg-surface"
-                >
-                    Go to dashboard
+                <Link href="/" className={buttonClass()}>
+                    Go to the dashboard
                 </Link>
             </div>
-            {error.digest && <p className="mt-8 text-xs text-faint">Error ID: {error.digest}</p>}
+            {error.digest && <p className="mt-8 text-xs text-subtle">Error ID: {error.digest}</p>}
         </main>
     );
 }

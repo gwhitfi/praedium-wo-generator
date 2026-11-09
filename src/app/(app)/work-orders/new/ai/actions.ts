@@ -15,7 +15,8 @@ import { confirmedDraft, type ConfirmedDraft, type ParseState } from "./schemas"
 export async function parseWorkOrderDescription(_prev: ParseState, formData: FormData): Promise<ParseState> {
     const result = await getCurrentUser();
     if (result.state !== "ready") return { error: "Not authorized" };
-    if (result.user.aiEnabled === false) return { error: "AI is turned off in your Settings." };
+    // Off until the user turns it on (null means they haven't chosen yet).
+    if (result.user.aiEnabled !== true) return { error: "Praedium Bot is off. Turn it on in Settings to use it." };
 
     const description = z.string().safeParse(formData.get("description"));
     if (!description.success) return { error: "Describe the work first." };

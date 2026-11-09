@@ -9,12 +9,14 @@ export function isOverdue(workOrder: { status: WorkOrderStatus; dueDate: Date | 
     return !!workOrder.dueDate && workOrder.dueDate < todayInAppTimeZone() && OPEN_STATUSES.includes(workOrder.status);
 }
 
+// The work order list's filters, in the order the filter tabs show them (after "All").
 export const WORK_ORDER_FILTERS = {
-    draft: { label: "Drafts", where: (): Prisma.WorkOrderWhereInput => ({ status: "DRAFT" }) },
+    // Sent or in progress, with a contractor or in-house: the work that's underway.
     active: {
-        label: "With contractor",
+        label: "Active",
         where: (): Prisma.WorkOrderWhereInput => ({ status: { in: ["SENT", "IN_PROGRESS"] } }),
     },
+    draft: { label: "Drafts", where: (): Prisma.WorkOrderWhereInput => ({ status: "DRAFT" }) },
     completed: { label: "To review", where: (): Prisma.WorkOrderWhereInput => ({ status: "COMPLETED" }) },
     overdue: {
         label: "Overdue",
@@ -33,7 +35,7 @@ export type WorkOrderFilter = keyof typeof WORK_ORDER_FILTERS;
 export const SPLIT_VIEW_COOKIE = "wo-split-view";
 
 // The "Color sections" setting on /work-orders: tints each split view section with its status color.
-// Saved per browser like the split view setting, and on when not set.
+// Saved per browser like the split view setting, and off when not set (lists stay neutral unless asked).
 export const COLOR_SECTIONS_COOKIE = "wo-color-sections";
 
 export function isWorkOrderFilter(value: unknown): value is WorkOrderFilter {
@@ -76,15 +78,17 @@ export const WORK_ORDER_SORTS: SortColumns<SortableWorkOrder, WorkOrderSort> = {
     },
 };
 
-// How the work order list is shown: the filter and sort from the URL, and the split view setting.
+// How the work order list is shown: the filter, sort and search text from the URL, and the split view setting.
+// `query` is "" (or left out) when nothing is searched.
 export type WorkOrderListView = {
     filter: WorkOrderFilter | null;
     sort: SortState<WorkOrderSort> | null;
     split: boolean;
+    query?: string;
 };
 
-// Puts work orders in the order the list shows them. Split view groups them by status in workflow order,
-// each group sorted, so the rows read top to bottom across the sections.
+// Puts work orders in the order the list shows them. Split view groups them by status in workflow order (drafts
+// first), each group sorted, so the rows read top to bottom across the sections.
 export function orderForView<T extends SortableWorkOrder>(
     rows: T[],
     view: Pick<WorkOrderListView, "sort" | "split">,
@@ -94,10 +98,13 @@ export function orderForView<T extends SortableWorkOrder>(
     return STATUS_ORDER.flatMap((status) => sorted.filter((row) => row.status === status));
 }
 
-// The view's filter and sort as a query string ("?status=overdue&sort=due&dir=desc", or "" for the default),
-// added to work order links so the work order page knows which list it was opened from.
-export function listQuery(view: Pick<WorkOrderListView, "filter" | "sort">): string {
-    return hrefWithSort("", view.sort, view.filter ? { status: view.filter } : {});
+// The view's filter, search and sort as a query string ("?status=overdue&q=roof&sort=due&dir=desc", or "" for the
+// default), added to work order links so the work order page knows which list it was opened from.
+export function listQuery(view: Pick<WorkOrderListView, "filter" | "sort" | "query">): string {
+    return hrefWithSort("", view.sort, {
+        ...(view.filter ? { status: view.filter } : {}),
+        ...(view.query ? { q: view.query } : {}),
+    });
 }
 
 // The work orders before and after `id` in an ordered list, and its position. Null if it isn't in the list.

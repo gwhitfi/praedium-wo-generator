@@ -3,6 +3,10 @@
 import { useState } from "react";
 import { addArea, removeArea, moveArea, renameArea, setLineItemCompleted } from "../actions";
 import { inputClass } from "@/lib/defaults";
+import { Button } from "@/components/Button";
+import { useToast } from "@/components/Toaster";
+import { InfoIcon, PlusIcon } from "@/components/Icons";
+import { sectionTitleClass } from "@/lib/ui";
 import SpaceCard from "./SpaceCard";
 
 type AreaRow = {
@@ -19,11 +23,13 @@ type AreaRow = {
     }[];
 };
 
+// The work itself: areas (rooms, the roof, the yard), each with its line items, and the field to add an area.
 export default function AreaBuilder({
     workOrderId,
     areas,
     readOnly = false,
     canCheckOff = false,
+    building = false,
     notice,
 }: {
     workOrderId: string;
@@ -31,12 +37,16 @@ export default function AreaBuilder({
     readOnly?: boolean;
     // A started in-house work order: the office checks off the line items itself.
     canCheckOff?: boolean;
+    // A draft still being written: item counts instead of "0 of N done", and no done marks.
+    building?: boolean;
     notice?: string;
-}) {
+}): React.ReactElement {
+    const toast = useToast();
     const [name, setName] = useState("");
     const [pending, setPending] = useState(false);
     const [error, setError] = useState<string | null>(null);
     const [busyId, setBusyId] = useState<string | null>(null);
+    const itemCount = areas.reduce((sum, area) => sum + area.lineItems.length, 0);
 
     async function handleAdd() {
         const trimmed = name.trim();
@@ -48,17 +58,18 @@ export default function AreaBuilder({
             setName("");
             setError(null);
         } catch {
-            setError("Could not add that area. Try again.");
+            setError("Couldn't add that area. Try again.");
         } finally {
             setPending(false);
         }
     }
+
     async function handleMove(areaId: string, direction: "up" | "down") {
         setBusyId(areaId);
         try {
             await moveArea(areaId, direction);
         } catch {
-            setError("Could not move that area.");
+            setError("Couldn't move that area. Try again.");
         } finally {
             setBusyId(null);
         }
@@ -68,8 +79,9 @@ export default function AreaBuilder({
         setBusyId(areaId);
         try {
             await removeArea(areaId);
+            toast("Area removed.");
         } catch {
-            setError("Could not remove that area.");
+            setError("Couldn't remove that area. Try again.");
         } finally {
             setBusyId(null);
         }
@@ -84,44 +96,57 @@ export default function AreaBuilder({
             setBusyId(null);
         }
     }
+
     return (
-        <div className="border-t border-line pt-6">
-            <h2 className="text-lg font-semibold text-foreground">Areas</h2>
+        <section aria-labelledby="work-title">
+            <div className="flex flex-wrap items-baseline justify-between gap-2">
+                <h2 id="work-title" className={sectionTitleClass}>
+                    Work
+                </h2>
+                {itemCount > 0 && (
+                    <p className="text-sm text-subtle">
+                        {areas.length} {areas.length === 1 ? "area" : "areas"} · {itemCount}{" "}
+                        {itemCount === 1 ? "item" : "items"}
+                    </p>
+                )}
+            </div>
             {notice && (
-                <p className="mt-2 rounded-md border border-warning/40 bg-warning/10 px-3 py-2 text-sm text-warning">
+                <p className="mt-2 flex items-center gap-2 text-sm text-muted">
+                    <InfoIcon size={14} className="shrink-0 text-subtle" />
                     {notice}
                 </p>
             )}
-            {!readOnly && (
-                <>
-                    <p className="mt-1 mb-4 text-sm text-subtle">Group the work by area: a room, the roof, the yard…</p>
-                    <div className="flex flex-col gap-2 sm:flex-row">
-                        <input
-                            value={name}
-                            onChange={(e) => setName(e.target.value)}
-                            onKeyDown={(e) => {
-                                if (e.key === "Enter") handleAdd();
-                            }}
-                            placeholder="Area name (Kitchen, Roof, Back yard…)"
-                            className={inputClass}
-                        />
-                        <button
-                            type="button"
-                            onClick={handleAdd}
-                            disabled={pending || !name.trim()}
-                            className="shrink-0 rounded-md border border-line-strong px-4 py-2 text-sm text-foreground hover:bg-surface-hover hover:cursor-pointer disabled:opacity-40 disabled:hover:cursor-not-allowed"
+            {/* Phones: a row of links to each area, so a long work order doesn't mean scrolling past every room. */}
+            {areas.length >= 3 && (
+                // The right edge fades out, a hint that the row scrolls sideways when there are more areas.
+                <nav
+                    aria-label="Areas"
+                    className="-mx-4 mt-3 flex gap-2 overflow-x-auto px-4 pb-1 [mask-image:linear-gradient(to_right,black_calc(100%-2.5rem),transparent)] lg:hidden"
+                >
+                    {areas.map((area) => (
+                        <a
+                            key={area.id}
+                            href={`#area-${area.id}`}
+                            className="inline-flex h-10 shrink-0 items-center rounded-full border border-line-strong bg-surface px-3.5 text-sm text-secondary hover:text-foreground"
                         >
-                            {pending ? "Adding..." : "Add area"}
-                        </button>
-                    </div>
-                </>
+                            {area.name}
+                        </a>
+                    ))}
+                </nav>
             )}
 
-            {error && <p className="mt-2 text-sm text-danger">{error}</p>}
             {areas.length === 0 ? (
-                <p className="mt-4 text-sm text-subtle">
-                    {readOnly ? "No areas on this work order." : "No areas added yet. Add one above."}
-                </p>
+                <div className="mt-4 rounded-xl border border-dashed border-line-strong/60 px-5 py-8 text-center">
+                    <p className="text-sm font-medium text-foreground">
+                        {readOnly ? "No work was listed on this work order." : "Add the first area"}
+                    </p>
+                    {!readOnly && (
+                        <p className="mx-auto mt-1 max-w-sm text-sm text-muted">
+                            Group the work by where it happens, like Kitchen, Roof or Back yard. Then add the line
+                            items for each one.
+                        </p>
+                    )}
+                </div>
             ) : (
                 <ul className="mt-4 flex flex-col gap-4">
                     {areas.map((area, i) => (
@@ -135,11 +160,57 @@ export default function AreaBuilder({
                             onRename={handleRename}
                             busy={busyId === area.id}
                             readOnly={readOnly}
+                            building={building}
                             onToggleItem={canCheckOff ? setLineItemCompleted : undefined}
                         />
                     ))}
                 </ul>
             )}
-        </div>
+
+            {!readOnly && (
+                <form
+                    className="mt-4"
+                    onSubmit={(e) => {
+                        e.preventDefault();
+                        handleAdd();
+                    }}
+                >
+                    <label htmlFor="new-area" className="mb-1 block text-sm font-medium text-secondary">
+                        {areas.length === 0 ? "Area name" : "Add another area"}
+                    </label>
+                    <div className="flex flex-col gap-2 sm:flex-row">
+                        <input
+                            id="new-area"
+                            value={name}
+                            onChange={(e) => setName(e.target.value)}
+                            placeholder="Kitchen, Roof, Back yard…"
+                            maxLength={100}
+                            className={inputClass}
+                        />
+                        {/* Always enabled, so it doesn't look broken at rest; with no name it puts the cursor in the
+                            box instead (handleAdd ignores an empty name). */}
+                        <Button
+                            type="submit"
+                            pending={pending}
+                            pendingLabel="Adding…"
+                            onClick={(e) => {
+                                if (!name.trim()) {
+                                    e.preventDefault();
+                                    document.getElementById("new-area")?.focus();
+                                }
+                            }}
+                        >
+                            <PlusIcon />
+                            Add area
+                        </Button>
+                    </div>
+                    {error && (
+                        <p role="alert" className="mt-2 text-sm text-danger">
+                            {error}
+                        </p>
+                    )}
+                </form>
+            )}
+        </section>
     );
 }

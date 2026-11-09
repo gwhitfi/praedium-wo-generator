@@ -1,9 +1,11 @@
 "use client";
 
-import { useActionState } from "react";
+import { startTransition, useActionState } from "react";
 import { NOTIFICATION_TYPES, type NotificationType } from "@/lib/notificationTypes";
 import { setNotificationPreferences } from "./actions";
 import type { NotificationFormState } from "./schemas";
+import { Spinner } from "@/components/Button";
+import { cardClass } from "@/lib/ui";
 
 // Which events show up under the bell in the header. `selected` is the user's current choice (the defaults if they
 // never picked).
@@ -16,11 +18,21 @@ export default function NotificationSettings({ selected }: { selected: Notificat
     return (
         <section
             id="notifications"
-            className="scroll-mt-24 overflow-hidden rounded-xl border border-line bg-surface shadow-sm"
+            aria-labelledby="notifications-title"
+            className={`${cardClass} scroll-mt-24 overflow-hidden`}
         >
-            <form action={formAction}>
+            {/* Saves on every change, without resetting the form (so the boxes don't flicker back while saving). */}
+            <form
+                onSubmit={(event) => event.preventDefault()}
+                onChange={(event) => {
+                    const data = new FormData(event.currentTarget);
+                    startTransition(() => formAction(data));
+                }}
+            >
                 <div className="p-5 sm:p-6">
-                    <h3 className="text-base font-semibold text-foreground sm:text-lg">Notifications</h3>
+                    <h3 id="notifications-title" className="text-base font-semibold text-foreground">
+                        Notifications
+                    </h3>
                     <p className="mt-1 text-sm text-muted">
                         Choose what shows up under the bell in the header. Things you do yourself are never included.
                     </p>
@@ -46,7 +58,7 @@ export default function NotificationSettings({ selected }: { selected: Notificat
                                                     </span>
                                                 )}
                                             </span>
-                                            <span className="block text-xs text-subtle">{type.description}</span>
+                                            <span className="block text-sm text-muted">{type.description}</span>
                                         </span>
                                     </label>
                                 </li>
@@ -54,16 +66,18 @@ export default function NotificationSettings({ selected }: { selected: Notificat
                         </ul>
                     </fieldset>
                 </div>
-                <div className="flex items-center justify-end gap-3 border-t border-line bg-background/40 px-5 py-3 sm:px-6">
-                    {state.error && <p className="text-sm text-danger">{state.error}</p>}
-                    {state.ok && !pending && <p className="text-sm text-success">Saved</p>}
-                    <button
-                        type="submit"
-                        disabled={pending}
-                        className="rounded-md bg-accent px-3 py-1.5 text-sm font-medium text-on-accent hover:bg-accent-hover hover:cursor-pointer disabled:opacity-60"
-                    >
-                        {pending ? "Saving…" : "Save"}
-                    </button>
+                <div className="flex items-center justify-between gap-3 border-t border-line bg-background/40 px-5 py-3 sm:px-6">
+                    <p className="text-[0.8125rem] text-muted">Changes save as you make them.</p>
+                    <p role="status" className="flex items-center gap-2 text-sm">
+                        {pending && (
+                            <>
+                                <Spinner className="h-3.5 w-3.5" />
+                                <span className="text-muted">Saving…</span>
+                            </>
+                        )}
+                        {!pending && state.error && <span className="text-danger">{state.error}</span>}
+                        {!pending && state.ok && <span className="text-success">Saved.</span>}
+                    </p>
                 </div>
             </form>
         </section>

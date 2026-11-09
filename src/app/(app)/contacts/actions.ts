@@ -7,7 +7,7 @@ import { revokeContractorSessions } from "@/lib/contractorAccess";
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 import { z } from "zod";
-import { contactInput, type ContactFormState } from "./schemas";
+import { contactFormInput, contactInput, type ContactFormState } from "./schemas";
 
 type ActionResult = { ok: true } | { ok: false; error: string };
 
@@ -23,7 +23,7 @@ function submittedValues(formData: FormData) {
 
 async function readContactForm(formData: FormData, organizationId: string) {
     // A checkbox sends "on" when ticked and nothing otherwise.
-    const parsed = contactInput.safeParse({
+    const parsed = contactFormInput.safeParse({
         ...Object.fromEntries(formData),
         inHouse: formData.get("inHouse") === "on",
     });
@@ -91,11 +91,15 @@ export async function createContact(prevState: ContactFormState, formData: FormD
         return { errors, values: submittedValues(formData) };
     }
 
-    await prisma.contact.create({
+    const contact = await prisma.contact.create({
         data: { organizationId: result.organization.id, ...form.fields },
     });
     revalidatePath("/contacts");
-    redirect("/contacts");
+    // Added from the work order form: go back to it with this contact picked (tenants can't be picked there).
+    if (formData.get("returnTo") === "/work-orders/new" && contact.contactType !== "TENANT") {
+        redirect(`/work-orders/new?contractorId=${contact.id}&flash=contact-created`);
+    }
+    redirect(`/contacts/${contact.id}?flash=contact-created`);
 }
 
 export async function updateContact(
@@ -140,7 +144,7 @@ export async function updateContact(
 
     revalidateContact(contactId);
     revalidatePath("/work-orders");
-    redirect(`/contacts/${contactId}`);
+    redirect(`/contacts/${contactId}?flash=contact-saved`);
 }
 
 function workOrderCount(contactId: string) {

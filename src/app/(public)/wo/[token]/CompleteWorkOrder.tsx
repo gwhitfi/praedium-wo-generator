@@ -1,22 +1,35 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { completeWorkOrder } from "./actions";
+import { clearTextDraft, readTextDraft, saveTextDraft } from "@/lib/formDraft";
 import { inputClass } from "@/lib/defaults";
+import { cardClass } from "@/lib/ui";
+import { Button } from "@/components/Button";
 
+// The contractor's last step: optional notes for the office, then "Mark as completed" with a confirmation.
 export default function CompleteWorkOrder({ token, remainingCount }: { token: string; remainingCount: number }) {
+    // Unsent notes are kept in this browser, so a reload or a dropped connection doesn't lose them.
+    const draftKey = `praedium-completion-notes:${token}`;
     const [notes, setNotes] = useState("");
     const [confirming, setConfirming] = useState(false);
     const [pending, setPending] = useState(false);
     const [error, setError] = useState<string | null>(null);
 
+    useEffect(() => {
+        const saved = readTextDraft(draftKey);
+        // eslint-disable-next-line react-hooks/set-state-in-effect -- a one-time restore from browser storage
+        if (saved) setNotes(saved);
+    }, [draftKey]);
+
     async function handleComplete() {
         setPending(true);
         try {
             await completeWorkOrder(token, notes);
+            clearTextDraft(draftKey);
             setError(null);
         } catch {
-            setError("Could not complete the work order. Try again.");
+            setError("Couldn't complete the work order. Check your connection and try again.");
             setConfirming(false);
         } finally {
             setPending(false);
@@ -24,60 +37,72 @@ export default function CompleteWorkOrder({ token, remainingCount }: { token: st
     }
 
     return (
-        <section className="mt-8 border-t border-line pt-6">
-            <h2 className="text-lg font-semibold text-foreground">Finish up</h2>
-            <p className="mt-1 mb-4 text-sm text-subtle">
-                Add any final notes for the office, then mark the work order as completed.
+        <section aria-labelledby="finish-title" className={`${cardClass} mt-8 p-4 sm:p-5`}>
+            <h2 id="finish-title" className="text-lg font-semibold text-foreground">
+                Finish up
+            </h2>
+            <p className="mt-1 text-sm text-muted">
+                When the work is done, add any final notes and mark the work order as completed. The office is told
+                right away.
             </p>
 
+            <label htmlFor="completion-notes" className="mt-4 mb-1 block text-sm font-medium text-secondary">
+                Notes for the office <span className="font-normal text-subtle">(optional)</span>
+            </label>
             <textarea
+                id="completion-notes"
                 value={notes}
-                onChange={(e) => setNotes(e.target.value)}
+                onChange={(e) => {
+                    setNotes(e.target.value);
+                    saveTextDraft(draftKey, e.target.value);
+                }}
                 rows={4}
                 maxLength={2000}
-                placeholder="Completion notes (optional)"
+                placeholder="Anything left to do, parts you used, follow-up needed"
                 className={inputClass}
             />
 
             {remainingCount > 0 && (
-                <p className="mt-2 text-sm text-warning">
-                    {remainingCount} {remainingCount === 1 ? "item is" : "items are"} not checked off.
+                <p className="mt-3 text-sm text-warning">
+                    {remainingCount} {remainingCount === 1 ? "item isn't" : "items aren't"} checked off yet.
                 </p>
             )}
 
-            <div className="mt-3 flex flex-wrap items-center gap-2">
+            <div className="mt-4">
                 {confirming ? (
-                    <>
-                        <span className="text-sm text-secondary">Mark this work order as completed?</span>
-                        <button
-                            type="button"
-                            onClick={handleComplete}
-                            disabled={pending}
-                            className="shrink-0 rounded-md bg-accent px-4 py-2 text-sm font-medium text-on-accent hover:bg-accent-hover hover:cursor-pointer disabled:opacity-40"
-                        >
-                            {pending ? "Submitting..." : "Yes, complete"}
-                        </button>
-                        <button
-                            type="button"
-                            onClick={() => setConfirming(false)}
-                            disabled={pending}
-                            className="shrink-0 px-2 text-sm text-subtle hover:text-foreground hover:cursor-pointer"
-                        >
-                            Go back
-                        </button>
-                    </>
-                ) : (
-                    <button
-                        type="button"
-                        onClick={() => setConfirming(true)}
-                        className="shrink-0 rounded-md bg-accent px-4 py-2 text-sm font-medium text-on-accent hover:bg-accent-hover hover:cursor-pointer"
+                    <div
+                        role="group"
+                        aria-label="Confirm completion"
+                        className="rounded-lg border border-line-strong/70 bg-background/40 p-3"
                     >
+                        <p className="text-sm font-medium text-foreground">Mark this work order as completed?</p>
+                        <div className="mt-3 grid grid-cols-2 gap-2">
+                            <Button onClick={() => setConfirming(false)} disabled={pending}>
+                                Go back
+                            </Button>
+                            <Button
+                                variant="primary"
+                                onClick={handleComplete}
+                                pending={pending}
+                                pendingLabel="Submitting…"
+                                autoFocus
+                            >
+                                Yes, completed
+                            </Button>
+                        </div>
+                    </div>
+                ) : (
+                    <Button variant="primary" size="lg" full data-demo-guide="finish" onClick={() => setConfirming(true)}>
                         Mark as completed
-                    </button>
+                    </Button>
                 )}
             </div>
 
-            {error && <p className="mt-2 text-sm text-danger">{error}</p>}
+            {error && (
+                <p role="alert" className="mt-2 text-sm text-danger">
+                    {error}
+                </p>
+            )}
         </section>
     );
 }

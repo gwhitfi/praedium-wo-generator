@@ -1,19 +1,25 @@
 "use client";
 
-import { useRef, useState } from "react";
+import { useEffect, useId, useRef, useState } from "react";
+import { Button } from "./Button";
+import { buttonClass } from "@/lib/ui";
+import { inputClass } from "@/lib/defaults";
 
 type Result = { ok: true } | { ok: false; error: string } | void;
 
-const outlineButton =
-    "shrink-0 rounded-md border border-line-strong px-4 py-2 text-sm text-foreground hover:bg-surface-hover hover:cursor-pointer disabled:opacity-40 disabled:hover:cursor-not-allowed";
-
-// The server action gets the typed text too and refuses anything but "yes".
+// "Delete permanently" and its confirmation dialog: the consequences, an "Archive instead" way out, and a typed
+// "yes" before the red button works. The server action gets the typed text too and refuses anything but "yes".
+// `requireTyping={false}` is for things with no history to lose (an empty unit): the dialog alone is the check.
+// `open` lets a menu item open the dialog instead of the built-in trigger (`hideTrigger`).
 export default function DeleteButton({
     itemName,
     label = "Delete permanently",
     onDelete,
     archiveInstead,
-    triggerClassName = "shrink-0 rounded-md px-4 py-2 text-sm text-subtle hover:text-danger hover:cursor-pointer",
+    triggerClassName = buttonClass({ variant: "danger-outline", size: "sm" }),
+    requireTyping = true,
+    openRef,
+    hideTrigger = false,
     children,
 }: {
     itemName: string;
@@ -21,25 +27,34 @@ export default function DeleteButton({
     onDelete: (confirmation: string) => Promise<Result>;
     archiveInstead?: () => void;
     triggerClassName?: string;
+    requireTyping?: boolean;
+    openRef?: React.RefObject<(() => void) | null>;
+    hideTrigger?: boolean;
     children?: React.ReactNode;
-}) {
+}): React.ReactElement {
     const dialogRef = useRef<HTMLDialogElement>(null);
+    const titleId = useId();
+    const descriptionId = useId();
     const [typed, setTyped] = useState("");
     const [pending, setPending] = useState(false);
     const [error, setError] = useState<string | null>(null);
-    const confirmed = typed.trim().toLowerCase() === "yes";
+    const confirmed = !requireTyping || typed.trim().toLowerCase() === "yes";
 
     function open() {
         setTyped("");
         setError(null);
         dialogRef.current?.showModal();
     }
+    useEffect(() => {
+        if (openRef) openRef.current = open;
+    });
 
     async function handleDelete() {
         setPending(true);
         setError(null);
         try {
-            const res = await onDelete(typed);
+            // The server still checks for "yes"; without typing, the confirming click supplies it.
+            const res = await onDelete(requireTyping ? typed : "yes");
             if (res && !res.ok) {
                 setError(res.error);
             } else {
@@ -54,20 +69,28 @@ export default function DeleteButton({
 
     return (
         <>
-            <button type="button" onClick={open} className={triggerClassName} aria-label={`Delete ${itemName}`}>
-                {label}
-            </button>
+            {!hideTrigger && (
+                <button type="button" onClick={open} className={triggerClassName} aria-label={`Delete ${itemName}`}>
+                    {label}
+                </button>
+            )}
 
             <dialog
                 ref={dialogRef}
+                aria-labelledby={titleId}
+                aria-describedby={descriptionId}
                 onClick={(e) => {
                     if (e.target === dialogRef.current && !pending) dialogRef.current.close();
                 }}
-                className="m-auto w-[calc(100%-2rem)] max-w-md rounded-lg border border-danger/40 bg-surface p-0 text-foreground backdrop:bg-black/70"
+                className="m-auto w-[calc(100%-2rem)] max-w-md rounded-xl border border-danger/40 bg-surface p-0 text-foreground shadow-xl backdrop:bg-black/60"
             >
-                <div className="p-5">
-                    <h2 className="mb-2 text-lg font-semibold">Delete &ldquo;{itemName}&rdquo; permanently?</h2>
-                    <p className="mb-3 text-sm font-medium text-danger">This cannot be undone.</p>
+                <div className="p-5 sm:p-6">
+                    <h2 id={titleId} className="text-lg font-semibold">
+                        Delete &ldquo;{itemName}&rdquo; permanently?
+                    </h2>
+                    <p id={descriptionId} className="mt-1 mb-4 text-sm font-medium text-danger">
+                        This can&apos;t be undone.
+                    </p>
 
                     {children && <div className="flex flex-col gap-2 text-sm text-secondary">{children}</div>}
 
@@ -80,45 +103,47 @@ export default function DeleteButton({
                                     dialogRef.current?.close();
                                     archiveInstead();
                                 }}
-                                className="text-foreground underline hover:cursor-pointer"
+                                className="font-medium text-foreground underline underline-offset-4 hover:cursor-pointer"
                             >
                                 Archive instead
                             </button>
                         </p>
                     )}
 
-                    <label className="mt-4 block text-sm text-secondary">
-                        Type <strong className="text-foreground">yes</strong> to confirm
-                        <input
-                            value={typed}
-                            onChange={(e) => setTyped(e.target.value)}
-                            onKeyDown={(e) => {
-                                if (e.key === "Enter" && confirmed && !pending) handleDelete();
-                            }}
-                            autoComplete="off"
-                            className="mt-1 w-full rounded-md border border-line-strong bg-background px-3 py-2 text-sm text-foreground focus:border-danger focus:outline-none"
-                        />
-                    </label>
+                    {requireTyping && (
+                        <label className="mt-5 block text-sm font-medium text-secondary">
+                            Type <strong className="text-foreground">yes</strong> to confirm
+                            <input
+                                value={typed}
+                                onChange={(e) => setTyped(e.target.value)}
+                                onKeyDown={(e) => {
+                                    if (e.key === "Enter" && confirmed && !pending) handleDelete();
+                                }}
+                                autoComplete="off"
+                                className={`${inputClass} mt-1 focus:border-danger focus:ring-danger/40`}
+                            />
+                        </label>
+                    )}
 
-                    {error && <p className="mt-3 text-sm text-danger">{error}</p>}
+                    {error && (
+                        <p role="alert" className="mt-3 text-sm text-danger">
+                            {error}
+                        </p>
+                    )}
 
-                    <div className="mt-5 flex flex-wrap justify-end gap-2">
-                        <button
-                            type="button"
-                            onClick={() => dialogRef.current?.close()}
-                            disabled={pending}
-                            className={outlineButton}
-                        >
+                    <div className="mt-6 flex flex-wrap justify-end gap-2">
+                        <Button onClick={() => dialogRef.current?.close()} disabled={pending}>
                             Go back
-                        </button>
-                        <button
-                            type="button"
+                        </Button>
+                        <Button
+                            variant="danger"
                             onClick={handleDelete}
-                            disabled={!confirmed || pending}
-                            className="shrink-0 rounded-md bg-danger-strong px-4 py-2 text-sm font-medium text-white hover:bg-danger-strong/85 hover:cursor-pointer disabled:opacity-40 disabled:hover:cursor-not-allowed"
+                            disabled={!confirmed}
+                            pending={pending}
+                            pendingLabel="Deleting…"
                         >
-                            {pending ? "Deleting..." : "Delete forever"}
-                        </button>
+                            Delete forever
+                        </Button>
                     </div>
                 </div>
             </dialog>

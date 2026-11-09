@@ -1,27 +1,31 @@
 "use client";
 
-import { useRef, useState } from "react";
+import { useImperativeHandle, useRef, useState } from "react";
 import { removeLineItemPhoto, setLineItemPhoto } from "../actions";
 import { resizePhoto, UnreadablePhotoError } from "@/lib/resizePhoto";
+import { Spinner } from "@/components/Button";
 
-const linkClass = "text-xs text-subtle hover:text-foreground hover:cursor-pointer disabled:opacity-40";
+// What the line item's "⋯" menu can ask the photo to do.
+export type PhotoHandle = { pick: () => void; remove: () => void };
 
+// A line item's photo: the thumbnail when there is one, plus the upload and removal behind the item's menu
+// (Add photo, Replace photo, Remove photo). Shows progress and errors in place.
 export default function LineItemPhoto({
     lineItemId,
     description,
     photoId,
     readOnly,
+    ref,
 }: {
     lineItemId: string;
     description: string;
     photoId: string | null;
     readOnly: boolean;
-}) {
+    ref?: React.Ref<PhotoHandle>;
+}): React.ReactElement | null {
     const inputRef = useRef<HTMLInputElement>(null);
     const [busy, setBusy] = useState<"uploading" | "removing" | null>(null);
     const [error, setError] = useState<string | null>(null);
-
-    if (readOnly && !photoId) return null;
 
     async function handleFile(file: File) {
         setBusy("uploading");
@@ -53,15 +57,33 @@ export default function LineItemPhoto({
         }
     }
 
+    useImperativeHandle(ref, () => ({ pick: () => inputRef.current?.click(), remove: handleRemove }));
+
+    if (readOnly && !photoId) return null;
+
     return (
-        <div className="ml-7 mt-1 flex flex-col gap-1">
+        <>
+            {!readOnly && (
+                <input
+                    ref={inputRef}
+                    type="file"
+                    accept="image/*"
+                    className="hidden"
+                    tabIndex={-1}
+                    aria-hidden
+                    onChange={(e) => {
+                        const file = e.target.files?.[0];
+                        if (file) handleFile(file);
+                    }}
+                />
+            )}
             {photoId && (
                 <a
                     href={`/work-orders/photos/${photoId}`}
                     target="_blank"
                     rel="noopener"
-                    className="inline-block self-start"
-                    aria-label={`Open the photo for ${description}`}
+                    className="mt-2 block w-fit"
+                    aria-label={`Open the photo for ${description} (new tab)`}
                 >
                     {/* next/image would fetch the private route without the user's session. */}
                     {/* eslint-disable-next-line @next/next/no-img-element */}
@@ -69,43 +91,21 @@ export default function LineItemPhoto({
                         src={`/work-orders/photos/${photoId}`}
                         alt={`Photo for ${description}`}
                         loading="lazy"
-                        className="h-20 w-20 rounded border border-line-strong object-cover hover:border-muted"
+                        className="h-20 w-20 rounded-md border border-line-strong object-cover hover:border-line-hover"
                     />
                 </a>
             )}
-            {!readOnly && (
-                <div className="flex items-center gap-3">
-                    <input
-                        ref={inputRef}
-                        type="file"
-                        accept="image/*"
-                        className="hidden"
-                        onChange={(e) => {
-                            const file = e.target.files?.[0];
-                            if (file) handleFile(file);
-                        }}
-                    />
-                    <button
-                        type="button"
-                        onClick={() => inputRef.current?.click()}
-                        disabled={busy !== null}
-                        className={linkClass}
-                    >
-                        {busy === "uploading" ? "Uploading..." : photoId ? "Replace photo" : "+ Photo"}
-                    </button>
-                    {photoId && (
-                        <button
-                            type="button"
-                            onClick={handleRemove}
-                            disabled={busy !== null}
-                            className="text-xs text-subtle hover:text-danger hover:cursor-pointer disabled:opacity-40"
-                        >
-                            {busy === "removing" ? "Removing..." : "Remove photo"}
-                        </button>
-                    )}
-                </div>
+            {busy && (
+                <p role="status" className="mt-2 flex items-center gap-2 text-[0.8125rem] text-muted">
+                    <Spinner className="h-3.5 w-3.5" />
+                    {busy === "uploading" ? "Uploading photo…" : "Removing photo…"}
+                </p>
             )}
-            {error && <p className="text-sm text-danger">{error}</p>}
-        </div>
+            {error && (
+                <p role="alert" className="mt-2 text-sm text-danger">
+                    {error}
+                </p>
+            )}
+        </>
     );
 }

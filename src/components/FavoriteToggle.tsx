@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 
+// The star beside a contact's or property's name. Favorites are listed first.
 export default function FavoriteToggle({ favorite, onToggle }: { favorite: boolean; onToggle: () => Promise<void> }) {
     const [pending, setPending] = useState(false);
 
@@ -21,12 +22,12 @@ export default function FavoriteToggle({ favorite, onToggle }: { favorite: boole
             disabled={pending}
             aria-pressed={favorite}
             aria-label={favorite ? "Remove from favorites" : "Add to favorites"}
-            title={favorite ? "Remove from favorites" : "Add to favorites"}
-            className={`ml-2 align-middle text-xl leading-none hover:cursor-pointer disabled:opacity-40 ${
-                favorite ? "text-warning hover:text-warning/80" : "text-faint hover:text-warning"
+            title={favorite ? "Favorite: listed first. Click to remove." : "Add to favorites to list it first"}
+            className={`ml-1 inline-flex h-9 w-9 items-center justify-center rounded-md align-middle text-xl leading-none hover:cursor-pointer hover:bg-surface-hover disabled:opacity-40 ${
+                favorite ? "text-foreground" : "text-subtle hover:text-foreground"
             }`}
         >
-            {favorite ? "★" : "☆"}
+            <span aria-hidden>{favorite ? "★" : "☆"}</span>
         </button>
     );
 }

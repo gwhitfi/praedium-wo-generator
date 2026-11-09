@@ -32,7 +32,7 @@ export default async function VerifyContractor({
     const link = magicLinkInput.safeParse(Array.isArray(query.c) ? query.c[0] : query.c);
 
     return (
-        <main className="mx-auto max-w-3xl px-4 py-10 text-foreground">
+        <main id="main" className="mx-auto max-w-2xl px-4 pt-5 pb-12 text-foreground sm:pt-8">
             {/* Standard light/dark only: the theme script never applies Settings palettes on /wo/ pages. */}
             <div className="mb-2 flex items-center justify-between gap-3">
                 <p className="text-xs uppercase tracking-wide text-subtle">

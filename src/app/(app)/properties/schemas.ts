@@ -16,6 +16,9 @@ export const propertyInput = z.object({
     notes: optionalText(5000),
 });
 
+// The Properties list's "Group by type" setting, saved per browser: "1" on, "0" or not set off.
+export const GROUP_BY_TYPE_COOKIE = "prop-group-by-type";
+
 export const MAX_UNITS = 500;
 // Matches the limit for units added later on the property page.
 export const MAX_UNIT_NAME_LENGTH = 100;

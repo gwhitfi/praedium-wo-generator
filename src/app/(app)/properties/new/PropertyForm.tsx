@@ -1,8 +1,12 @@
 "use client";
-import { useActionState, useState } from "react";
+import { useActionState, useId, useState } from "react";
 import { createProperty } from "../actions";
 import { MAX_UNIT_NAME_LENGTH, type PropertyFormState } from "../schemas";
-import { inputClass, labelClass, MULTI_UNIT, PROPERTY_TYPE_LABELS, US_STATE_LABELS } from "@/lib/defaults";
+import { inputClass, MULTI_UNIT, PROPERTY_TYPE_LABELS, US_STATE_LABELS } from "@/lib/defaults";
+import { cardClass } from "@/lib/ui";
+import { Button } from "@/components/Button";
+import { PlusIcon, XIcon } from "@/components/Icons";
+import { ErrorSummary, Field, FieldGroup, FormActions } from "@/components/form/Field";
 
 export type PropertyFormValues = {
     displayName: string;
@@ -15,22 +19,37 @@ export type PropertyFormValues = {
     notes: string;
 };
 
+const FIELD_LABELS: Record<string, string> = {
+    displayName: "Name",
+    propertyType: "Type",
+    addressLine1: "Street address",
+    addressLine2: "Address line 2",
+    city: "City",
+    state: "State",
+    zipCode: "Zip code",
+    notes: "Notes",
+    units: "Units",
+};
+
 export default function PropertyForm({
     initial,
     action = createProperty,
-    submitLabel = "Save property",
+    submitLabel = "Add property",
+    cancelHref,
     returnTo,
 }: {
     initial?: PropertyFormValues;
     action?: (state: PropertyFormState, formData: FormData) => Promise<PropertyFormState>;
     submitLabel?: string;
+    cancelHref: string;
     returnTo?: string;
-} = {}) {
+}): React.ReactElement {
     const [state, formAction, pending] = useActionState(action, {});
     // React resets the form after each submit, so refill it with what was sent.
     const value = (name: keyof PropertyFormValues) => state.values?.[name] ?? initial?.[name];
     const editing = !!initial;
     type Unit = { name: string };
+    const unitInputId = useId();
 
     const [propertyType, setPropertyType] = useState(initial?.propertyType ?? "HOUSE");
     const [units, setUnits] = useState<Unit[]>([]);
@@ -53,155 +72,215 @@ export default function PropertyForm({
     function removeUnit(index: number) {
         setUnits(units.filter((_, i) => i !== index));
     }
+
     return (
-        <form action={formAction} autoComplete="off" noValidate className="flex flex-col gap-4">
-            <label className={labelClass}>
-                Display name
-                <input
-                    name="displayName"
-                    required
-                    maxLength={100}
-                    defaultValue={value("displayName")}
-                    className={inputClass}
-                />
-                <FieldError errors={state.errors?.displayName} />
-            </label>
-            <label className={labelClass}>
-                Property type
-                <select
-                    name="propertyType"
-                    required
-                    className={inputClass}
-                    value={propertyType}
-                    onChange={(e) => setPropertyType(e.target.value)}
-                >
-                    {Object.entries(PROPERTY_TYPE_LABELS).map(([value, label]) => (
-                        <option key={value} value={value}>
-                            {label}
-                        </option>
-                    ))}
-                </select>
-                <FieldError errors={state.errors?.propertyType} />
-            </label>
-            <label className={labelClass}>
-                Address
-                <input
-                    name="addressLine1"
-                    required
-                    maxLength={200}
-                    defaultValue={value("addressLine1")}
-                    className={inputClass}
-                />
-                <FieldError errors={state.errors?.addressLine1} />
-            </label>
-            <label className={labelClass}>
-                Address (cont)
-                <input
-                    name="addressLine2"
-                    maxLength={200}
-                    defaultValue={value("addressLine2")}
-                    className={inputClass}
-                />
-                <FieldError errors={state.errors?.addressLine2} />
-            </label>
-            <div className="grid grid-cols-6 gap-3">
-                <label className="col-span-3 block">
-                    <span className={labelClass}>City</span>
-                    <input name="city" required maxLength={100} defaultValue={value("city")} className={inputClass} />
-                    <FieldError errors={state.errors?.city} />
-                </label>
+        <form action={formAction} noValidate className="flex flex-col gap-6">
+            <ErrorSummary errors={state.errors} labels={FIELD_LABELS} message={state.error} />
 
-                <label className="col-span-1 block">
-                    <span className={labelClass}>State</span>
-                    <select name="state" required defaultValue={value("state")} className={inputClass}>
-                        <option value="">—</option>
-                        {Object.entries(US_STATE_LABELS).map(([code, name]) => (
-                            <option key={code} value={code} title={name}>
-                                {code}
-                            </option>
-                        ))}
-                    </select>
-                    <FieldError errors={state.errors?.state} />
-                </label>
-
-                <label className="col-span-2 block">
-                    <span className={labelClass}>Zip code</span>
-                    <input name="zipCode" required defaultValue={value("zipCode")} className={inputClass} />
-                    <FieldError errors={state.errors?.zipCode} />
-                </label>
-            </div>
-            <label className={labelClass}>
-                Notes <textarea name="notes" maxLength={5000} defaultValue={value("notes")} className={inputClass} />
-                <FieldError errors={state.errors?.notes} />
-            </label>
-            {showUnits && !editing && (
-                <div className="flex flex-col gap-2">
-                    <div className="border-t border-line pt-6">
-                        <h2 className="text-lg font-semibold text-foreground">Units</h2>
-                        <p className="text-sm text-subtle mt-1">Separate units at this address.</p>
-                    </div>
-                    <input
-                        value={unitDraft}
-                        onChange={(e) => {
-                            setUnitDraft(e.target.value);
-                            setUnitError(null);
-                        }}
-                        onKeyDown={(e) => {
-                            if (e.key === "Enter") {
-                                e.preventDefault();
-                                addUnit();
-                            }
-                        }}
-                        placeholder="Unit A, Unit B, Apt 101, etc."
-                        maxLength={MAX_UNIT_NAME_LENGTH}
-                        className={inputClass}
-                    />
-                    {unitError && <p className="text-sm text-danger">{unitError}</p>}
-                    <FieldError errors={state.errors?.units} />
-                    <button
-                        type="button"
-                        onClick={addUnit}
-                        className="shrink-0 rounded-md border border-line-strong px-4 py-2 text-sm text-foreground hover:bg-surface-hover hover:cursor-pointer"
-                    >
-                        + Add unit
-                    </button>
-                    {units.length > 0 && (
-                        <ul className="flex flex-wrap gap-2">
-                            {units.map((unit, i) => (
-                                <li
-                                    key={unit.name}
-                                    className="flex items-center gap-2 rounded-md border border-line-strong px-3 py-1.5 text-sm"
+            <div className={`${cardClass} flex flex-col gap-6 p-5 sm:p-6`}>
+                <FieldGroup title="The property">
+                    <div className="grid gap-4 sm:grid-cols-[minmax(0,1fr)_12rem]">
+                        <Field
+                            label="Name"
+                            required
+                            error={state.errors?.displayName}
+                            hint="What your team calls it, like “Pelham Court” or the street address."
+                        >
+                            {(props) => (
+                                <input
+                                    {...props}
+                                    name="displayName"
+                                    required
+                                    maxLength={100}
+                                    autoComplete="off"
+                                    defaultValue={value("displayName")}
+                                    className={inputClass}
+                                />
+                            )}
+                        </Field>
+                        <Field label="Type" required error={state.errors?.propertyType}>
+                            {(props) => (
+                                <select
+                                    {...props}
+                                    name="propertyType"
+                                    required
+                                    className={inputClass}
+                                    value={propertyType}
+                                    onChange={(e) => setPropertyType(e.target.value)}
                                 >
-                                    {unit.name}
-                                    <button
-                                        type="button"
-                                        onClick={() => removeUnit(i)}
-                                        className="text-subtle hover:text-danger hover:cursor-pointer"
-                                        aria-label={`Remove ${unit.name}`}
+                                    {Object.entries(PROPERTY_TYPE_LABELS).map(([type, label]) => (
+                                        <option key={type} value={type}>
+                                            {label}
+                                        </option>
+                                    ))}
+                                </select>
+                            )}
+                        </Field>
+                    </div>
+                </FieldGroup>
+
+                <FieldGroup title="Address">
+                    <Field label="Street address" required error={state.errors?.addressLine1}>
+                        {(props) => (
+                            <input
+                                {...props}
+                                name="addressLine1"
+                                required
+                                maxLength={200}
+                                autoComplete="off"
+                                defaultValue={value("addressLine1")}
+                                className={inputClass}
+                            />
+                        )}
+                    </Field>
+                    <Field label="Address line 2" optional error={state.errors?.addressLine2}>
+                        {(props) => (
+                            <input
+                                {...props}
+                                name="addressLine2"
+                                maxLength={200}
+                                autoComplete="off"
+                                defaultValue={value("addressLine2")}
+                                className={inputClass}
+                            />
+                        )}
+                    </Field>
+                    <div className="grid grid-cols-2 gap-4 sm:grid-cols-6">
+                        <Field label="City" required error={state.errors?.city} className="col-span-2 sm:col-span-3">
+                            {(props) => (
+                                <input
+                                    {...props}
+                                    name="city"
+                                    required
+                                    maxLength={100}
+                                    autoComplete="off"
+                                    defaultValue={value("city")}
+                                    className={inputClass}
+                                />
+                            )}
+                        </Field>
+                        <Field label="State" required error={state.errors?.state} className="sm:col-span-1">
+                            {(props) => (
+                                <select
+                                    {...props}
+                                    name="state"
+                                    required
+                                    defaultValue={value("state")}
+                                    className={inputClass}
+                                >
+                                    <option value="">—</option>
+                                    {Object.entries(US_STATE_LABELS).map(([code, name]) => (
+                                        <option key={code} value={code} title={name}>
+                                            {code}
+                                        </option>
+                                    ))}
+                                </select>
+                            )}
+                        </Field>
+                        <Field label="Zip code" required error={state.errors?.zipCode} className="sm:col-span-2">
+                            {(props) => (
+                                <input
+                                    {...props}
+                                    name="zipCode"
+                                    required
+                                    inputMode="numeric"
+                                    autoComplete="off"
+                                    defaultValue={value("zipCode")}
+                                    className={inputClass}
+                                />
+                            )}
+                        </Field>
+                    </div>
+                </FieldGroup>
+
+                {showUnits && !editing && (
+                    <FieldGroup
+                        title="Units"
+                        description="Add each apartment or suite now, or later from the property page."
+                    >
+                        <div>
+                            <label htmlFor={unitInputId} className="mb-1 block text-sm font-medium text-secondary">
+                                Unit name
+                            </label>
+                            <div className="flex flex-col gap-2 sm:flex-row">
+                                <input
+                                    id={unitInputId}
+                                    value={unitDraft}
+                                    onChange={(e) => {
+                                        setUnitDraft(e.target.value);
+                                        setUnitError(null);
+                                    }}
+                                    onKeyDown={(e) => {
+                                        if (e.key === "Enter") {
+                                            e.preventDefault();
+                                            addUnit();
+                                        }
+                                    }}
+                                    placeholder="Unit A, Apt 101…"
+                                    maxLength={MAX_UNIT_NAME_LENGTH}
+                                    aria-invalid={unitError || state.errors?.units ? true : undefined}
+                                    className={inputClass}
+                                />
+                                <Button onClick={addUnit} disabled={!unitDraft.trim()}>
+                                    <PlusIcon />
+                                    Add unit
+                                </Button>
+                            </div>
+                            {(unitError || state.errors?.units) && (
+                                <p role="alert" className="mt-1 text-sm text-danger">
+                                    {unitError ?? state.errors?.units?.[0]}
+                                </p>
+                            )}
+                        </div>
+                        {units.length > 0 ? (
+                            <ul className="flex flex-wrap gap-2" aria-label="Units to add">
+                                {units.map((unit, i) => (
+                                    <li
+                                        key={unit.name}
+                                        className="flex items-center gap-1 rounded-full border border-line-strong bg-surface py-1 pr-1 pl-3 text-sm"
                                     >
-                                        ×
-                                    </button>
-                                </li>
-                            ))}
-                        </ul>
-                    )}
-                    <input type="hidden" name="units" value={JSON.stringify(units)} />
-                </div>
-            )}
+                                        {unit.name}
+                                        <button
+                                            type="button"
+                                            onClick={() => removeUnit(i)}
+                                            className="flex h-6 w-6 items-center justify-center rounded-full text-subtle hover:cursor-pointer hover:bg-surface-hover hover:text-danger"
+                                            aria-label={`Remove ${unit.name}`}
+                                        >
+                                            <XIcon size={12} />
+                                        </button>
+                                    </li>
+                                ))}
+                            </ul>
+                        ) : (
+                            <p className="text-sm text-subtle">No units added yet.</p>
+                        )}
+                        <input type="hidden" name="units" value={JSON.stringify(units)} />
+                    </FieldGroup>
+                )}
+
+                <FieldGroup title="Anything else">
+                    <Field
+                        label="Notes"
+                        optional
+                        error={state.errors?.notes}
+                        hint="Gate codes, shutoff locations, quirks. Only your team sees these."
+                    >
+                        {(props) => (
+                            <textarea
+                                {...props}
+                                name="notes"
+                                rows={3}
+                                maxLength={5000}
+                                defaultValue={value("notes")}
+                                className={inputClass}
+                            />
+                        )}
+                    </Field>
+                </FieldGroup>
+            </div>
+
             {returnTo && <input type="hidden" name="returnTo" value={returnTo} />}
-            {state.error && <p className="text-sm text-danger">{state.error}</p>}
-            <button
-                type="submit"
-                disabled={pending}
-                className="rounded-md bg-accent px-4 py-2 text-sm font-medium text-on-accent hover:bg-accent-hover  hover:cursor-pointer disabled:opacity-60"
-            >
-                {submitLabel}
-            </button>
+            <FormActions cancelHref={cancelHref} submitLabel={submitLabel} pending={pending} />
         </form>
     );
-}
-
-function FieldError({ errors }: { errors?: string[] }) {
-    if (!errors?.length) return null;
-    return <p className="mt-1 text-sm font-normal text-danger">{errors[0]}</p>;
 }

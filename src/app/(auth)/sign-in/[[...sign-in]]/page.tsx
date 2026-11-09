@@ -1,21 +1,13 @@
+import type { Metadata } from "next";
 import { SignIn } from "@clerk/nextjs";
-import Link from "next/link";
+import AuthFrame from "@/components/AuthFrame";
+
+export const metadata: Metadata = { title: "Sign in" };
 
 export default function Page() {
     return (
-        <main className="flex min-h-screen flex-col items-center justify-center gap-4">
+        <AuthFrame agreement="By signing in you agree to the">
             <SignIn />
-            <p className="max-w-sm text-center text-xs text-subtle">
-                By signing in you agree to the{" "}
-                <Link href="/terms" className="underline hover:text-foreground">
-                    Terms of Service
-                </Link>{" "}
-                and{" "}
-                <Link href="/privacy" className="underline hover:text-foreground">
-                    Privacy Policy
-                </Link>
-                .
-            </p>
-        </main>
+        </AuthFrame>
     );
 }

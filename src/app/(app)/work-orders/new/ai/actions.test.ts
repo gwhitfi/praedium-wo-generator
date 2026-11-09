@@ -44,7 +44,7 @@ beforeEach(() => {
     vi.clearAllMocks();
     vi.mocked(getCurrentUser).mockResolvedValue({
         state: "ready",
-        user: { id: "user1" },
+        user: { id: "user1", aiEnabled: true },
         organization: { id: "org1" },
     } as never);
     vi.mocked(createDraftWorkOrder).mockResolvedValue({ ok: true, workOrder: { id: "wo1", jobNumber: "2026-1001" } });
@@ -83,7 +83,20 @@ describe("parseWorkOrderDescription", () => {
         } as never);
 
         expect(await parseWorkOrderDescription({}, form("Fix the sink"))).toEqual({
-            error: "AI is turned off in your Settings.",
+            error: "Praedium Bot is off. Turn it on in Settings to use it.",
+        });
+        expect(parseDescription).not.toHaveBeenCalled();
+    });
+
+    it("refuses without calling the AI when the user hasn't turned it on yet", async () => {
+        vi.mocked(getCurrentUser).mockResolvedValue({
+            state: "ready",
+            user: { id: "user1", aiEnabled: null },
+            organization: { id: "org1" },
+        } as never);
+
+        expect(await parseWorkOrderDescription({}, form("Fix the sink"))).toEqual({
+            error: "Praedium Bot is off. Turn it on in Settings to use it.",
         });
         expect(parseDescription).not.toHaveBeenCalled();
     });
@@ -142,7 +155,7 @@ describe("createDraftFromBot", () => {
 
         expect(createDraftWorkOrder).toHaveBeenCalledWith({
             organizationId: "org1",
-            actor: { kind: "office", user: { id: "user1" } },
+            actor: { kind: "office", user: { id: "user1", aiEnabled: true } },
             draft: { ...draft, title: "Leak under kitchen sink", notes: null, inHouse: false },
             source: "bot",
         });

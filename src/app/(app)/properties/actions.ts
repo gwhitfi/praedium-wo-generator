@@ -10,7 +10,8 @@ import { formatWorkOrderAddress, OPEN_STATUSES } from "@/lib/workOrders";
 import { logEvents, type EventInput } from "@/lib/workOrderEvents";
 import { attachmentKeys, onWorkOrders } from "@/lib/attachments";
 import { deleteFiles } from "@/lib/storage";
-import { propertyInput, unitsInput, type PropertyFormState } from "./schemas";
+import { cookies } from "next/headers";
+import { GROUP_BY_TYPE_COOKIE, propertyInput, unitsInput, type PropertyFormState } from "./schemas";
 
 // Sent back with errors so the form can refill what the user typed.
 function submittedValues(formData: FormData) {
@@ -32,6 +33,23 @@ function readPropertyForm(formData: FormData) {
         return { ok: false as const, state };
     }
     return { ok: true as const, fields: parsed.data };
+}
+
+// Saves the Properties list's "Group by type" setting in a cookie, like the work order list's split view.
+export async function setGroupByType(enabled: boolean): Promise<void> {
+    const result = await getCurrentUser();
+    if (result.state !== "ready") throw new Error("Not authorized");
+
+    const on = z.boolean().parse(enabled);
+    (await cookies()).set(GROUP_BY_TYPE_COOKIE, on ? "1" : "0", {
+        path: "/properties",
+        maxAge: 60 * 60 * 24 * 365,
+        sameSite: "lax",
+        httpOnly: true,
+        secure: process.env.NODE_ENV === "production",
+    });
+
+    revalidatePath("/properties");
 }
 
 export async function createProperty(prevState: PropertyFormState, formData: FormData): Promise<PropertyFormState> {
@@ -72,9 +90,9 @@ export async function createProperty(prevState: PropertyFormState, formData: For
 
     revalidatePath("/properties");
     if (formData.get("returnTo") === "/work-orders/new") {
-        redirect(`/work-orders/new?propertyId=${property.id}`);
+        redirect(`/work-orders/new?propertyId=${property.id}&flash=property-created`);
     }
-    redirect("/properties");
+    redirect(`/properties/${property.id}?flash=property-created`);
 }
 
 async function findProperty(propertyId: string) {
@@ -106,7 +124,7 @@ export async function updateProperty(
 
     revalidatePath("/properties");
     revalidatePath(`/properties/${propertyId}`);
-    redirect(`/properties/${propertyId}`);
+    redirect(`/properties/${propertyId}?flash=property-saved`);
 }
 
 export async function archiveProperty(propertyId: string) {

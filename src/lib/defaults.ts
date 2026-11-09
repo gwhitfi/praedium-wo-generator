@@ -16,9 +16,11 @@ export const CONTACT_TYPE_LABELS: Record<string, string> = {
     OTHER: "Other",
 };
 
+// 16px text on phones so iOS doesn't zoom into a field on focus; 14px from the sm breakpoint.
 export const inputClass =
-    "w-full rounded-md border border-line-strong bg-surface px-3 py-2 text-sm text-foreground " +
-    "placeholder:text-subtle focus:border-accent focus:outline-none focus:ring-1 focus:ring-accent";
+    "w-full rounded-md border border-line-strong bg-surface px-3 py-2 text-base text-foreground sm:text-sm " +
+    "placeholder:text-subtle focus:border-accent focus:outline-none focus:ring-2 focus:ring-accent/40 " +
+    "disabled:cursor-not-allowed disabled:opacity-60 aria-[invalid=true]:border-danger aria-[invalid=true]:focus:ring-danger/40";
 
 export const labelClass = "block text-sm font-medium text-secondary mb-1";
 
@@ -31,13 +33,26 @@ export const WORK_ORDER_STATUS_LABELS: Record<string, string> = {
     CANCELLED: "Cancelled",
 };
 
+// Status pills: a light wash of the status color behind neutral text, with a colored dot (STATUS_DOTS; Completed
+// gets a check instead). Enough color to scan a long list, too little to compete with the solid green action
+// buttons or the priority pills. Draft keeps a dashed outline: it hasn't gone anywhere yet.
 export const STATUS_COLORS: Record<keyof typeof WORK_ORDER_STATUS_LABELS, string> = {
-    DRAFT: "border-dashed border-status-draft/50 text-status-draft", // Gray, dashed: not sent yet
-    SENT: "border-status-sent/50 text-status-sent", // Blue: waiting on the contractor
-    IN_PROGRESS: "border-status-in-progress/50 text-status-in-progress", // Amber: work happening
-    COMPLETED: "border-status-completed/50 text-status-completed", // Green: done, needs review
-    CLOSED: "border-status-closed/50 text-status-closed", // Violet: filed away
-    CANCELLED: "border-status-cancelled/30 text-status-cancelled/70 line-through", // Dim red: work stopped
+    DRAFT: "border-dashed border-line-strong bg-status-draft/8 text-secondary",
+    SENT: "border-status-sent/35 bg-status-sent/10 text-secondary",
+    IN_PROGRESS: "border-status-in-progress/35 bg-status-in-progress/10 text-secondary",
+    COMPLETED: "border-status-completed/35 bg-status-completed/10 text-secondary",
+    CLOSED: "border-status-closed/35 bg-status-closed/10 text-secondary",
+    CANCELLED: "border-status-cancelled/30 bg-status-cancelled/8 text-muted",
+};
+
+// A small colored dot per status, for section headings and legends.
+export const STATUS_DOTS: Record<keyof typeof WORK_ORDER_STATUS_LABELS, string> = {
+    DRAFT: "bg-status-draft",
+    SENT: "bg-status-sent",
+    IN_PROGRESS: "bg-status-in-progress",
+    COMPLETED: "bg-status-completed",
+    CLOSED: "bg-status-closed",
+    CANCELLED: "bg-status-cancelled",
 };
 
 export const PRIORITY_LABELS: Record<string, string> = {
@@ -47,9 +62,11 @@ export const PRIORITY_LABELS: Record<string, string> = {
     LOW: "Low",
 };
 
+// Only the urgent priorities are marked. Emergency is a solid red pill; High is orange, kept apart from the amber
+// "In progress" status.
 export const PRIORITY_STYLES: Record<string, string> = {
-    EMERGENCY: "border-danger/50 text-danger",
-    HIGH: "border-warning/50 text-warning",
+    EMERGENCY: "border-danger-strong bg-danger-strong text-white",
+    HIGH: "border-priority-high/60 text-priority-high",
 };
 
 export const US_STATE_LABELS: Record<string, string> = {
@@ -106,11 +123,9 @@ export const US_STATE_LABELS: Record<string, string> = {
     WY: "Wyoming",
 };
 
-// The About, FAQ, Contact, Terms and Privacy pages, linked from the Menu dropdown and the mobile menu in both headers.
+// The Terms and Privacy pages, linked from the signed-in menu and the public footers. About, FAQ and Contact have
+// no content yet, so they aren't linked anywhere until they do.
 export const INFO_LINKS: { href: string; label: string }[] = [
-    { href: "/about", label: "About" },
-    { href: "/faq", label: "FAQ" },
-    { href: "/contact", label: "Contact" },
     { href: "/terms", label: "Terms" },
     { href: "/privacy", label: "Privacy" },
 ];

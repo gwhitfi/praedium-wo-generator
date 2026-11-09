@@ -51,10 +51,14 @@ export async function emailWorkOrderToContractor({
     const to = workOrder.contractor.email?.trim();
     if (!to) return { ok: false, error: `${workOrder.contractor.displayName} has no email address` };
 
+    // A draft with nothing in it gives the contractor nothing to do, so it can't go out until it has a line item.
+    const itemCount = await prisma.lineItem.count({ where: { area: { workOrderId } } });
+    if (workOrder.status === "DRAFT" && itemCount === 0) {
+        return { ok: false, error: "Add at least one line item before sending" };
+    }
+
     const limited = await rateLimit(`email:${organizationId}`, RATE_LIMITS.email);
     if (!limited.ok) return { ok: false, error: "Too many emails sent in the last hour. Try again later." };
-
-    const itemCount = await prisma.lineItem.count({ where: { area: { workOrderId } } });
     const address = formatWorkOrderAddress(workOrder.property, workOrder.unit);
 
     // The contact's email changed since the work order was last sent: issue a new link, so the old recipient's link

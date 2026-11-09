@@ -1,16 +1,22 @@
 "use client";
 
-import { useRef, useState, useSyncExternalStore } from "react";
+import { useState, useSyncExternalStore } from "react";
 import { regeneratePublicToken } from "../actions";
-import { inputClass } from "@/lib/defaults";
+import { Button } from "@/components/Button";
+import { useToast } from "@/components/Toaster";
+import { CopyIcon, ExternalIcon, LinkIcon, RotateIcon } from "@/components/Icons";
+import { buttonClass, cardClass, cardTitleClass } from "@/lib/ui";
 
 const noopSubscribe = () => () => {};
 const getOrigin = () => window.location.origin;
 const getServerOrigin = () => "";
 
-const buttonClass =
-    "shrink-0 rounded-md border border-line-strong px-4 py-2 text-sm text-foreground hover:bg-surface-hover hover:cursor-pointer disabled:opacity-40 disabled:hover:cursor-not-allowed";
+// "…/wo/OUFDh3…ZcBb": enough of the link to recognize it, short enough for a phone.
+function shortLink(token: string): string {
+    return `/wo/${token.slice(0, 6)}…${token.slice(-4)}`;
+}
 
+// The contractor's link in a card: copy it, open it, or replace it with a new one.
 export default function ContractorLink({
     workOrderId,
     token,
@@ -19,32 +25,23 @@ export default function ContractorLink({
     workOrderId: string;
     token: string;
     status: string;
-}) {
-    const inputRef = useRef<HTMLInputElement>(null);
+}): React.ReactElement {
+    const toast = useToast();
     const origin = useSyncExternalStore(noopSubscribe, getOrigin, getServerOrigin);
-    const [copied, setCopied] = useState(false);
     const [confirming, setConfirming] = useState(false);
     const [pending, setPending] = useState(false);
     const [error, setError] = useState<string | null>(null);
 
-    if (status === "DRAFT") {
-        return (
-            <p className="text-sm text-subtle">
-                The contractor link becomes active once this work order is marked as sent.
-            </p>
-        );
-    }
-
+    const finished = status === "COMPLETED" || status === "CLOSED";
     const path = `/wo/${token}`;
     const url = `${origin}${path}`;
 
     async function handleCopy() {
         try {
             await navigator.clipboard.writeText(url);
-            setCopied(true);
-            setTimeout(() => setCopied(false), 2000);
+            toast("Link copied.");
         } catch {
-            inputRef.current?.select();
+            toast(`Couldn't copy. The link is ${url}`, "error");
         }
     }
 
@@ -53,68 +50,92 @@ export default function ContractorLink({
         try {
             await regeneratePublicToken(workOrderId);
             setError(null);
+            setConfirming(false);
+            toast("New link created. The old one no longer works.");
         } catch {
-            setError("Could not regenerate the link. Try again.");
+            setError("Couldn't create a new link. Try again.");
         } finally {
             setPending(false);
-            setConfirming(false);
         }
     }
 
     return (
-        <div className="flex flex-col gap-2">
-            <div className="flex flex-col gap-2 sm:flex-row">
-                <input
-                    ref={inputRef}
-                    readOnly
-                    value={url}
-                    onFocus={(e) => e.target.select()}
-                    aria-label="Contractor link"
-                    className={`${inputClass} font-mono text-xs`}
-                />
-                <div className="flex gap-2">
-                    <button type="button" onClick={handleCopy} disabled={!origin} className={buttonClass}>
-                        {copied ? "Copied ✓" : "Copy"}
-                    </button>
-                    <a href={path} target="_blank" rel="noopener noreferrer" className={buttonClass}>
-                        Open
-                    </a>
-                </div>
-            </div>
-
-            <div className="flex flex-wrap items-center gap-2 text-sm">
-                {confirming ? (
-                    <>
-                        <span className="text-secondary">The old link will stop working. Continue?</span>
-                        <button
-                            type="button"
-                            onClick={handleRegenerate}
-                            disabled={pending}
-                            className="text-danger hover:text-danger/80 hover:cursor-pointer disabled:opacity-40"
+        <section
+            id="contractor-link"
+            aria-labelledby="contractor-link-title"
+            className={`${cardClass} scroll-mt-32 p-4 sm:p-5`}
+        >
+            <h2 id="contractor-link-title" className={`${cardTitleClass} flex items-center gap-1.5`}>
+                <LinkIcon size={13} />
+                Contractor link
+            </h2>
+            {status === "DRAFT" ? (
+                <p className="mt-1.5 text-sm text-muted">The link goes live when you send the work order.</p>
+            ) : (
+                <>
+                    <p className="mt-1.5 truncate text-sm text-secondary" title={url || path}>
+                        {origin ? origin.replace(/^https?:\/\//, "") : ""}
+                        {shortLink(token)}
+                    </p>
+                    <div className="mt-3 grid grid-cols-2 gap-2">
+                        <Button size="sm" onClick={handleCopy} disabled={!origin}>
+                            <CopyIcon />
+                            Copy link
+                        </Button>
+                        <a
+                            href={path}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            className={buttonClass({ size: "sm" })}
                         >
-                            {pending ? "Regenerating..." : "Yes, regenerate"}
-                        </button>
-                        <button
-                            type="button"
-                            onClick={() => setConfirming(false)}
-                            disabled={pending}
-                            className="text-subtle hover:text-foreground hover:cursor-pointer"
+                            <ExternalIcon />
+                            Open
+                            <span className="sr-only">(opens in a new tab)</span>
+                        </a>
+                    </div>
+                    {finished ? (
+                        // Finished work: the contractor's page shows only a summary, so there's nothing to replace.
+                        <p className="mt-2.5 text-[0.8125rem] text-muted">
+                            The work is finished, so the link now shows a summary only.
+                        </p>
+                    ) : confirming ? (
+                        <div className="mt-3 rounded-lg border border-line-strong/70 bg-background/40 p-3">
+                            <p className="text-sm text-foreground">
+                                Create a new link? The old one stops working right away.
+                            </p>
+                            <div className="mt-2 flex justify-end gap-2">
+                                <Button size="sm" onClick={() => setConfirming(false)} disabled={pending}>
+                                    Go back
+                                </Button>
+                                <Button
+                                    size="sm"
+                                    variant="danger"
+                                    onClick={handleRegenerate}
+                                    pending={pending}
+                                    pendingLabel="Creating…"
+                                >
+                                    New link
+                                </Button>
+                            </div>
+                        </div>
+                    ) : (
+                        <Button
+                            size="sm"
+                            variant="ghost"
+                            onClick={() => setConfirming(true)}
+                            className="mt-2 w-full"
                         >
-                            Go back
-                        </button>
-                    </>
-                ) : (
-                    <button
-                        type="button"
-                        onClick={() => setConfirming(true)}
-                        className="text-subtle hover:text-foreground hover:cursor-pointer"
-                    >
-                        Regenerate link
-                    </button>
-                )}
-            </div>
-
-            {error && <p className="text-sm text-danger">{error}</p>}
-        </div>
+                            <RotateIcon size={14} />
+                            Replace with a new link…
+                        </Button>
+                    )}
+                    {error && (
+                        <p role="alert" className="mt-2 text-sm text-danger">
+                            {error}
+                        </p>
+                    )}
+                </>
+            )}
+        </section>
     );
 }

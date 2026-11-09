@@ -1,21 +1,25 @@
 import type { Metadata } from "next";
 import Link from "next/link";
+import TableOfContents from "@/components/TableOfContents";
+import { headingId } from "@/lib/ui";
 
-export const metadata: Metadata = { title: "Terms of Service · Praedium" };
+export const metadata: Metadata = { title: "Terms of Service" };
 
 const LINK = "underline hover:text-foreground";
 
 function Section({ title, children }: { title: string; children: React.ReactNode }): React.ReactElement {
     return (
         <section>
-            <h2 className="mt-8 text-base font-medium">{title}</h2>
+            <h2 id={headingId(title)} className="mt-10 scroll-mt-24 text-lg font-semibold">
+                {title}
+            </h2>
             {children}
         </section>
     );
 }
 
 function P({ children }: { children: React.ReactNode }): React.ReactElement {
-    return <p className="mt-2 text-sm leading-relaxed text-secondary">{children}</p>;
+    return <p className="mt-3 max-w-[68ch] text-[0.9375rem] leading-[1.65] text-secondary">{children}</p>;
 }
 
 function Email(): React.ReactElement {
@@ -36,9 +40,10 @@ function PrivacyLink(): React.ReactElement {
 
 export default function Terms(): React.ReactElement {
     return (
-        <main className="mx-auto max-w-3xl px-4 py-10 text-foreground">
-            <h1 className="text-2xl font-semibold">Terms of Service</h1>
+        <main id="main" className="mx-auto max-w-3xl px-4 pt-10 pb-16 text-foreground">
+            <h1 className="text-3xl font-semibold tracking-tight">Terms of Service</h1>
             <p className="mt-1 text-sm text-subtle">Effective: November 4, 2026</p>
+            <TableOfContents />
 
             <Section title="1. Agreement">
                 <P>

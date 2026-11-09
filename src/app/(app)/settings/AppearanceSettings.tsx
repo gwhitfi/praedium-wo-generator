@@ -2,18 +2,21 @@
 
 import { applyPalette, PALETTE_ATTRS, PALETTES, usePalettes } from "@/lib/palettes";
 import type { Theme } from "@/lib/theme";
+import { cardClass } from "@/lib/ui";
 
 // Light and dark palette pickers. Choices are saved in this browser, like the light/dark toggle itself.
 export default function AppearanceSettings(): React.ReactElement {
     const state = usePalettes();
 
     return (
-        <section className="overflow-hidden rounded-xl border border-line bg-surface shadow-sm">
+        <section aria-labelledby="appearance-title" className={`${cardClass} overflow-hidden`}>
             <div className="p-5 sm:p-6">
-                <h3 className="text-base font-semibold text-foreground sm:text-lg">Appearance</h3>
+                <h3 id="appearance-title" className="text-base font-semibold text-foreground">
+                    Appearance
+                </h3>
                 <p className="mt-1 text-sm text-muted">
-                    Pick a default look for light mode and for dark mode. The light/dark toggle in the menu switches
-                    between them.
+                    Pick a look for light mode and one for dark mode. The Theme choice in the account menu (Light, Dark
+                    or Device) decides which of the two shows.
                 </p>
 
                 {(["light", "dark"] as const).map((mode) => (
@@ -31,35 +34,41 @@ export default function AppearanceSettings(): React.ReactElement {
                             aria-label={mode === "light" ? "Light mode palette" : "Dark mode palette"}
                             className="grid grid-cols-2 gap-3 sm:grid-cols-4"
                         >
+                            {/* Native radio buttons (visually hidden) inside the cards, so the arrow keys move between
+                                palettes and the group is one tab stop, as with any radio group. */}
                             {PALETTES[mode].map((p) => {
                                 const checked = state?.[mode] === p.id;
                                 return (
-                                    <button
+                                    <label
                                         key={p.id}
-                                        type="button"
-                                        role="radio"
-                                        aria-checked={checked}
-                                        onClick={() => applyPalette(mode, p.id)}
-                                        className={`rounded-lg border p-1.5 text-left hover:cursor-pointer ${
+                                        className={`rounded-lg border p-1.5 text-left hover:cursor-pointer has-[:focus-visible]:outline-2 has-[:focus-visible]:outline-offset-2 has-[:focus-visible]:outline-accent ${
                                             checked
                                                 ? "border-accent ring-1 ring-accent"
                                                 : "border-line hover:border-line-hover"
                                         }`}
                                     >
+                                        <input
+                                            type="radio"
+                                            name={`palette-${mode}`}
+                                            value={p.id}
+                                            checked={checked}
+                                            onChange={() => applyPalette(mode, p.id)}
+                                            className="sr-only"
+                                        />
                                         <Preview mode={mode} id={p.id} />
                                         <span className="mt-1.5 flex items-center justify-between px-0.5 text-sm text-foreground">
                                             {p.name}
                                             {checked && <CheckIcon />}
                                         </span>
-                                    </button>
+                                    </label>
                                 );
                             })}
                         </div>
                     </div>
                 ))}
             </div>
-            <p className="border-t border-line bg-background/40 px-5 py-3 text-sm text-subtle sm:px-6">
-                Saved on this device.
+            <p className="border-t border-line bg-background/40 px-5 py-3 text-sm text-muted sm:px-6">
+                Applies right away and is saved on this device.
             </p>
         </section>
     );

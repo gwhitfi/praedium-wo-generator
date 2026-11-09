@@ -5,6 +5,10 @@ import { useEffect, useId, useRef, useState, useTransition } from "react";
 import { openNotifications } from "@/app/(app)/inbox/actions";
 import { NOTIFICATIONS_SEEN_EVENT, type NotificationItem } from "@/lib/notificationTypes";
 import NotificationRow from "./NotificationRow";
+import { BellIcon } from "./Icons";
+import { iconButtonClass } from "@/lib/ui";
+import { usePathname } from "next/navigation";
+import { ACTIVE_ICON_CLASS } from "./NavLinks";
 
 // The bell in the signed-in header. `unreadCount` comes from the server on each page load. Opening the dropdown
 // loads the newest notifications and marks them seen. Closes on picking a link, clicking outside, or Escape.
@@ -67,6 +71,7 @@ export default function NotificationBell({ unreadCount }: { unreadCount: number 
         });
     }
 
+    const onInbox = usePathname() === "/inbox";
     const label = unread > 0 ? `Notifications, ${unread} unread` : "Notifications";
     const close = () => setOpen(false);
 
@@ -80,13 +85,13 @@ export default function NotificationBell({ unreadCount }: { unreadCount: number 
                 aria-label={label}
                 title="Notifications"
                 onClick={toggle}
-                className="relative flex h-8 w-8 items-center justify-center rounded-md text-muted hover:bg-surface-hover hover:text-foreground hover:cursor-pointer"
+                className={`relative ${iconButtonClass()} ${onInbox ? ACTIVE_ICON_CLASS : ""}`}
             >
-                <BellIcon />
+                <BellIcon size={18} />
                 {unread > 0 && (
                     <span
                         aria-hidden
-                        className="absolute -top-1 -right-1 flex h-4 min-w-4 items-center justify-center rounded-full bg-accent px-1 text-[10px] font-semibold leading-none text-on-accent"
+                        className="absolute top-0.5 right-0.5 flex h-4 min-w-4 items-center justify-center rounded-full bg-accent px-1 text-[10px] font-semibold leading-none text-on-accent ring-2 ring-background"
                     >
                         {unread > 9 ? "9+" : unread}
                     </span>
@@ -94,29 +99,31 @@ export default function NotificationBell({ unreadCount }: { unreadCount: number 
             </button>
 
             {open && (
-                <div className="fixed inset-x-4 top-16 z-30 sm:absolute sm:inset-x-auto sm:right-0 sm:top-full sm:pt-2">
+                <div className="fixed inset-x-3 top-[4.25rem] z-30 sm:absolute sm:inset-x-auto sm:right-0 sm:top-full sm:pt-2">
                     <div
                         id={panelId}
-                        className="overflow-hidden rounded-lg border border-line bg-surface shadow-lg sm:w-96"
+                        className="flex max-h-[calc(100dvh-5.5rem)] flex-col overflow-hidden rounded-xl border border-line bg-surface shadow-xl sm:w-[26rem]"
                     >
-                        <p className="border-b border-line px-4 py-2.5 text-sm font-medium text-foreground">
+                        <p className="border-b border-line px-4 py-3 text-sm font-semibold text-foreground">
                             Notifications
                         </p>
-                        <Body items={items} loading={loading} error={error} onPick={close} />
-                        <div className="flex items-center justify-between border-t border-line px-4 py-2 text-xs">
+                        <div className="min-h-0 overflow-y-auto">
+                            <Body items={items} loading={loading} error={error} onPick={close} />
+                        </div>
+                        <div className="flex items-center justify-between border-t border-line px-4 py-2.5 text-sm">
                             <Link
                                 href="/settings#notifications"
                                 onClick={close}
-                                className="text-subtle hover:text-foreground"
+                                className="text-muted hover:text-foreground"
                             >
-                                Notification settings
+                                Settings
                             </Link>
                             <Link
                                 href="/inbox"
                                 onClick={close}
                                 className="font-medium text-accent hover:text-accent-hover"
                             >
-                                See all
+                                Open inbox
                             </Link>
                         </div>
                     </div>
@@ -137,10 +144,26 @@ function Body({
     error: boolean;
     onPick: () => void;
 }) {
-    if (error) return <p className="px-4 py-6 text-center text-sm text-danger">Couldn&apos;t load notifications.</p>;
-    if (!items) return <p className="px-4 py-6 text-center text-sm text-subtle">Loading…</p>;
+    if (error) {
+        return (
+            <p role="alert" className="px-4 py-8 text-center text-sm text-danger">
+                Couldn&apos;t load notifications. Close and try again.
+            </p>
+        );
+    }
+    if (!items) {
+        return (
+            <p role="status" className="px-4 py-8 text-center text-sm text-subtle">
+                Loading…
+            </p>
+        );
+    }
     if (items.length === 0) {
-        return <p className="px-4 py-6 text-center text-sm text-subtle">No notifications yet.</p>;
+        return (
+            <p className="px-4 py-8 text-center text-sm text-muted">
+                You&apos;re all caught up. Updates from contractors and your team show up here.
+            </p>
+        );
     }
 
     const now = new Date();
@@ -153,21 +176,3 @@ function Body({
     );
 }
 
-function BellIcon() {
-    return (
-        <svg
-            width={18}
-            height={18}
-            viewBox="0 0 24 24"
-            fill="none"
-            stroke="currentColor"
-            strokeWidth={2}
-            strokeLinecap="round"
-            strokeLinejoin="round"
-            aria-hidden
-        >
-            <path d="M6 8a6 6 0 0 1 12 0c0 7 3 9 3 9H3s3-2 3-9" />
-            <path d="M10.3 21a1.94 1.94 0 0 0 3.4 0" />
-        </svg>
-    );
-}

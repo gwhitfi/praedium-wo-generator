@@ -1,10 +1,14 @@
-import Link from "next/link";
+import type { Metadata } from "next";
 import { notFound, redirect } from "next/navigation";
 import { getCurrentUser } from "@/lib/auth";
 import prisma from "@/lib/prisma";
 import { IN_HOUSE } from "@/lib/defaults";
+import PageHeader from "@/components/list/PageHeader";
+import { readingClass, taskPageClass } from "@/lib/ui";
 import WorkOrderForm from "../../new/WorkOrderForm";
 import { updateWorkOrder } from "../../actions";
+
+export const metadata: Metadata = { title: "Edit work order" };
 
 export default async function EditWorkOrder({ params }: { params: Promise<{ id: string }> }) {
     const { id } = await params;
@@ -52,32 +56,33 @@ export default async function EditWorkOrder({ params }: { params: Promise<{ id: 
     ]);
 
     return (
-        <main className="mx-auto max-w-5xl px-4 py-10 text-foreground">
-            <h1 className="text-2xl font-semibold mb-6">Edit work order</h1>
-            <WorkOrderForm
-                properties={[workOrder.property]}
-                contractors={contractors}
-                tenants={tenants}
-                initial={{
-                    title: workOrder.title ?? "",
-                    propertyId: workOrder.propertyId,
-                    unitId: workOrder.unitId ?? "",
-                    contractorId: workOrder.inHouse ? IN_HOUSE : (workOrder.contractorId ?? ""),
-                    notes: workOrder.notes ?? "",
-                    dueDate: workOrder.dueDate ? workOrder.dueDate.toISOString().slice(0, 10) : "",
-                    notifyTenant: workOrder.notifyTenant,
-                }}
-                action={updateWorkOrder.bind(null, workOrder.id)}
-                submitLabel="Save changes"
-                lockProperty
-                sent={workOrder.status !== "DRAFT"}
-            />
-            <Link
-                href={`/work-orders/${workOrder.id}`}
-                className="mt-4 inline-block text-sm text-muted hover:text-foreground"
-            >
-                Cancel
-            </Link>
+        <main id="main" className={taskPageClass}>
+            <div className={readingClass}>
+                <PageHeader
+                    title="Edit details"
+                    subtitle={`#${workOrder.jobNumber} · ${workOrder.title ?? "Untitled work order"}`}
+                    back={{ href: `/work-orders/${workOrder.id}`, label: "Back to the work order" }}
+                />
+                <WorkOrderForm
+                    properties={[workOrder.property]}
+                    contractors={contractors}
+                    tenants={tenants}
+                    initial={{
+                        title: workOrder.title ?? "",
+                        propertyId: workOrder.propertyId,
+                        unitId: workOrder.unitId ?? "",
+                        contractorId: workOrder.inHouse ? IN_HOUSE : (workOrder.contractorId ?? ""),
+                        notes: workOrder.notes ?? "",
+                        dueDate: workOrder.dueDate ? workOrder.dueDate.toISOString().slice(0, 10) : "",
+                        notifyTenant: workOrder.notifyTenant,
+                    }}
+                    action={updateWorkOrder.bind(null, workOrder.id)}
+                    submitLabel="Save changes"
+                    cancelHref={`/work-orders/${workOrder.id}`}
+                    lockProperty
+                    sent={workOrder.status !== "DRAFT"}
+                />
+            </div>
         </main>
     );
 }

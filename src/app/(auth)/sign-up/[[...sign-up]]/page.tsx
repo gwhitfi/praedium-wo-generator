@@ -1,21 +1,13 @@
+import type { Metadata } from "next";
 import { SignUp } from "@clerk/nextjs";
-import Link from "next/link";
+import AuthFrame from "@/components/AuthFrame";
+
+export const metadata: Metadata = { title: "Create your account" };
 
 export default function Page() {
     return (
-        <main className="flex min-h-screen flex-col items-center justify-center gap-4">
+        <AuthFrame agreement="By creating an account you agree to the">
             <SignUp />
-            <p className="max-w-sm text-center text-xs text-subtle">
-                By creating an account you agree to the{" "}
-                <Link href="/terms" className="underline hover:text-foreground">
-                    Terms of Service
-                </Link>{" "}
-                and{" "}
-                <Link href="/privacy" className="underline hover:text-foreground">
-                    Privacy Policy
-                </Link>
-                .
-            </p>
-        </main>
+        </AuthFrame>
     );
 }

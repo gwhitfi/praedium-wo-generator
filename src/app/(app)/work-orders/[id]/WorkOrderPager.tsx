@@ -4,13 +4,13 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useEffect } from "react";
 import type { WorkOrderPagerLinks } from "@/lib/workOrderList";
+import { ChevronLeftIcon, ChevronRightIcon } from "@/components/Icons";
 
-const barButton = "flex h-7 w-7 items-center justify-center rounded-full border border-line-strong lg:hidden";
-const edgeButton =
-    "fixed top-1/2 z-20 hidden h-11 w-11 -translate-y-1/2 items-center justify-center rounded-full border border-line bg-surface text-lg text-muted shadow-lg lg:flex";
+const button =
+    "flex h-9 w-9 items-center justify-center rounded-md border border-line-strong bg-surface text-muted sm:h-8 sm:w-8";
 
-// Previous and next work order in the list this one was opened from: round buttons at the screen edges on
-// wide screens, a "‹ 3 of 20 ›" bar on narrow ones, and the ← and → keys (ignored while typing or in a dialog).
+// Previous and next work order in the list this one was opened from: a "‹ 3 of 20 ›" control beside the back link,
+// and the ← and → keys (ignored while typing or in a dialog).
 export default function WorkOrderPager({ position, total, previousHref, nextHref }: WorkOrderPagerLinks) {
     const router = useRouter();
 
@@ -36,35 +36,15 @@ export default function WorkOrderPager({ position, total, previousHref, nextHref
     }, [router, previousHref, nextHref]);
 
     return (
-        <nav
-            aria-label="Work orders"
-            className="mb-4 flex items-center justify-end gap-2 text-sm text-subtle print:hidden"
-        >
-            <PagerLink href={previousHref} label="Previous work order" shortcut="ArrowLeft" className={barButton}>
-                ‹
+        <nav aria-label="Other work orders in this list" className="flex items-center gap-2 text-sm text-subtle print:hidden">
+            <PagerLink href={previousHref} label="Previous work order" shortcut="ArrowLeft">
+                <ChevronLeftIcon />
             </PagerLink>
-            <span>
+            <span className="tabular-nums">
                 {position} of {total}
             </span>
-            <PagerLink href={nextHref} label="Next work order" shortcut="ArrowRight" className={barButton}>
-                ›
-            </PagerLink>
-
-            <PagerLink
-                href={previousHref}
-                label="Previous work order"
-                shortcut="ArrowLeft"
-                className={`${edgeButton} left-4`}
-            >
-                ←
-            </PagerLink>
-            <PagerLink
-                href={nextHref}
-                label="Next work order"
-                shortcut="ArrowRight"
-                className={`${edgeButton} right-4`}
-            >
-                →
+            <PagerLink href={nextHref} label="Next work order" shortcut="ArrowRight">
+                <ChevronRightIcon />
             </PagerLink>
         </nav>
     );
@@ -75,18 +55,16 @@ function PagerLink({
     href,
     label,
     shortcut,
-    className,
     children,
 }: {
     href: string | null;
     label: string;
     shortcut: string;
-    className: string;
     children: React.ReactNode;
 }) {
     if (!href) {
         return (
-            <span aria-hidden className={`${className} opacity-30`}>
+            <span aria-hidden className={`${button} opacity-40`}>
                 {children}
             </span>
         );
@@ -96,8 +74,9 @@ function PagerLink({
         <Link
             href={href}
             aria-label={label}
+            title={`${label} (${shortcut === "ArrowLeft" ? "←" : "→"})`}
             aria-keyshortcuts={shortcut}
-            className={`${className} hover:border-line-hover hover:text-foreground`}
+            className={`${button} hover:border-line-hover hover:text-foreground`}
         >
             {children}
         </Link>

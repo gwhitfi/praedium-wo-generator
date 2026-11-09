@@ -34,6 +34,9 @@ export async function startInHouseWorkOrder({
         return { ok: false, error: "Only in-house work orders can be started. Send this one to its contractor." };
     }
     if (workOrder.status !== "DRAFT") return { ok: false, error: "Only draft work orders can be started" };
+    // Nothing to work on without a line item (the same rule as sending one, in src/lib/workOrderSend.ts).
+    const itemCount = await prisma.lineItem.count({ where: { area: { workOrderId: workOrder.id } } });
+    if (itemCount === 0) return { ok: false, error: "Add at least one line item before starting" };
 
     // Conditional on it still being an in-house draft, so two clicks can't start it (and email the tenant) twice.
     const updated = await prisma.workOrder.updateMany({

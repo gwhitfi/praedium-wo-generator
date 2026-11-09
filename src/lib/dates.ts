@@ -36,6 +36,18 @@ export function formatFullTimestamp(date: Date): string {
     return `${day} ${time.replace(/\s+(?=[AP]M$)/, "")}`;
 }
 
+// "Nov 3" for a date in the current year, "Nov 3, 2025" otherwise. Uses the browser's time zone when `timeZone` is
+// left out, so client components can call it.
+export function formatShortDate(date: Date, now: Date = new Date(), timeZone?: string): string {
+    const year = (d: Date) => d.toLocaleDateString(LOCALE, { year: "numeric", timeZone });
+    return date.toLocaleDateString(LOCALE, {
+        month: "short",
+        day: "numeric",
+        ...(year(date) === year(now) ? {} : { year: "numeric" }),
+        timeZone,
+    });
+}
+
 // "October 26, 2026", for a stored date-only value (midnight UTC, like due dates).
 export function formatFullDate(date: Date): string {
     return date.toLocaleDateString(LOCALE, { month: "long", day: "numeric", year: "numeric", timeZone: "UTC" });

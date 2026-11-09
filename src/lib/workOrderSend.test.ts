@@ -55,6 +55,25 @@ beforeEach(() => {
 });
 
 describe("emailWorkOrderToContractor", () => {
+    it("refuses to send a draft with no line items, without emailing or using the rate limit", async () => {
+        vi.mocked(prisma.lineItem.count).mockResolvedValue(0);
+
+        await expect(emailWorkOrderToContractor(send)).resolves.toEqual({
+            ok: false,
+            error: "Add at least one line item before sending",
+        });
+        expect(sendEmail).not.toHaveBeenCalled();
+        expect(rateLimit).not.toHaveBeenCalled();
+        expect(prisma.workOrder.update).not.toHaveBeenCalled();
+    });
+
+    it("still resends a sent work order whose items were all removed", async () => {
+        vi.mocked(prisma.lineItem.count).mockResolvedValue(0);
+        withWorkOrder({ status: "SENT", deliveryMethod: "EMAIL" });
+
+        await expect(emailWorkOrderToContractor(send)).resolves.toMatchObject({ ok: true, resent: true });
+    });
+
     it("emails a draft's contractor from the organization, marks it sent and logs it", async () => {
         vi.mocked(notifyTenant).mockReturnValueOnce(true);
 

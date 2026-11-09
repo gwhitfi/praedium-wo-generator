@@ -3,14 +3,56 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 vi.mock("next/cache", () => ({ revalidatePath: vi.fn() }));
 vi.mock("next/navigation", () => ({ redirect: vi.fn() }));
 vi.mock("@/lib/auth", () => ({ getCurrentUser: vi.fn() }));
-vi.mock("@/lib/prisma", () => ({ default: { contact: { findFirst: vi.fn() }, workOrder: { findFirst: vi.fn() } } }));
+vi.mock("@/lib/prisma", () => ({
+    default: { contact: { findFirst: vi.fn(), create: vi.fn() }, workOrder: { findFirst: vi.fn() } },
+}));
 vi.mock("@/lib/contractorAccess", () => ({ revokeContractorSessions: vi.fn() }));
 
 import { revalidatePath } from "next/cache";
 import { getCurrentUser } from "@/lib/auth";
 import { revokeContractorSessions } from "@/lib/contractorAccess";
 import prisma from "@/lib/prisma";
-import { signOutContractorDevices } from "./actions";
+import { redirect } from "next/navigation";
+import { createContact, signOutContractorDevices } from "./actions";
+
+describe("createContact", () => {
+    function contractorForm(extra: Record<string, string> = {}) {
+        const form = new FormData();
+        const values = {
+            contactType: "CONTRACTOR",
+            displayName: "Hill Plumbing",
+            phone: "864-555-0102",
+            email: "marcus@hillplumbing.example",
+            ...extra,
+        };
+        for (const [name, value] of Object.entries(values)) form.set(name, value);
+        return form;
+    }
+
+    it("opens the new contact after saving", async () => {
+        vi.mocked(prisma.contact.create).mockResolvedValue({ id: "c9", contactType: "CONTRACTOR" } as never);
+
+        await createContact({}, contractorForm());
+
+        expect(redirect).toHaveBeenCalledWith("/contacts/c9?flash=contact-created");
+    });
+
+    it("goes back to the new work order with the contractor picked when it came from there", async () => {
+        vi.mocked(prisma.contact.create).mockResolvedValue({ id: "c9", contactType: "CONTRACTOR" } as never);
+
+        await createContact({}, contractorForm({ returnTo: "/work-orders/new" }));
+
+        expect(redirect).toHaveBeenCalledWith("/work-orders/new?contractorId=c9&flash=contact-created");
+    });
+
+    it("ignores any other return address", async () => {
+        vi.mocked(prisma.contact.create).mockResolvedValue({ id: "c9", contactType: "CONTRACTOR" } as never);
+
+        await createContact({}, contractorForm({ returnTo: "https://evil.example" }));
+
+        expect(redirect).toHaveBeenCalledWith("/contacts/c9?flash=contact-created");
+    });
+});
 
 function withContact(overrides: Record<string, unknown> = {}) {
     vi.mocked(prisma.contact.findFirst).mockResolvedValue({

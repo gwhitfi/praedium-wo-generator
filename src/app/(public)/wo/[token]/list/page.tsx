@@ -1,7 +1,7 @@
 import type { Metadata } from "next";
 import Link from "next/link";
 import { notFound } from "next/navigation";
-import { WORK_ORDER_STATUS_LABELS } from "@/lib/defaults";
+import { STATUS_DOTS, WORK_ORDER_STATUS_LABELS } from "@/lib/defaults";
 import { isVerifiedFor } from "@/lib/contractorAccess";
 import {
     CONTRACTOR_LIST_STATUSES,
@@ -11,8 +11,9 @@ import {
     maskEmail,
     type ContractorWorkOrder,
 } from "@/lib/contractorWorkOrders";
-import { SECTION_TINTS, WorkOrderList, type WorkOrderWithPlace } from "@/components/WorkOrderRow";
+import { WorkOrderList, type WorkOrderWithPlace } from "@/components/WorkOrderRow";
 import ThemeToggle from "@/components/ThemeToggle";
+import { BackLink } from "@/components/list/PageHeader";
 import { openInput } from "../schemas";
 
 export const metadata: Metadata = {
@@ -34,19 +35,17 @@ export default async function ContractorWorkOrderList({
     const orgName = workOrder.organization.name;
 
     return (
-        <main className="mx-auto max-w-5xl px-4 py-10 text-foreground">
+        <main id="main" className="mx-auto max-w-5xl px-4 pt-5 pb-12 text-foreground sm:pt-8">
             {/* Standard light/dark only: the theme script never applies Settings palettes on /wo/ pages. */}
-            <div className="mb-2 flex items-center justify-between gap-3">
-                <p className="text-xs uppercase tracking-wide text-subtle">{orgName}</p>
-                <div className="print:hidden">
+            <div className="mb-4 flex items-center justify-between gap-3">
+                <p className="min-w-0 truncate text-sm font-medium text-muted">{orgName}</p>
+                <div className="-mr-2 shrink-0 print:hidden">
                     <ThemeToggle />
                 </div>
             </div>
 
-            <h1 className="text-2xl font-semibold">Your work orders</h1>
-            <Link href={`/wo/${token}`} className="mb-6 inline-block text-sm text-subtle hover:text-foreground">
-                ← Back to #{workOrder.jobNumber}
-            </Link>
+            <BackLink href={`/wo/${token}`} label={`Back to #${workOrder.jobNumber}`} />
+            <h1 className="mb-2 text-2xl font-semibold tracking-tight">Your work orders</h1>
 
             {canLookup(workOrder) ? (
                 <VerifiedList token={token} workOrder={workOrder} />
@@ -128,15 +127,17 @@ function StatusSections({ workOrders }: { workOrders: WorkOrderWithPlace[] }): R
 
                 return (
                     <section key={status}>
-                        <h2 className="mb-3 flex items-baseline gap-2 text-lg font-semibold">
+                        <h2 className="mb-3 flex items-center gap-2 text-base font-semibold">
+                            <span aria-hidden className={`h-2 w-2 rounded-full ${STATUS_DOTS[status]}`} />
                             {WORK_ORDER_STATUS_LABELS[status]}
                             <span className="text-sm font-normal text-subtle">{rows.length}</span>
                         </h2>
                         <WorkOrderList
                             workOrders={rows}
                             hideContractor
+                            hideStatus
                             href={(wo) => `/wo/${wo.publicToken}`}
-                            tint={SECTION_TINTS[status]}
+                            tableLabel={`${WORK_ORDER_STATUS_LABELS[status]} work orders`}
                         />
                     </section>
                 );

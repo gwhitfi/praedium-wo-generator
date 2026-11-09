@@ -4,6 +4,10 @@ import { useState, useTransition } from "react";
 import NotificationRow from "@/components/NotificationRow";
 import type { NotificationItem } from "@/lib/notificationTypes";
 import { loadMoreNotifications } from "./actions";
+import EmptyState from "@/components/list/EmptyState";
+import { Button } from "@/components/Button";
+import { BellIcon } from "@/components/Icons";
+import { cardClass } from "@/lib/ui";
 
 // The inbox's list: the first notifications come from the server, "Show more" adds the next ones in place.
 // `now` is the server's clock, so the "3h ago" times match between the server render and the browser.
@@ -43,30 +47,31 @@ export default function InboxList({
 
     if (items.length === 0) {
         return (
-            <div className="rounded-lg border border-dashed border-line px-4 py-12 text-center">
-                <p className="text-sm text-muted">No notifications yet.</p>
-            </div>
+            <EmptyState
+                icon={<BellIcon size={22} />}
+                title="You're all caught up"
+                message="When a contractor opens a work order, checks off work or finishes it, you'll see it here."
+            />
         );
     }
 
     return (
         <>
-            <ul className="divide-y divide-line overflow-hidden rounded-lg border border-line bg-surface/40">
+            <ul className={`${cardClass} divide-y divide-line overflow-hidden`}>
                 {items.map((item) => (
                     <NotificationRow key={item.id} item={item} now={clock} />
                 ))}
             </ul>
             {(hasMore || error) && (
                 <div className="mt-4 flex flex-col items-center gap-2">
-                    {error && <p className="text-sm text-danger">Couldn&apos;t load more. Try again.</p>}
-                    <button
-                        type="button"
-                        onClick={showMore}
-                        disabled={loading}
-                        className="rounded-md border border-line-strong px-4 py-2 text-sm text-foreground hover:bg-surface-hover hover:cursor-pointer disabled:opacity-60"
-                    >
-                        {loading ? "Loading…" : "Show more"}
-                    </button>
+                    {error && (
+                        <p role="alert" className="text-sm text-danger">
+                            Couldn&apos;t load more. Try again.
+                        </p>
+                    )}
+                    <Button onClick={showMore} pending={loading} pendingLabel="Loading…">
+                        Show more
+                    </Button>
                 </div>
             )}
         </>

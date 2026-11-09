@@ -1,7 +1,11 @@
-import Link from "next/link";
+import type { Metadata } from "next";
 import { redirect } from "next/navigation";
 import { getCurrentUser } from "@/lib/auth";
+import PageHeader from "@/components/list/PageHeader";
+import { readingClass, taskPageClass } from "@/lib/ui";
 import PropertyForm from "./PropertyForm";
+
+export const metadata: Metadata = { title: "New property" };
 
 export default async function NewProperty({ searchParams }: { searchParams: Promise<{ returnTo?: string }> }) {
     const result = await getCurrentUser();
@@ -16,17 +20,24 @@ export default async function NewProperty({ searchParams }: { searchParams: Prom
 
     const { returnTo } = await searchParams;
     const fromWorkOrder = returnTo === "/work-orders/new";
+    const back = fromWorkOrder
+        ? { href: "/work-orders/new", label: "Back to the new work order" }
+        : { href: "/properties", label: "Properties" };
 
     return (
-        <main className="mx-auto max-w-5xl px-4 py-10 text-foreground">
-            <h1 className="text-2xl font-semibold mb-6">Create property</h1>
-            <PropertyForm returnTo={fromWorkOrder ? returnTo : undefined} />
-            <Link
-                href={fromWorkOrder ? "/work-orders/new" : "/properties"}
-                className="text-sm text-muted hover:text-foreground"
-            >
-                Cancel
-            </Link>
+        <main id="main" className={taskPageClass}>
+            <div className={readingClass}>
+                <PageHeader
+                    title="New property"
+                    subtitle={
+                        fromWorkOrder
+                            ? "Save it and you'll go straight back to your work order, with this property picked."
+                            : "A house, a building or a commercial space you manage."
+                    }
+                    back={back}
+                />
+                <PropertyForm returnTo={fromWorkOrder ? returnTo : undefined} cancelHref={back.href} />
+            </div>
         </main>
     );
 }

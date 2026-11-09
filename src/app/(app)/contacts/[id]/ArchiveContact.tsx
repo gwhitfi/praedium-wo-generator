@@ -1,10 +1,9 @@
 "use client";
 
-import { useRef, useState } from "react";
+import { useId, useRef, useState } from "react";
 import { archiveContact, restoreContact } from "../actions";
-
-const outlineButton =
-    "shrink-0 rounded-md border border-line-strong px-4 py-2 text-sm text-foreground hover:bg-surface-hover hover:cursor-pointer disabled:opacity-40 disabled:hover:cursor-not-allowed";
+import { Button } from "@/components/Button";
+import { useToast } from "@/components/Toaster";
 
 export function ArchiveContactButton({
     contactId,
@@ -16,8 +15,10 @@ export function ArchiveContactButton({
     contactName: string;
     openCount: number;
     isTenant: boolean;
-}) {
+}): React.ReactElement {
+    const toast = useToast();
     const dialogRef = useRef<HTMLDialogElement>(null);
+    const titleId = useId();
     const [pending, setPending] = useState(false);
     const [error, setError] = useState<string | null>(null);
 
@@ -28,6 +29,7 @@ export function ArchiveContactButton({
             const res = await archiveContact(contactId);
             if (res.ok) {
                 dialogRef.current?.close();
+                toast(`${contactName} archived.`);
             } else {
                 setError(res.error);
             }
@@ -40,33 +42,32 @@ export function ArchiveContactButton({
 
     if (openCount > 0) {
         return (
-            <p className="text-sm text-subtle">
-                Can&apos;t archive or delete: {openCount} open {openCount === 1 ? "work order" : "work orders"}.
-                Reassign, close or cancel {openCount === 1 ? "it" : "them"} first.
+            <p className="text-sm text-subtle sm:max-w-56 sm:text-right">
+                {openCount} open {openCount === 1 ? "work order" : "work orders"}. Reassign, close or cancel{" "}
+                {openCount === 1 ? "it" : "them"} first.
             </p>
         );
     }
 
     return (
         <>
-            <button
-                type="button"
-                onClick={() => dialogRef.current?.showModal()}
-                className="shrink-0 rounded-md px-4 py-2 text-sm text-subtle hover:text-danger hover:cursor-pointer"
-            >
-                Archive contact
-            </button>
+            <Button size="sm" onClick={() => dialogRef.current?.showModal()}>
+                Archive
+            </Button>
 
             <dialog
                 ref={dialogRef}
+                aria-labelledby={titleId}
                 onClick={(e) => {
                     // Clicking the backdrop (the dialog element itself) closes it.
                     if (e.target === dialogRef.current && !pending) dialogRef.current.close();
                 }}
-                className="m-auto w-[calc(100%-2rem)] max-w-md rounded-lg border border-line-strong bg-surface p-0 text-foreground backdrop:bg-black/70"
+                className="m-auto w-[calc(100%-2rem)] max-w-md rounded-xl border border-line bg-surface p-0 text-foreground shadow-xl backdrop:bg-black/60"
             >
-                <div className="p-5">
-                    <h2 className="mb-2 text-lg font-semibold">Archive &ldquo;{contactName}&rdquo;?</h2>
+                <div className="p-5 sm:p-6">
+                    <h2 id={titleId} className="mb-2 text-lg font-semibold">
+                        Archive &ldquo;{contactName}&rdquo;?
+                    </h2>
                     <p className="text-sm text-secondary">
                         {isTenant
                             ? "They'll be hidden from contacts and won't be added to new work orders for their unit."
@@ -74,25 +75,19 @@ export function ArchiveContactButton({
                         Past work orders keep their details. You can restore them later.
                     </p>
 
-                    {error && <p className="mt-3 text-sm text-danger">{error}</p>}
+                    {error && (
+                        <p role="alert" className="mt-3 text-sm text-danger">
+                            {error}
+                        </p>
+                    )}
 
-                    <div className="mt-5 flex flex-wrap justify-end gap-2">
-                        <button
-                            type="button"
-                            onClick={() => dialogRef.current?.close()}
-                            disabled={pending}
-                            className={outlineButton}
-                        >
+                    <div className="mt-6 flex flex-wrap justify-end gap-2">
+                        <Button onClick={() => dialogRef.current?.close()} disabled={pending}>
                             Go back
-                        </button>
-                        <button
-                            type="button"
-                            onClick={handleArchive}
-                            disabled={pending}
-                            className="shrink-0 rounded-md bg-danger-strong px-4 py-2 text-sm font-medium text-white hover:bg-danger-strong/85 hover:cursor-pointer disabled:opacity-40"
-                        >
-                            {pending ? "Archiving..." : "Yes, archive"}
-                        </button>
+                        </Button>
+                        <Button variant="danger" onClick={handleArchive} pending={pending} pendingLabel="Archiving…">
+                            Archive contact
+                        </Button>
                     </div>
                 </div>
             </dialog>
@@ -100,7 +95,8 @@ export function ArchiveContactButton({
     );
 }
 
-export function RestoreContactButton({ contactId }: { contactId: string }) {
+export function RestoreContactButton({ contactId }: { contactId: string }): React.ReactElement {
+    const toast = useToast();
     const [pending, setPending] = useState(false);
     const [error, setError] = useState<string | null>(null);
 
@@ -109,6 +105,7 @@ export function RestoreContactButton({ contactId }: { contactId: string }) {
         setError(null);
         try {
             await restoreContact(contactId);
+            toast("Contact restored.");
         } catch {
             setError("Could not restore. Try again.");
         } finally {
@@ -117,11 +114,15 @@ export function RestoreContactButton({ contactId }: { contactId: string }) {
     }
 
     return (
-        <>
-            <button type="button" onClick={handleRestore} disabled={pending} className={outlineButton}>
-                {pending ? "Restoring..." : "Restore"}
-            </button>
-            {error && <span className="text-sm text-danger">{error}</span>}
-        </>
+        <span className="flex flex-col items-end gap-1">
+            <Button size="sm" onClick={handleRestore} pending={pending} pendingLabel="Restoring…">
+                Restore
+            </Button>
+            {error && (
+                <span role="alert" className="text-sm text-danger">
+                    {error}
+                </span>
+            )}
+        </span>
     );
 }

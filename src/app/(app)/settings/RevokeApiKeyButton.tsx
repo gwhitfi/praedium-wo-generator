@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import { revokeApiKey } from "./actions";
+import { Button } from "@/components/Button";
 
 // Asks before revoking, like ArchiveControls: a revoked key can't be restored.
 export default function RevokeApiKeyButton({ id, name }: { id: string; name: string }): React.ReactElement {
@@ -26,33 +27,27 @@ export default function RevokeApiKeyButton({ id, name }: { id: string; name: str
     return (
         <div className="flex shrink-0 flex-col items-end gap-1">
             {confirming ? (
-                <span className="flex flex-wrap items-center justify-end gap-2 text-sm">
-                    <span className="text-secondary">Revoke this key? Assistants using it will stop working.</span>
-                    <button
-                        className="text-danger hover:text-danger/80 hover:cursor-pointer disabled:opacity-40"
-                        onClick={revoke}
-                        disabled={pending}
-                    >
-                        {pending ? "Revoking..." : "Yes, revoke"}
-                    </button>
-                    <button
-                        className="text-subtle hover:text-foreground hover:cursor-pointer"
-                        onClick={() => setConfirming(false)}
-                        disabled={pending}
-                    >
-                        Go back
-                    </button>
-                </span>
+                <div className="flex max-w-xs flex-col items-end gap-2 text-right">
+                    <span className="text-sm text-secondary">Revoke it? Assistants using it stop working.</span>
+                    <div className="flex gap-2">
+                        <Button size="sm" onClick={() => setConfirming(false)} disabled={pending}>
+                            Go back
+                        </Button>
+                        <Button size="sm" variant="danger" onClick={revoke} pending={pending} pendingLabel="Revoking…">
+                            Revoke
+                        </Button>
+                    </div>
+                </div>
             ) : (
-                <button
-                    aria-label={`Revoke ${name}`}
-                    className="rounded-md px-3 py-1.5 text-sm text-subtle hover:text-danger hover:cursor-pointer"
-                    onClick={() => setConfirming(true)}
-                >
+                <Button size="sm" variant="danger-ghost" aria-label={`Revoke ${name}`} onClick={() => setConfirming(true)}>
                     Revoke
-                </button>
+                </Button>
             )}
-            {error && <span className="text-sm text-danger">{error}</span>}
+            {error && (
+                <span role="alert" className="text-sm text-danger">
+                    {error}
+                </span>
+            )}
         </div>
     );
 }

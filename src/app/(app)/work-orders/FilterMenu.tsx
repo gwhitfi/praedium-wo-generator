@@ -2,12 +2,14 @@
 
 import Link from "next/link";
 import { useEffect, useId, useRef, useState } from "react";
+import { ChevronDownIcon } from "@/components/Icons";
 
 export type FilterOption = { label: string; href: string; active: boolean };
 
 // The work order filters, folded into one button that shows the active filter. Opens on hover with a mouse,
 // and on click or tap otherwise. Closes on picking a filter, clicking outside, Escape, or tabbing away.
-export default function FilterMenu({ options }: { options: FilterOption[] }) {
+// `prefix` names the filter on the button ("Show: All", "Type: All"); it's hidden once a filter is picked.
+export default function FilterMenu({ options, prefix = "Show" }: { options: FilterOption[]; prefix?: string }) {
     const [open, setOpen] = useState(false);
     const rootRef = useRef<HTMLDivElement>(null);
     const buttonRef = useRef<HTMLButtonElement>(null);
@@ -68,17 +70,15 @@ export default function FilterMenu({ options }: { options: FilterOption[] }) {
                     }
                     setOpen(!open);
                 }}
-                className={`flex items-center gap-1.5 rounded-full border px-3 py-1 text-sm hover:cursor-pointer ${
+                className={`flex h-10 items-center gap-1.5 whitespace-nowrap rounded-md border px-3 text-sm hover:cursor-pointer ${
                     filtered
-                        ? "border-accent bg-accent text-on-accent"
-                        : "border-line-strong text-muted hover:border-subtle hover:text-foreground"
+                        ? "border-accent bg-accent/10 font-medium text-foreground"
+                        : "border-line-strong bg-surface text-muted hover:border-line-hover hover:text-foreground"
                 }`}
             >
-                <span className="sr-only">Filter: </span>
+                <span className={filtered ? "sr-only" : "text-subtle"}>{prefix}:</span>
                 {current.label}
-                <span aria-hidden className="text-xs">
-                    ▾
-                </span>
+                <ChevronDownIcon size={14} />
             </button>
 
             {open && (
@@ -90,7 +90,7 @@ export default function FilterMenu({ options }: { options: FilterOption[] }) {
                                     href={option.href}
                                     aria-current={option.active ? "page" : undefined}
                                     onClick={() => setOpen(false)}
-                                    className={`flex items-center gap-2 px-3 py-1.5 text-sm hover:bg-surface-hover hover:text-foreground ${
+                                    className={`flex items-center gap-2 px-3 py-2.5 text-sm hover:bg-surface-hover hover:text-foreground sm:py-2 ${
                                         option.active ? "text-foreground" : "text-muted"
                                     }`}
                                 >

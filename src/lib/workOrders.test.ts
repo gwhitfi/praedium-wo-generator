@@ -40,7 +40,7 @@ describe("orderForView", () => {
         ]);
     });
 
-    it("groups by status in workflow order, sorting within each group", () => {
+    it("groups by status in workflow order (drafts first), sorting within each group", () => {
         expect(ids(orderForView(rows, { sort: null, split: true }))).toEqual(["b", "d", "a", "c"]);
         expect(ids(orderForView(rows, { sort: { key: "title", dir: "asc" }, split: true }))).toEqual([
             "d",
@@ -62,6 +62,7 @@ describe("listQuery", () => {
             "?status=overdue&sort=due&dir=desc",
         );
         expect(listQuery({ filter: null, sort: { key: "title", dir: "asc" } })).toBe("?sort=title&dir=asc");
+        expect(listQuery({ filter: "draft", sort: null, query: "roof leak" })).toBe("?status=draft&q=roof+leak");
     });
 });
 

@@ -41,6 +41,7 @@ vi.mock("@/lib/photos", () => ({
 }));
 
 import { getCurrentUser } from "@/lib/auth";
+import { redirect } from "next/navigation";
 import prisma from "@/lib/prisma";
 import { sendEmail } from "@/lib/email";
 import { logEvent } from "@/lib/workOrderEvents";
@@ -113,6 +114,7 @@ beforeEach(() => {
         organization: { id: "org1", name: "Acme Property", email: null, phone: null },
     } as never);
     withWorkOrder();
+    vi.mocked(prisma.lineItem.count).mockResolvedValue(2);
 });
 
 describe("createWorkOrder", () => {
@@ -125,12 +127,51 @@ describe("createWorkOrder", () => {
         form.set("propertyId", "prop1");
         form.set("title", "Fix sink");
 
-        await createWorkOrder(form);
+        await createWorkOrder({}, form);
 
         expect(logEvent).toHaveBeenCalledWith({ ...ids, type: "CREATED", actor: office, detail: { source: "form" } });
+        expect(redirect).toHaveBeenCalledWith("/work-orders/wo1?flash=work-order-created");
     });
 
-    it("refuses an archived unit", async () => {
+    it("creates the first area and line item when they're filled in (a one-line job)", async () => {
+        const create = vi.fn().mockResolvedValue({ id: "wo1" });
+        vi.mocked(prisma.property.findFirst).mockResolvedValue({ id: "prop1" } as never);
+        vi.mocked(prisma.$transaction).mockImplementation((async (fn: (tx: unknown) => unknown) =>
+            fn({ workOrder: { create } })) as never);
+        const form = new FormData();
+        form.set("propertyId", "prop1");
+        form.set("title", "Fix sink");
+        form.set("firstArea", "");
+        form.set("firstItem", " Replace the faucet cartridge ");
+        form.set("firstPriority", "HIGH");
+
+        await createWorkOrder({}, form);
+
+        expect(create.mock.calls[0][0].data.areas).toEqual({
+            create: {
+                name: "General",
+                sortOrder: 0,
+                lineItems: { create: { description: "Replace the faucet cartridge", priority: "HIGH", sortOrder: 0 } },
+            },
+        });
+    });
+
+    it("creates no area when the first item is left empty", async () => {
+        const create = vi.fn().mockResolvedValue({ id: "wo1" });
+        vi.mocked(prisma.property.findFirst).mockResolvedValue({ id: "prop1" } as never);
+        vi.mocked(prisma.$transaction).mockImplementation((async (fn: (tx: unknown) => unknown) =>
+            fn({ workOrder: { create } })) as never);
+        const form = new FormData();
+        form.set("propertyId", "prop1");
+        form.set("title", "Fix sink");
+        form.set("firstItem", "  ");
+
+        await createWorkOrder({}, form);
+
+        expect(create.mock.calls[0][0].data.areas).toBeUndefined();
+    });
+
+    it("refuses an archived unit with a field error and keeps what was typed", async () => {
         vi.mocked(prisma.property.findFirst).mockResolvedValue({ id: "prop1" } as never);
         vi.mocked(prisma.unit.findFirst).mockResolvedValue(null);
         const form = new FormData();
@@ -138,9 +179,45 @@ describe("createWorkOrder", () => {
         form.set("unitId", "unit1");
         form.set("title", "Fix sink");
 
-        await expect(createWorkOrder(form)).rejects.toThrow("Invalid unit");
+        await expect(createWorkOrder({}, form)).resolves.toEqual({
+            errors: { unitId: ["Choose a unit at this property"] },
+            values: { propertyId: "prop1", unitId: "unit1", title: "Fix sink" },
+        });
         expect(prisma.unit.findFirst).toHaveBeenCalledWith({
             where: { id: "unit1", propertyId: "prop1", organizationId: "org1", archived: false },
+        });
+        expect(prisma.$transaction).not.toHaveBeenCalled();
+    });
+
+    it("reports a missing title and property together", async () => {
+        vi.mocked(prisma.property.findFirst).mockResolvedValue(null);
+        const form = new FormData();
+        form.set("title", "  ");
+
+        const state = await createWorkOrder({}, form);
+
+        expect(state.errors).toEqual({ title: ["Enter a title"], propertyId: ["Choose a property"] });
+        expect(prisma.$transaction).not.toHaveBeenCalled();
+    });
+
+    it("refuses a contractor from another organization", async () => {
+        vi.mocked(prisma.property.findFirst).mockResolvedValue({ id: "prop1" } as never);
+        vi.mocked(prisma.contact.findFirst).mockResolvedValue(null);
+        const form = new FormData();
+        form.set("propertyId", "prop1");
+        form.set("title", "Fix sink");
+        form.set("contractorId", "someone-else");
+
+        const state = await createWorkOrder({}, form);
+
+        expect(state.errors).toEqual({ contractorId: ["That contractor is no longer available"] });
+        expect(prisma.contact.findFirst).toHaveBeenCalledWith({
+            where: {
+                id: "someone-else",
+                organizationId: "org1",
+                archived: false,
+                contactType: { in: ["CONTRACTOR", "OTHER"] },
+            },
         });
         expect(prisma.$transaction).not.toHaveBeenCalled();
     });
@@ -156,6 +233,14 @@ describe("sendWorkOrder", () => {
             actor: office,
             detail: { deliveryMethod: "PRINT", resent: false },
         });
+    });
+
+    it("refuses a draft with no line items", async () => {
+        vi.mocked(prisma.lineItem.count).mockResolvedValue(0);
+
+        await expect(sendWorkOrder("wo1", "PRINT")).rejects.toThrow("Add at least one line item before sending");
+        expect(prisma.workOrder.update).not.toHaveBeenCalled();
+        expect(logEvent).not.toHaveBeenCalled();
     });
 
     it("doesn't log when the work order isn't a draft", async () => {
@@ -356,7 +441,7 @@ describe("updateWorkOrder", () => {
     });
 
     it("logs the fields that changed on a sent work order", async () => {
-        await updateWorkOrder("wo1", editForm({ title: "Fix kitchen sink", dueDate: "2026-11-10" }));
+        await updateWorkOrder("wo1", {}, editForm({ title: "Fix kitchen sink", dueDate: "2026-11-10" }));
 
         expect(vi.mocked(logEvent).mock.calls).toEqual([
             [{ ...ids, type: "EDITED", actor: office, detail: { fields: ["title", "dueDate"] } }],
@@ -364,7 +449,7 @@ describe("updateWorkOrder", () => {
     });
 
     it("logs nothing when nothing changed", async () => {
-        await updateWorkOrder("wo1", editForm());
+        await updateWorkOrder("wo1", {}, editForm());
 
         expect(logEvent).not.toHaveBeenCalled();
     });
@@ -372,7 +457,7 @@ describe("updateWorkOrder", () => {
     it("logs a contractor change with both names", async () => {
         vi.mocked(prisma.contact.findFirst).mockResolvedValue(ana as never);
 
-        await updateWorkOrder("wo1", editForm({ contractorId: "ana" }));
+        await updateWorkOrder("wo1", {}, editForm({ contractorId: "ana" }));
 
         expect(vi.mocked(logEvent).mock.calls).toEqual([
             [
@@ -390,13 +475,23 @@ describe("updateWorkOrder", () => {
         withWorkOrder({ status: "DRAFT" });
         vi.mocked(prisma.contact.findFirst).mockResolvedValue(ana as never);
 
-        await updateWorkOrder("wo1", editForm({ title: "Fix kitchen sink", contractorId: "ana" }));
+        await updateWorkOrder("wo1", {}, editForm({ title: "Fix kitchen sink", contractorId: "ana" }));
 
         expect(logEvent).not.toHaveBeenCalled();
     });
 
+    it("explains why a closed work order can't be edited instead of throwing", async () => {
+        withWorkOrder({ status: "CLOSED" });
+
+        const state = await updateWorkOrder("wo1", {}, editForm({ title: "Fix kitchen sink" }));
+
+        expect(state.error).toMatch(/no longer open/);
+        expect(state.values).toMatchObject({ title: "Fix kitchen sink" });
+        expect(prisma.workOrder.update).not.toHaveBeenCalled();
+    });
+
     it("hands a sent work order to the office: drops the contractor and kills their link", async () => {
-        await updateWorkOrder("wo1", editForm({ contractorId: IN_HOUSE }));
+        await updateWorkOrder("wo1", {}, editForm({ contractorId: IN_HOUSE }));
 
         const { data } = vi.mocked(prisma.workOrder.update).mock.calls[0][0];
         expect(data).toMatchObject({ inHouse: true, contractorId: null, contractorEmail: null, deliveryMethod: null });

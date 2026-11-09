@@ -1,10 +1,14 @@
-import Link from "next/link";
+import type { Metadata } from "next";
 import { redirect } from "next/navigation";
 import { getCurrentUser } from "@/lib/auth";
+import PageHeader from "@/components/list/PageHeader";
+import { readingClass, taskPageClass } from "@/lib/ui";
 import ContactForm from "./ContactForm";
 import prisma from "@/lib/prisma";
 
-export default async function NewContact() {
+export const metadata: Metadata = { title: "New contact" };
+
+export default async function NewContact({ searchParams }: { searchParams: Promise<{ returnTo?: string }> }) {
     const result = await getCurrentUser();
 
     if (result.state === "signed-out") {
@@ -24,13 +28,32 @@ export default async function NewContact() {
             },
         },
     });
+
+    // Opened from the work order form's "Add a new contractor": go back there afterwards, with them picked.
+    const { returnTo } = await searchParams;
+    const fromWorkOrder = returnTo === "/work-orders/new";
+    const back = fromWorkOrder
+        ? { href: "/work-orders/new", label: "Back to the new work order" }
+        : { href: "/contacts", label: "Contacts" };
+
     return (
-        <main className="mx-auto max-w-5xl px-4 py-10 text-foreground">
-            <h1 className="text-2xl font-semibold mb-6">Create contact</h1>
-            <ContactForm properties={properties} />
-            <Link href="/contacts" className="text-sm text-muted hover:text-foreground">
-                Cancel
-            </Link>
+        <main id="main" className={taskPageClass}>
+            <div className={readingClass}>
+                <PageHeader
+                    title={fromWorkOrder ? "New contractor" : "New contact"}
+                    subtitle={
+                        fromWorkOrder
+                            ? "Save them and you'll go straight back to your work order, with them picked."
+                            : "A contractor you send work to, a tenant, or anyone else you deal with."
+                    }
+                    back={back}
+                />
+                <ContactForm
+                    properties={properties}
+                    cancelHref={back.href}
+                    returnTo={fromWorkOrder ? returnTo : undefined}
+                />
+            </div>
         </main>
     );
 }
