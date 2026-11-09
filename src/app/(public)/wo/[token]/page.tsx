@@ -17,6 +17,7 @@ import { isVerifiedFor } from "@/lib/contractorAccess";
 import { formatDueDate, formatTimestamp } from "@/lib/dates";
 import { formatPhone } from "@/lib/phone";
 import { cardClass, cardTitleClass, noticeClass } from "@/lib/ui";
+import { MAX_LINE_ITEM_PHOTOS } from "@/lib/photos";
 
 export const metadata: Metadata = {
     title: "Work order",
@@ -43,7 +44,13 @@ export default async function PublicWorkOrder({
                 include: {
                     lineItems: {
                         orderBy: { sortOrder: "asc" },
-                        include: { attachments: { select: { id: true }, orderBy: { createdAt: "desc" }, take: 1 } },
+                        include: {
+                            attachments: {
+                                select: { id: true },
+                                orderBy: { createdAt: "asc" },
+                                take: MAX_LINE_ITEM_PHOTOS,
+                            },
+                        },
                     },
                 },
             },

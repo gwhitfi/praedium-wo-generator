@@ -62,7 +62,7 @@ describe("describeEvent: office", () => {
         ["ARCHIVED", null, "Justin W. archived it"],
         ["RESTORED", null, "Justin W. restored it"],
         ["PHOTO_ADDED", faucet, 'Justin W. added a photo to "Replace faucet" (Kitchen)'],
-        ["PHOTO_REMOVED", faucet, 'Justin W. removed the photo from "Replace faucet" (Kitchen)'],
+        ["PHOTO_REMOVED", faucet, 'Justin W. removed a photo from "Replace faucet" (Kitchen)'],
         ["ITEM_ADDED", faucet, 'Justin W. added "Replace faucet" (Kitchen)'],
         ["ITEM_REMOVED", faucet, 'Justin W. removed "Replace faucet" (Kitchen)'],
         [

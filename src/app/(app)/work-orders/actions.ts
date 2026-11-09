@@ -14,7 +14,7 @@ import { startInHouseWorkOrder } from "@/lib/workOrderStart";
 import { COLOR_SECTIONS_COOKIE, formatWorkOrderAddress, OPEN_STATUSES, SPLIT_VIEW_COOKIE } from "@/lib/workOrders";
 import { contractorSnapshot, findTenant, nextJobNumber, tenantSnapshot } from "@/lib/workOrderCreate";
 import { z } from "zod";
-import { checkPhoto, MAX_PHOTO_BYTES } from "@/lib/photos";
+import { checkPhoto, MAX_LINE_ITEM_PHOTOS, MAX_PHOTO_BYTES } from "@/lib/photos";
 import { deleteFiles, lineItemPhotoKey, uploadFile } from "@/lib/storage";
 import { attachmentKeys, onWorkOrders } from "@/lib/attachments";
 import { logEvent } from "@/lib/workOrderEvents";
@@ -702,14 +702,20 @@ function revalidatePhoto(workOrder: { id: string; publicToken: string }) {
     revalidatePath(`/wo/${workOrder.publicToken}`);
 }
 
-// Adds the line item's photo, replacing the one it already has.
-export async function setLineItemPhoto(lineItemId: string, formData: FormData): Promise<PhotoResult> {
+const PHOTO_LIMIT_ERROR = `A line item can have up to ${MAX_LINE_ITEM_PHOTOS} photos.`;
+
+// Adds a photo to the line item, up to MAX_LINE_ITEM_PHOTOS.
+export async function addLineItemPhoto(lineItemId: string, formData: FormData): Promise<PhotoResult> {
     const result = await getCurrentUser();
     if (result.state !== "ready") return { ok: false, error: "Not authorized" };
     const organizationId = result.organization.id;
 
     const lineItem = await findPhotoLineItem(lineItemId, organizationId);
     if (!lineItem.ok) return lineItem;
+
+    // Saves an upload when the item is already full; the transaction below checks again.
+    const photoCount = await prisma.attachment.count({ where: { lineItemId: lineItem.id, organizationId } });
+    if (photoCount >= MAX_LINE_ITEM_PHOTOS) return { ok: false, error: PHOTO_LIMIT_ERROR };
 
     const file = photoInput.safeParse(formData.get("photo"));
     if (!file.success) return { ok: false, error: "Choose a photo." };
@@ -723,18 +729,17 @@ export async function setLineItemPhoto(lineItemId: string, formData: FormData): 
     try {
         await uploadFile(storageKey, bytes, photo.type.mimeType);
     } catch (error) {
-        console.error("setLineItemPhoto upload failed", error);
+        console.error("addLineItemPhoto upload failed", error);
         return { ok: false, error: "The photo couldn't be uploaded. Try again." };
     }
 
-    let replacedKeys: string[];
+    let saved: boolean;
     try {
-        replacedKeys = await prisma.$transaction(async (tx) => {
-            const existing = await tx.attachment.findMany({
-                where: { lineItemId: lineItem.id, organizationId },
-                select: { storageKey: true },
-            });
-            await tx.attachment.deleteMany({ where: { lineItemId: lineItem.id, organizationId } });
+        saved = await prisma.$transaction(async (tx) => {
+            // Locks the line item row so two uploads at the same moment can't both pass the count.
+            await tx.$queryRaw`SELECT "id" FROM "LineItem" WHERE "id" = ${lineItem.id} FOR UPDATE`;
+            const count = await tx.attachment.count({ where: { lineItemId: lineItem.id, organizationId } });
+            if (count >= MAX_LINE_ITEM_PHOTOS) return false;
             await tx.attachment.create({
                 data: {
                     organizationId,
@@ -743,17 +748,21 @@ export async function setLineItemPhoto(lineItemId: string, formData: FormData): 
                     fileName: file.data.name.slice(0, 255) || null,
                     mimeType: photo.type.mimeType,
                     sizeBytes: bytes.length,
+                    sortOrder: count,
                 },
             });
-            return existing.map((a) => a.storageKey);
+            return true;
         });
     } catch (error) {
-        console.error("setLineItemPhoto save failed", error);
+        console.error("addLineItemPhoto save failed", error);
         await deleteFiles([storageKey]);
         return { ok: false, error: "The photo couldn't be saved. Try again." };
     }
+    if (!saved) {
+        await deleteFiles([storageKey]);
+        return { ok: false, error: PHOTO_LIMIT_ERROR };
+    }
 
-    await deleteFiles(replacedKeys);
     await logEvent({
         type: "PHOTO_ADDED",
         workOrderId: lineItem.workOrder.id,
@@ -765,25 +774,29 @@ export async function setLineItemPhoto(lineItemId: string, formData: FormData): 
     return { ok: true };
 }
 
-export async function removeLineItemPhoto(lineItemId: string): Promise<PhotoResult> {
+const attachmentIdInput = z.string().min(1).max(100);
+
+// Removes one photo from a line item.
+export async function removeLineItemPhoto(attachmentId: string): Promise<PhotoResult> {
     const result = await getCurrentUser();
     if (result.state !== "ready") return { ok: false, error: "Not authorized" };
     const organizationId = result.organization.id;
 
-    const lineItem = await findPhotoLineItem(lineItemId, organizationId);
+    const id = attachmentIdInput.safeParse(attachmentId);
+    if (!id.success) return { ok: false, error: "Photo not found." };
+    const attachment = await prisma.attachment.findFirst({
+        where: { id: id.data, organizationId, lineItemId: { not: null } },
+        select: { id: true, lineItemId: true, storageKey: true },
+    });
+    if (!attachment?.lineItemId) return { ok: false, error: "Photo not found." };
+
+    const lineItem = await findPhotoLineItem(attachment.lineItemId, organizationId);
     if (!lineItem.ok) return lineItem;
 
-    const removedKeys = await prisma.$transaction(async (tx) => {
-        const existing = await tx.attachment.findMany({
-            where: { lineItemId: lineItem.id, organizationId },
-            select: { storageKey: true },
-        });
-        await tx.attachment.deleteMany({ where: { lineItemId: lineItem.id, organizationId } });
-        return existing.map((a) => a.storageKey);
-    });
+    const { count } = await prisma.attachment.deleteMany({ where: { id: attachment.id, organizationId } });
 
-    await deleteFiles(removedKeys);
-    if (removedKeys.length > 0) {
+    if (count > 0) {
+        await deleteFiles([attachment.storageKey]);
         await logEvent({
             type: "PHOTO_REMOVED",
             workOrderId: lineItem.workOrder.id,

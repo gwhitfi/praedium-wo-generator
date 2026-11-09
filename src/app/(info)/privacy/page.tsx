@@ -75,10 +75,10 @@ export default function Privacy(): React.ReactElement {
                 <P>
                     <B>Records you enter.</B> Contacts (type, name, company, address, phone, email, notes), properties
                     and units (addresses, notes), and work orders (title, notes, due date, status, areas, line items and
-                    their priority, one photo per line item, contractor notes, completion notes and a cancellation
-                    reason). Each work order keeps a copy of the contractor&apos;s and tenant&apos;s name, phone and
-                    email as they were when it was created, so later edits to a contact don&apos;t change past work
-                    orders.
+                    their priority, up to three photos per line item, contractor notes, completion notes and a
+                    cancellation reason). Each work order keeps a copy of the contractor&apos;s and tenant&apos;s name,
+                    phone and email as they were when it was created, so later edits to a contact don&apos;t change past
+                    work orders.
                 </P>
                 <P>
                     <B>Activity log.</B> Every action on a work order is recorded with the name of the person who did it

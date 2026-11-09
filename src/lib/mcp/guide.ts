@@ -74,7 +74,7 @@ export function assistantGuide(canChangeStatus: boolean): string {
             "Changing the contractor on a sent work order makes a new contractor link; the old one stops working.",
         "- add_line_item, update_line_item, rename_area, move_area and move_line_item edit the work. Use " +
             "move_line_item to move an item to another area instead of removing and re-adding it, which would " +
-            "lose its photo and completion state.",
+            "lose its photos and completion state.",
         "- Ask the user before remove_line_item or remove_area: both are permanent and delete photos.",
         "",
         "## People and places",

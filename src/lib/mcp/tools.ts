@@ -446,7 +446,7 @@ export function buildMcpServer({
             description:
                 "Move a line item on an open work order to a position (1 is first) within its area, or into " +
                 "another area of the same work order with areaId. A position past the end puts it last. Use this " +
-                "instead of removing and re-adding, which would lose the photo and completion state. Get the ids " +
+                "instead of removing and re-adding, which would lose the photos and completion state. Get the ids " +
                 "from get_work_order. Returns { id, areaId, position }.",
             inputSchema: moveLineItemInput,
         },
@@ -462,7 +462,7 @@ export function buildMcpServer({
         "remove_line_item",
         {
             description:
-                "Delete a line item from an open work order, including its photo if it has one. It can't be " +
+                "Delete a line item from an open work order, including its photos if it has any. It can't be " +
                 "restored. Get lineItemId from get_work_order. Returns { ok: true }.",
             inputSchema: removeLineItemInput,
             annotations: { destructiveHint: true },

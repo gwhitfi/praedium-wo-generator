@@ -283,7 +283,7 @@ export async function updateLineItem(
 
 export const removeLineItemInput = z.object({ lineItemId: id });
 
-// Deletes the line item and its photo. The stored file goes only after the row delete succeeds.
+// Deletes the line item and its photos. The stored files go only after the row delete succeeds.
 export async function removeLineItem(
     organizationId: string,
     user: OfficeUser,
@@ -408,7 +408,7 @@ export async function moveArea(
 
 export const moveLineItemInput = z.object({ lineItemId: id, position, areaId: id.optional() });
 
-// Moves a line item within its area, or into another area of the same work order, keeping its photo and completion.
+// Moves a line item within its area, or into another area of the same work order, keeping its photos and completion.
 // Renumbers the affected areas' line items 0..n-1 in one transaction. Not logged, as in the app.
 export async function moveLineItem(
     organizationId: string,

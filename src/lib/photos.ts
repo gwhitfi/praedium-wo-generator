@@ -2,6 +2,9 @@
 
 export const MAX_PHOTO_BYTES = 3 * 1024 * 1024;
 
+// How many photos one line item can have.
+export const MAX_LINE_ITEM_PHOTOS = 3;
+
 export type PhotoType = { mimeType: "image/jpeg" | "image/png" | "image/webp"; extension: "jpg" | "png" | "webp" };
 
 export type PhotoCheck = { ok: true; type: PhotoType } | { ok: false; error: string };

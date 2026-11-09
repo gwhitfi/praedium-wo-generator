@@ -155,7 +155,7 @@ function phrase(type: WorkOrderEventType, detail: Prisma.JsonValue): Phrase | nu
         }
         case "PHOTO_REMOVED": {
             const d = item();
-            return d && { active: `removed the photo from ${onItem(d)}` };
+            return d && { active: `removed a photo from ${onItem(d)}` };
         }
         case "ITEM_ADDED": {
             const d = item();

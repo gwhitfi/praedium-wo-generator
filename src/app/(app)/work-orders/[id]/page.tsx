@@ -23,6 +23,7 @@ import type { SearchParams } from "@/lib/sorting";
 import { buttonClass, cardClass, cardTitleClass, noticeClass, pageClass } from "@/lib/ui";
 import Link from "next/link";
 import Steps from "@/components/Steps";
+import { MAX_LINE_ITEM_PHOTOS } from "@/lib/photos";
 import WorkOrderPager from "./WorkOrderPager";
 import ActivityLog from "./ActivityLog";
 
@@ -65,7 +66,13 @@ export default async function WorkOrderDetail({
                 include: {
                     lineItems: {
                         orderBy: { sortOrder: "asc" },
-                        include: { attachments: { select: { id: true }, orderBy: { createdAt: "desc" }, take: 1 } },
+                        include: {
+                            attachments: {
+                                select: { id: true },
+                                orderBy: { createdAt: "asc" },
+                                take: MAX_LINE_ITEM_PHOTOS,
+                            },
+                        },
                     },
                 },
             },

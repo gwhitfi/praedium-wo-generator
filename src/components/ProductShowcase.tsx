@@ -16,7 +16,7 @@ const ROWS = [
     {
         eyebrow: "Work orders",
         title: "One page per job, room by room",
-        body: "List the work by area with a priority and a photo for each item. The page always shows the next step, so nothing stalls.",
+        body: "List the work by area with a priority and photos for each item. The page always shows the next step, so nothing stalls.",
         points: ["A link for the contractor, no app or account", "Email the tenant when it's sent", "Print or save as PDF"],
         picture: <WorkOrderPicture />,
         caption: "A work order: its areas and line items, progress, and a Next step card.",

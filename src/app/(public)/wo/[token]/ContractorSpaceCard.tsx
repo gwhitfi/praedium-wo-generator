@@ -15,7 +15,7 @@ type LineItemRow = {
     priority: string;
     completed: boolean;
     contractorNotes: string | null;
-    // At most one: the line item's photo.
+    // The line item's photos, oldest first (at most MAX_LINE_ITEM_PHOTOS).
     attachments: { id: string }[];
 };
 
@@ -205,23 +205,32 @@ export default function ContractorSpaceCard({
                                 </button>
 
                                 <div className="ml-11 flex flex-col gap-2 pr-2 pb-1 empty:hidden">
-                                    {!summaryOnly && item.attachments[0] && (
-                                        <a
-                                            href={`/wo/${token}/photos/${item.attachments[0].id}`}
-                                            target="_blank"
-                                            rel="noopener"
-                                            className="inline-block self-start"
-                                            aria-label={`Open the photo for ${item.description} (new tab)`}
+                                    {!summaryOnly && item.attachments.length > 0 && (
+                                        <ul
+                                            className="flex flex-wrap gap-2"
+                                            aria-label={`Photos for ${item.description}`}
                                         >
-                                            {/* next/image's optimizer would cache the photo outside our access check. */}
-                                            {/* eslint-disable-next-line @next/next/no-img-element */}
-                                            <img
-                                                src={`/wo/${token}/photos/${item.attachments[0].id}`}
-                                                alt={`Photo for ${item.description}`}
-                                                loading="lazy"
-                                                className="h-24 w-24 rounded-md border border-line-strong object-cover hover:border-line-hover"
-                                            />
-                                        </a>
+                                            {item.attachments.map((photo, i) => (
+                                                <li key={photo.id}>
+                                                    <a
+                                                        href={`/wo/${token}/photos/${photo.id}`}
+                                                        target="_blank"
+                                                        rel="noopener"
+                                                        className="block"
+                                                        aria-label={`Open ${item.attachments.length === 1 ? "the photo" : `photo ${i + 1}`} for ${item.description} (new tab)`}
+                                                    >
+                                                        {/* next/image's optimizer would cache the photo outside our access check. */}
+                                                        {/* eslint-disable-next-line @next/next/no-img-element */}
+                                                        <img
+                                                            src={`/wo/${token}/photos/${photo.id}`}
+                                                            alt={`Photo ${i + 1} for ${item.description}`}
+                                                            loading="lazy"
+                                                            className="h-24 w-24 rounded-md border border-line-strong object-cover hover:border-line-hover"
+                                                        />
+                                                    </a>
+                                                </li>
+                                            ))}
+                                        </ul>
                                     )}
 
                                     {notingId === item.id ? (

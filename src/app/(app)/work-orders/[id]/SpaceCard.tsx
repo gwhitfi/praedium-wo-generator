@@ -18,9 +18,9 @@ import {
     PencilIcon,
     PlusIcon,
     TrashIcon,
-    XIcon,
 } from "@/components/Icons";
 import LineItemPhoto, { type PhotoHandle } from "./LineItemPhoto";
+import { MAX_LINE_ITEM_PHOTOS } from "@/lib/photos";
 
 type LineItemRow = {
     id: string;
@@ -29,7 +29,7 @@ type LineItemRow = {
     completed: boolean;
     completedAt: Date | null;
     contractorNotes: string | null;
-    // At most one: the line item's photo.
+    // The line item's photos, oldest first (at most MAX_LINE_ITEM_PHOTOS).
     attachments: { id: string }[];
 };
 
@@ -427,17 +427,8 @@ function ItemRow({
 
     const menu: MenuAction[] = [
         { label: "Edit", icon: <PencilIcon size={15} />, onSelect: startEdit },
-        ...(showPhotos
-            ? [
-                  {
-                      label: hasPhoto ? "Replace photo" : "Add photo",
-                      icon: <CameraIcon size={15} />,
-                      onSelect: () => photoRef.current?.pick(),
-                  },
-                  ...(hasPhoto
-                      ? [{ label: "Remove photo", icon: <XIcon size={15} />, onSelect: () => photoRef.current?.remove() }]
-                      : []),
-              ]
+        ...(showPhotos && item.attachments.length < MAX_LINE_ITEM_PHOTOS
+            ? [{ label: "Add photo", icon: <CameraIcon size={15} />, onSelect: () => photoRef.current?.pick() }]
             : []),
         {
             label: "Move up",
@@ -543,7 +534,7 @@ function ItemRow({
                             ref={photoRef}
                             lineItemId={item.id}
                             description={item.description}
-                            photoId={item.attachments[0]?.id ?? null}
+                            photoIds={item.attachments.map((a) => a.id)}
                             readOnly={readOnly}
                         />
                     )}
@@ -568,7 +559,7 @@ function ItemRow({
             {confirming && (
                 <ConfirmStrip
                     inset
-                    message={`Remove this item?${hasPhoto || item.contractorNotes ? " Its photo and notes are deleted too." : ""}`}
+                    message={`Remove this item?${hasPhoto || item.contractorNotes ? " Its photos and notes are deleted too." : ""}`}
                     confirmLabel="Remove"
                     pending={busy}
                     onConfirm={async () => {
