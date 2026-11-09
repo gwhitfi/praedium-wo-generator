@@ -187,9 +187,13 @@ export default function WorkOrderForm({
     );
 
     // After a failed save, put the dropdowns and checkbox back the way they were sent.
+    // React resets the form after each submit, which sets a controlled checkbox back to how it first rendered
+    // without React noticing; the key below redraws it from state after every response.
     const [shownState, setShownState] = useState(state);
+    const [responseCount, setResponseCount] = useState(0);
     if (state !== shownState) {
         setShownState(state);
+        setResponseCount((n) => n + 1);
         if (state.values) {
             if (!lockProperty && state.values.propertyId !== undefined) setSelectedProperty(state.values.propertyId);
             setSelectedUnit(state.values.unitId ?? "");
@@ -497,6 +501,7 @@ export default function WorkOrderForm({
                             className={`flex items-start gap-3 text-sm ${tenantEmailable ? "hover:cursor-pointer" : "cursor-not-allowed"}`}
                         >
                             <input
+                                key={responseCount}
                                 name="tenant"
                                 type="checkbox"
                                 checked={contactTenant && tenantEmailable}

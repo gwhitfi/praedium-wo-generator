@@ -202,10 +202,13 @@ export default function ContactForm({
         setRestoredAt(null);
     }
 
-    // After a failed save, show what was sent.
+    // After a failed save, show what was sent. React resets the form after each submit, which sets the type radios
+    // back to how they first rendered without React noticing; their key redraws them from state after every response.
     const [shownState, setShownState] = useState(state);
+    const [responseCount, setResponseCount] = useState(0);
     if (state !== shownState) {
         setShownState(state);
+        setResponseCount((n) => n + 1);
         if (state.values) {
             setFirst(state.values.firstName ?? "");
             setLast(state.values.lastName ?? "");
@@ -250,6 +253,7 @@ export default function ContactForm({
                             >
                                 <span className="flex items-center gap-2 font-medium text-foreground">
                                     <input
+                                        key={responseCount}
                                         type="radio"
                                         name={lockType ? undefined : "contactType"}
                                         value={type}
