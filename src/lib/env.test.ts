@@ -50,6 +50,16 @@ describe("checkEnv", () => {
         expect(JSON.stringify(result)).not.toContain("pk_live_swapped");
     });
 
+    it("treats the Sentry DSN as optional, but checks it when set", () => {
+        expect(checkEnv({ ...valid, NEXT_PUBLIC_SENTRY_DSN: "https://key@o1.ingest.sentry.io/2" })).toEqual({
+            ok: true,
+        });
+        expect(checkEnv({ ...valid, NEXT_PUBLIC_SENTRY_DSN: "key@o1.ingest.sentry.io/2" })).toEqual({
+            ok: false,
+            problems: ["NEXT_PUBLIC_SENTRY_DSN isn't a Sentry DSN (https://…)"],
+        });
+    });
+
     it("needs somewhere to store photos", () => {
         expect(checkEnv({ ...valid, BLOB_STORE_ID: undefined })).toEqual({
             ok: false,

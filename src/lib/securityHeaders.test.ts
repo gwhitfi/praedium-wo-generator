@@ -1,5 +1,35 @@
 import { describe, expect, it } from "vitest";
-import { clerkFrontendApiHost, contentSecurityPolicy, securityHeaders } from "./securityHeaders";
+import { clerkFrontendApiHost, contentSecurityPolicy, securityHeaders, sentryEndpoints } from "./securityHeaders";
+
+describe("sentryEndpoints", () => {
+    it("reads the error host and the CSP report endpoint from the DSN", () => {
+        expect(sentryEndpoints("https://abc123@o4512.ingest.us.sentry.io/4567")).toEqual({
+            origin: "https://o4512.ingest.us.sentry.io",
+            securityEndpoint: "https://o4512.ingest.us.sentry.io/api/4567/security/?sentry_key=abc123",
+        });
+    });
+
+    it("returns null without a usable DSN", () => {
+        expect(sentryEndpoints(undefined)).toBeNull();
+        expect(sentryEndpoints("not a url")).toBeNull();
+        expect(sentryEndpoints("https://o1.ingest.sentry.io/4567")).toBeNull();
+        expect(sentryEndpoints("http://abc@o1.ingest.sentry.io/4567")).toBeNull();
+    });
+});
+
+describe("contentSecurityPolicy with Sentry", () => {
+    const sentry = sentryEndpoints("https://abc123@o4512.ingest.us.sentry.io/4567");
+
+    it("lets the browser reach Sentry, and reports there only when asked", () => {
+        const quiet = contentSecurityPolicy({ clerkHost: null, dev: false, sentry });
+        expect(quiet).toContain("https://o4512.ingest.us.sentry.io");
+        expect(quiet).not.toContain("report-uri");
+
+        expect(contentSecurityPolicy({ clerkHost: null, dev: false, sentry, report: true })).toContain(
+            "report-uri https://o4512.ingest.us.sentry.io/api/4567/security/?sentry_key=abc123",
+        );
+    });
+});
 
 const key = (host: string, kind = "test") => `pk_${kind}_${Buffer.from(`${host}$`).toString("base64")}`;
 

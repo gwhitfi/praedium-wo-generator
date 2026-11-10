@@ -1,0 +1,63 @@
+# Type check, lint, tests and a production build on every push to main and every pull request. Vercel's
+# "wait for checks" setting can hold a production deploy until this passes.
+#
+# No real secrets: tests never touch the database or send email, and the build doesn't connect to anything, so the
+# values below are placeholders in the right shape. VERCEL_ENV isn't set, so the env check in next.config.ts and
+# Sentry's source map upload are both skipped.
+name: CI
+
+on:
+    push:
+        branches: [main]
+    pull_request:
+
+# A newer push to the same branch cancels the run still going for the older one.
+concurrency:
+    group: ci-${{ github.ref }}
+    cancel-in-progress: true
+
+permissions:
+    contents: read
+
+jobs:
+    checks:
+        name: Type check, lint, test, build
+        runs-on: ubuntu-latest
+        timeout-minutes: 20
+        env:
+            DATABASE_URL: postgresql://ci:ci@localhost:5432/ci
+            DATABASE_URL_UNPOOLED: postgresql://ci:ci@localhost:5432/ci
+            # Clerk's key format is pk_test_ + base64 of "<host>$"; this one decodes to example.clerk.accounts.dev.
+            NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY: pk_test_ZXhhbXBsZS5jbGVyay5hY2NvdW50cy5kZXYk
+            CLERK_SECRET_KEY: sk_test_ci_placeholder
+            APP_URL: https://example.com
+            NEXT_TELEMETRY_DISABLED: "1"
+        steps:
+            - uses: actions/checkout@v4
+
+            - uses: actions/setup-node@v4
+              with:
+                  node-version: 24
+                  cache: npm
+
+            - name: Install
+              run: npm ci
+
+            - name: Generate the Prisma client
+              run: npx prisma generate
+
+            # Next's route types (LayoutProps, PageProps…) live in .next/, which a fresh checkout doesn't have.
+            - name: Generate route types
+              run: npx next typegen
+
+            - name: Type check
+              run: npx tsc --noEmit
+
+            - name: Lint
+              run: npm run lint
+
+            - name: Test
+              run: npm test
+
+            - name: Build
+              run: npx next build

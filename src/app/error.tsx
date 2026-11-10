@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect } from "react";
+import * as Sentry from "@sentry/nextjs";
 import Link from "next/link";
 import { AlertIcon } from "@/components/Icons";
 import { buttonClass } from "@/lib/ui";
@@ -8,6 +9,8 @@ import { buttonClass } from "@/lib/ui";
 export default function Error({ error, retry }: { error: Error & { digest?: string }; retry: () => void }) {
     useEffect(() => {
         console.error(error);
+        // An error with a digest came from the server, which already reported it (src/instrumentation.ts).
+        if (!error.digest) Sentry.captureException(error);
     }, [error]);
 
     return (
