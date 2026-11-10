@@ -5,6 +5,16 @@ const PHONE_MESSAGE = "Enter a 10-digit phone number";
 
 const digitsOnly = (val: string) => val.replace(/\D/g, "");
 
+// A record ID passed to a Server Action. The TypeScript type is only a hint: the request can carry any value, and
+// Prisma reads an object such as { not: "" } as a filter matching every row.
+export const idInput = z.string().min(1).max(100);
+
+// The ID as a string, or null when the value isn't one. Actions treat null as "not found".
+export function parseId(value: unknown): string | null {
+    const parsed = idInput.safeParse(value);
+    return parsed.success ? parsed.data : null;
+}
+
 export const email = z.string().trim().min(1, "Enter an email").max(254).pipe(z.email());
 
 export const phone = z

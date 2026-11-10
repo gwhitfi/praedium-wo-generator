@@ -1,5 +1,21 @@
 import { describe, expect, it } from "vitest";
-import { optionalEmail, optionalPhone, optionalState, optionalZip, state, zip } from "./validation";
+import { optionalEmail, optionalPhone, optionalState, optionalZip, parseId, state, zip } from "./validation";
+
+describe("parseId", () => {
+    it("returns a plain string ID", () => {
+        expect(parseId("cmh1abc23000008l4")).toBe("cmh1abc23000008l4");
+    });
+
+    it("returns null for anything Prisma could read as a filter, or an unusable string", () => {
+        expect(parseId({ not: "" })).toBeNull();
+        expect(parseId(["a"])).toBeNull();
+        expect(parseId(123)).toBeNull();
+        expect(parseId(null)).toBeNull();
+        expect(parseId(undefined)).toBeNull();
+        expect(parseId("")).toBeNull();
+        expect(parseId("x".repeat(101))).toBeNull();
+    });
+});
 
 describe("optionalPhone", () => {
     it("turns empty or missing into null", () => {

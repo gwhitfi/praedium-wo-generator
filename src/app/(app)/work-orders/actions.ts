@@ -25,7 +25,7 @@ import { deleteFiles, lineItemPhotoKey, uploadFile } from "@/lib/storage";
 import { attachmentKeys, onWorkOrders } from "@/lib/attachments";
 import { logEvent } from "@/lib/workOrderEvents";
 import { emailWorkOrderToContractor } from "@/lib/workOrderSend";
-import { tooLong } from "@/lib/validation";
+import { idInput, parseId, tooLong } from "@/lib/validation";
 import type { ActionResult } from "@/lib/actionResult";
 import {
     areaNameInput,
@@ -217,10 +217,13 @@ export async function createWorkOrder(
 }
 
 export async function updateWorkOrder(
-    workOrderId: string,
+    rawWorkOrderId: string,
     prevState: WorkOrderFormState,
     formData: FormData,
 ): Promise<WorkOrderFormState> {
+    const workOrderId = parseId(rawWorkOrderId);
+    if (!workOrderId) throw new Error("Invalid work order");
+
     const result = await getCurrentUser();
     if (result.state !== "ready") throw new Error("Not authorized");
 
@@ -285,7 +288,10 @@ export async function updateWorkOrder(
     redirect(`/work-orders/${workOrderId}?flash=work-order-saved${newLink && contractor ? "&contractorChanged=1" : ""}`);
 }
 
-export async function archiveWorkOrder(workOrderId: string) {
+export async function archiveWorkOrder(rawWorkOrderId: string) {
+    const workOrderId = parseId(rawWorkOrderId);
+    if (!workOrderId) throw new Error("Invalid work order");
+
     const result = await getCurrentUser();
     if (result.state !== "ready") throw new Error("Not authorized");
 
@@ -323,7 +329,10 @@ export async function archiveWorkOrder(workOrderId: string) {
     redirect("/work-orders");
 }
 
-export async function restoreWorkOrder(workOrderId: string): Promise<{ ok: true } | { ok: false; error: string }> {
+export async function restoreWorkOrder(rawWorkOrderId: string): Promise<{ ok: true } | { ok: false; error: string }> {
+    const workOrderId = parseId(rawWorkOrderId);
+    if (!workOrderId) return { ok: false, error: "Work order not found" };
+
     const result = await getCurrentUser();
     if (result.state !== "ready") return { ok: false, error: "Not authorized" };
 
@@ -351,9 +360,11 @@ export async function restoreWorkOrder(workOrderId: string): Promise<{ ok: true 
 }
 
 export async function deleteWorkOrder(
-    workOrderId: string,
+    rawWorkOrderId: string,
     confirmation: string,
 ): Promise<{ ok: true } | { ok: false; error: string }> {
+    const workOrderId = parseId(rawWorkOrderId);
+    if (!workOrderId) return { ok: false, error: "Work order not found" };
     if (!isDeleteConfirmed(confirmation)) return DELETE_NOT_CONFIRMED;
 
     const result = await getCurrentUser();
@@ -383,7 +394,10 @@ export async function deleteWorkOrder(
     redirect("/work-orders");
 }
 
-export async function addArea(workOrderId: string, rawName: string): Promise<ActionResult> {
+export async function addArea(rawWorkOrderId: string, rawName: string): Promise<ActionResult> {
+    const workOrderId = parseId(rawWorkOrderId);
+    if (!workOrderId) throw new Error("Invalid work order");
+
     const result = await getCurrentUser();
 
     if (result.state !== "ready") {
@@ -429,18 +443,19 @@ export async function addArea(workOrderId: string, rawName: string): Promise<Act
     return { ok: true };
 }
 
-export async function removeArea(areaId: string): Promise<ActionResult> {
+export async function removeArea(rawAreaId: string): Promise<ActionResult> {
+    const areaId = parseId(rawAreaId);
+    if (!areaId) throw new Error("Invalid area");
+
     const result = await getCurrentUser();
     if (result.state !== "ready") throw new Error("Not authorized");
 
     const area = await prisma.area.findFirst({
-        where: { id: areaId },
+        where: { id: areaId, workOrder: { organizationId: result.organization.id } },
         include: { workOrder: true },
     });
 
-    if (!area || area.workOrder.organizationId !== result.organization.id) {
-        throw new Error("Invalid area");
-    }
+    if (!area) throw new Error("Invalid area");
     if (!isEditable(area.workOrder)) return NOT_EDITABLE;
 
     const photoKeys = await attachmentKeys(result.organization.id, { lineItem: { areaId } });
@@ -460,7 +475,10 @@ export async function removeArea(areaId: string): Promise<ActionResult> {
     return { ok: true };
 }
 
-export async function renameArea(areaId: string, rawName: string): Promise<ActionResult> {
+export async function renameArea(rawAreaId: string, rawName: string): Promise<ActionResult> {
+    const areaId = parseId(rawAreaId);
+    if (!areaId) throw new Error("Invalid area");
+
     const result = await getCurrentUser();
     if (result.state !== "ready") throw new Error("Not authorized");
 
@@ -493,7 +511,10 @@ export async function renameArea(areaId: string, rawName: string): Promise<Actio
     return { ok: true };
 }
 
-export async function moveArea(areaId: string, rawDirection: "up" | "down"): Promise<ActionResult> {
+export async function moveArea(rawAreaId: string, rawDirection: "up" | "down"): Promise<ActionResult> {
+    const areaId = parseId(rawAreaId);
+    if (!areaId) throw new Error("Invalid area");
+
     const result = await getCurrentUser();
     if (result.state !== "ready") throw new Error("Not authorized");
 
@@ -537,10 +558,13 @@ export async function moveArea(areaId: string, rawDirection: "up" | "down"): Pro
 }
 
 export async function addLineItem(
-    areaId: string,
+    rawAreaId: string,
     rawDescription: string,
     rawPriority: LineItemPriority,
 ): Promise<ActionResult> {
+    const areaId = parseId(rawAreaId);
+    if (!areaId) throw new Error("Invalid area");
+
     const result = await getCurrentUser();
     if (result.state !== "ready") throw new Error("Not authorized");
 
@@ -585,7 +609,10 @@ export async function addLineItem(
     return { ok: true };
 }
 
-export async function removeLineItem(lineItemId: string): Promise<ActionResult> {
+export async function removeLineItem(rawLineItemId: string): Promise<ActionResult> {
+    const lineItemId = parseId(rawLineItemId);
+    if (!lineItemId) throw new Error("Invalid line item");
+
     const result = await getCurrentUser();
     if (result.state !== "ready") throw new Error("Not authorized");
 
@@ -619,7 +646,10 @@ export async function removeLineItem(lineItemId: string): Promise<ActionResult> 
     return { ok: true };
 }
 
-export async function moveLineItem(lineItemId: string, rawDirection: "up" | "down"): Promise<ActionResult> {
+export async function moveLineItem(rawLineItemId: string, rawDirection: "up" | "down"): Promise<ActionResult> {
+    const lineItemId = parseId(rawLineItemId);
+    if (!lineItemId) throw new Error("Invalid line item");
+
     const result = await getCurrentUser();
     if (result.state !== "ready") throw new Error("Not authorized");
 
@@ -665,10 +695,13 @@ export async function moveLineItem(lineItemId: string, rawDirection: "up" | "dow
 }
 
 export async function updateLineItem(
-    lineItemId: string,
+    rawLineItemId: string,
     rawDescription: string,
     rawPriority: LineItemPriority,
 ): Promise<ActionResult> {
+    const lineItemId = parseId(rawLineItemId);
+    if (!lineItemId) throw new Error("Invalid line item");
+
     const result = await getCurrentUser();
     if (result.state !== "ready") throw new Error("Not authorized");
 
@@ -716,7 +749,6 @@ export async function updateLineItem(
 
 type PhotoResult = { ok: true } | { ok: false; error: string };
 
-const lineItemIdInput = z.string().min(1).max(100);
 const photoInput = z.instanceof(File, { message: "Choose a photo." });
 
 type PhotoLineItem =
@@ -724,12 +756,9 @@ type PhotoLineItem =
     | { ok: false; error: string };
 
 // Photos can change only while the work order itself can be edited.
-async function findPhotoLineItem(lineItemId: unknown, organizationId: string): Promise<PhotoLineItem> {
-    const id = lineItemIdInput.safeParse(lineItemId);
-    if (!id.success) return { ok: false, error: "Line item not found." };
-
+async function findPhotoLineItem(lineItemId: string, organizationId: string): Promise<PhotoLineItem> {
     const lineItem = await prisma.lineItem.findFirst({
-        where: { id: id.data, area: { workOrder: { organizationId } } },
+        where: { id: lineItemId, area: { workOrder: { organizationId } } },
         select: { id: true, description: true, area: { select: { name: true, workOrder: true } } },
     });
     if (!lineItem) return { ok: false, error: "Line item not found." };
@@ -756,7 +785,10 @@ function revalidatePhoto(workOrder: { id: string; publicToken: string }) {
 const PHOTO_LIMIT_ERROR = `A line item can have up to ${MAX_LINE_ITEM_PHOTOS} photos.`;
 
 // Adds a photo to the line item, up to MAX_LINE_ITEM_PHOTOS.
-export async function addLineItemPhoto(lineItemId: string, formData: FormData): Promise<PhotoResult> {
+export async function addLineItemPhoto(rawLineItemId: string, formData: FormData): Promise<PhotoResult> {
+    const lineItemId = parseId(rawLineItemId);
+    if (!lineItemId) return { ok: false, error: "Line item not found." };
+
     const result = await getCurrentUser();
     if (result.state !== "ready") return { ok: false, error: "Not authorized" };
     const organizationId = result.organization.id;
@@ -825,18 +857,17 @@ export async function addLineItemPhoto(lineItemId: string, formData: FormData): 
     return { ok: true };
 }
 
-const attachmentIdInput = z.string().min(1).max(100);
-
 // Removes one photo from a line item.
-export async function removeLineItemPhoto(attachmentId: string): Promise<PhotoResult> {
+export async function removeLineItemPhoto(rawAttachmentId: string): Promise<PhotoResult> {
+    const attachmentId = parseId(rawAttachmentId);
+    if (!attachmentId) return { ok: false, error: "Photo not found." };
+
     const result = await getCurrentUser();
     if (result.state !== "ready") return { ok: false, error: "Not authorized" };
     const organizationId = result.organization.id;
 
-    const id = attachmentIdInput.safeParse(attachmentId);
-    if (!id.success) return { ok: false, error: "Photo not found." };
     const attachment = await prisma.attachment.findFirst({
-        where: { id: id.data, organizationId, lineItemId: { not: null } },
+        where: { id: attachmentId, organizationId, lineItemId: { not: null } },
         select: { id: true, lineItemId: true, storageKey: true },
     });
     if (!attachment?.lineItemId) return { ok: false, error: "Photo not found." };
@@ -864,10 +895,13 @@ export async function removeLineItemPhoto(attachmentId: string): Promise<PhotoRe
 const notifyTenantAgainInput = z.boolean().default(false);
 
 export async function sendWorkOrder(
-    workOrderId: string,
+    rawWorkOrderId: string,
     rawDeliveryMethod: DeliveryMethod,
     rawNotifyTenantAgain?: boolean,
 ): Promise<ActionResult> {
+    const workOrderId = parseId(rawWorkOrderId);
+    if (!workOrderId) throw new Error("Invalid work order");
+
     const result = await getCurrentUser();
     if (result.state !== "ready") throw new Error("Not authorized");
 
@@ -925,7 +959,10 @@ export async function sendWorkOrder(
 
 type EmailResult = { ok: true; to: string } | { ok: false; error: string };
 
-export async function emailWorkOrder(workOrderId: string, rawNotifyTenantAgain?: boolean): Promise<EmailResult> {
+export async function emailWorkOrder(rawWorkOrderId: string, rawNotifyTenantAgain?: boolean): Promise<EmailResult> {
+    const workOrderId = parseId(rawWorkOrderId);
+    if (!workOrderId) return { ok: false, error: "Work order not found" };
+
     const result = await getCurrentUser();
     if (result.state !== "ready") return { ok: false, error: "Not authorized" };
 
@@ -948,14 +985,15 @@ export async function emailWorkOrder(workOrderId: string, rawNotifyTenantAgain?:
 
 // "Start work" on an in-house draft: it moves to In progress without sending anything to a contractor.
 export async function startWorkOrder(
-    workOrderId: string,
+    rawWorkOrderId: string,
     rawNotifyTenantAgain?: boolean,
 ): Promise<{ ok: true } | { ok: false; error: string }> {
+    const workOrderId = parseId(rawWorkOrderId);
+    if (!workOrderId) return { ok: false, error: "Work order not found" };
+
     const result = await getCurrentUser();
     if (result.state !== "ready") return { ok: false, error: "Not authorized" };
 
-    const id = z.string().min(1).max(100).safeParse(workOrderId);
-    if (!id.success) return { ok: false, error: "Work order not found" };
     const again = notifyTenantAgainInput.safeParse(rawNotifyTenantAgain);
     if (!again.success) return invalid(again.error);
 
@@ -963,29 +1001,30 @@ export async function startWorkOrder(
         organizationId: result.organization.id,
         organization: result.organization,
         user: result.user,
-        workOrderId: id.data,
+        workOrderId,
         notifyTenantAgain: again.data,
     });
     if (!started.ok) return started;
 
-    revalidatePath(`/work-orders/${id.data}`);
+    revalidatePath(`/work-orders/${workOrderId}`);
     revalidatePath("/work-orders");
     revalidatePath("/");
     return { ok: true };
 }
 
-const checkOffInput = z.object({ lineItemId: z.string().min(1).max(100), completed: z.boolean() });
+const checkOffInput = z.object({ lineItemId: idInput, completed: z.boolean() });
 
 // The office checks off line items itself on an in-house work order that has started (Sent or In progress, not
 // archived). Contractor work orders are checked off from the contractor page instead.
 const NOT_CHECKABLE: ActionResult = { ok: false, error: "Only started in-house work orders can be checked off here" };
 
 export async function setLineItemCompleted(lineItemId: string, completed: boolean): Promise<ActionResult> {
+    const parsed = checkOffInput.safeParse({ lineItemId, completed });
+    if (!parsed.success) return invalid(parsed.error);
+
     const result = await getCurrentUser();
     if (result.state !== "ready") throw new Error("Not authorized");
 
-    const parsed = checkOffInput.safeParse({ lineItemId, completed });
-    if (!parsed.success) return invalid(parsed.error);
     const input = parsed.data;
     const organizationId = result.organization.id;
     const lineItem = await prisma.lineItem.findFirst({
@@ -1021,7 +1060,10 @@ export async function setLineItemCompleted(lineItemId: string, completed: boolea
 }
 
 // Only work that's out with the contractor (or started by the office's own team) can be marked completed.
-export async function markWorkOrderCompleted(workOrderId: string): Promise<ActionResult> {
+export async function markWorkOrderCompleted(rawWorkOrderId: string): Promise<ActionResult> {
+    const workOrderId = parseId(rawWorkOrderId);
+    if (!workOrderId) throw new Error("Invalid work order");
+
     const result = await getCurrentUser();
     if (result.state !== "ready") throw new Error("Not authorized");
 
@@ -1056,8 +1098,11 @@ export async function markWorkOrderCompleted(workOrderId: string): Promise<Actio
 
 // Where it lands is decided by reopenTarget() in ./schemas. Returns the new status, so the page can say what's next.
 export async function reopenWorkOrder(
-    workOrderId: string,
+    rawWorkOrderId: string,
 ): Promise<{ ok: true; status: WorkOrderStatus } | { ok: false; error: string }> {
+    const workOrderId = parseId(rawWorkOrderId);
+    if (!workOrderId) throw new Error("Invalid work order");
+
     const result = await getCurrentUser();
     if (result.state !== "ready") throw new Error("Not authorized");
 
@@ -1095,7 +1140,10 @@ export async function reopenWorkOrder(
     return { ok: true, status: target.status };
 }
 
-export async function closeWorkOrder(workOrderId: string): Promise<ActionResult> {
+export async function closeWorkOrder(rawWorkOrderId: string): Promise<ActionResult> {
+    const workOrderId = parseId(rawWorkOrderId);
+    if (!workOrderId) throw new Error("Invalid work order");
+
     const result = await getCurrentUser();
     if (result.state !== "ready") throw new Error("Not authorized");
 
@@ -1132,7 +1180,10 @@ const cancelReasonInput = z
     .optional()
     .transform((val) => val || null);
 
-export async function cancelWorkOrder(workOrderId: string, rawReason?: string): Promise<ActionResult> {
+export async function cancelWorkOrder(rawWorkOrderId: string, rawReason?: string): Promise<ActionResult> {
+    const workOrderId = parseId(rawWorkOrderId);
+    if (!workOrderId) throw new Error("Invalid work order");
+
     const result = await getCurrentUser();
     if (result.state !== "ready") throw new Error("Not authorized");
 
@@ -1175,7 +1226,10 @@ export async function cancelWorkOrder(workOrderId: string, rawReason?: string): 
     return { ok: true };
 }
 
-export async function regeneratePublicToken(workOrderId: string): Promise<ActionResult> {
+export async function regeneratePublicToken(rawWorkOrderId: string): Promise<ActionResult> {
+    const workOrderId = parseId(rawWorkOrderId);
+    if (!workOrderId) throw new Error("Invalid work order");
+
     const result = await getCurrentUser();
     if (result.state !== "ready") throw new Error("Not authorized");
 
