@@ -9,6 +9,20 @@ export function isOverdue(workOrder: { status: WorkOrderStatus; dueDate: Date | 
     return !!workOrder.dueDate && workOrder.dueDate < todayInAppTimeZone() && OPEN_STATUSES.includes(workOrder.status);
 }
 
+type SendState = { status: WorkOrderStatus; sentAt: Date | null; startedAt: Date | null };
+
+// A draft that was sent or started before: it was cancelled and reopened, and is about to go out again.
+export function isReopenedDraft(workOrder: SendState): boolean {
+    return workOrder.status === "DRAFT" && !!(workOrder.sentAt || workOrder.startedAt);
+}
+
+// Whether sending or starting a draft may email the tenant. The first time, the work order's own setting decides
+// (notifyTenant() checks it). A reopened draft emails them again only when a person ticked "Email the tenant again"
+// on the work order page; AI assistants (MCP) never pass it.
+export function mayNotifyTenant(workOrder: SendState, notifyTenantAgain: boolean): boolean {
+    return workOrder.status === "DRAFT" && (!isReopenedDraft(workOrder) || notifyTenantAgain);
+}
+
 // The work order list's filters, in the order the filter tabs show them (after "All").
 export const WORK_ORDER_FILTERS = {
     // Sent or in progress, with a contractor or in-house: the work that's underway.

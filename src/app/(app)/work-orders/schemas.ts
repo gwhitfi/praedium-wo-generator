@@ -1,5 +1,5 @@
 import { z } from "zod";
-import { LineItemPriority } from "@/generated/prisma/enums";
+import { DeliveryMethod, LineItemPriority, type WorkOrderStatus } from "@/generated/prisma/enums";
 import { IN_HOUSE } from "@/lib/defaults";
 import { optionalText, tooLong } from "@/lib/validation";
 
@@ -50,6 +50,55 @@ export const firstItemInput = z
               }
             : null,
     );
+
+export const areaNameInput = z
+    .string()
+    .trim()
+    .min(1, "Enter an area name")
+    .max(MAX_AREA_NAME_LENGTH, tooLong(MAX_AREA_NAME_LENGTH));
+
+// A line item added or edited on the work order page. Unlike the create form, an unknown priority is refused.
+export const lineItemInput = z.object({
+    description: z.string().trim().min(1, "Describe the work").max(MAX_ITEM_LENGTH, tooLong(MAX_ITEM_LENGTH)),
+    priority: z.enum(LineItemPriority, "Choose a priority"),
+});
+
+export const directionInput = z.enum(["up", "down"]);
+
+export const deliveryMethodInput = z.enum(DeliveryMethod, "Choose how it was sent");
+
+type ReopenFrom = {
+    status: WorkOrderStatus;
+    archived: boolean;
+    inHouse: boolean;
+    sentAt: Date | null;
+    startedAt: Date | null;
+};
+
+// Where "Reopen" takes a finished work order, or why it can't. A completed one goes back to the work: In progress
+// once anything was checked off (or an in-house job was started), Sent otherwise, Draft if it never left the office.
+// A closed one goes back to Completed. A cancelled one goes back to Draft, so the office sends it again and the
+// contractor, who was emailed that it was cancelled, hears that it's back on.
+export function reopenTarget(
+    workOrder: ReopenFrom,
+    checkedCount: number,
+): { ok: true; status: WorkOrderStatus } | { ok: false; error: string } {
+    if (workOrder.archived) return { ok: false, error: "Restore this work order before reopening it." };
+    switch (workOrder.status) {
+        case "CLOSED":
+            return { ok: true, status: "COMPLETED" };
+        case "CANCELLED":
+            return { ok: true, status: "DRAFT" };
+        case "COMPLETED":
+            if (workOrder.inHouse) {
+                return { ok: true, status: workOrder.startedAt || workOrder.sentAt ? "IN_PROGRESS" : "DRAFT" };
+            }
+            if (!workOrder.sentAt) return { ok: true, status: "DRAFT" };
+            return { ok: true, status: checkedCount > 0 ? "IN_PROGRESS" : "SENT" };
+        default:
+            return { ok: false, error: "Only completed, closed or cancelled work orders can be reopened." };
+    }
+}
 
 // The raw fields; firstItemInput turns an unknown priority into Medium.
 export function readFirstItemFormData(formData: FormData): {

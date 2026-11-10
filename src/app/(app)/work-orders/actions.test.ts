@@ -241,7 +241,10 @@ describe("sendWorkOrder", () => {
     it("refuses a draft with no line items", async () => {
         vi.mocked(prisma.lineItem.count).mockResolvedValue(0);
 
-        await expect(sendWorkOrder("wo1", "PRINT")).rejects.toThrow("Add at least one line item before sending");
+        expect(await sendWorkOrder("wo1", "PRINT")).toEqual({
+            ok: false,
+            error: "Add at least one line item before sending",
+        });
         expect(prisma.workOrder.update).not.toHaveBeenCalled();
         expect(logEvent).not.toHaveBeenCalled();
     });
@@ -249,9 +252,15 @@ describe("sendWorkOrder", () => {
     it("doesn't log when the work order isn't a draft", async () => {
         withWorkOrder({ status: "SENT" });
 
-        await expect(sendWorkOrder("wo1", "PRINT")).rejects.toThrow();
+        expect(await sendWorkOrder("wo1", "PRINT")).toMatchObject({ ok: false });
         expect(logEvent).not.toHaveBeenCalled();
         expect(notifyTenant).not.toHaveBeenCalled();
+    });
+
+    it("refuses a delivery method that doesn't exist, before looking anything up", async () => {
+        expect(await sendWorkOrder("wo1", "FAX" as never)).toEqual({ ok: false, error: "Choose how it was sent" });
+        expect(prisma.workOrder.findFirst).not.toHaveBeenCalled();
+        expect(prisma.workOrder.update).not.toHaveBeenCalled();
     });
 
     it("emails the tenant and notes it in the log", async () => {
@@ -268,6 +277,44 @@ describe("sendWorkOrder", () => {
             type: "SENT",
             actor: office,
             detail: { deliveryMethod: "PRINT", resent: false, tenantNotified: true },
+        });
+    });
+
+    describe("a draft that was cancelled and reopened", () => {
+        const reopened = { status: "DRAFT", sentAt: new Date("2026-11-03") };
+
+        it("doesn't email the tenant again when the box is unticked", async () => {
+            withWorkOrder(reopened);
+
+            expect(await sendWorkOrder("wo1", "PRINT", false)).toEqual({ ok: true });
+            expect(notifyTenant).not.toHaveBeenCalled();
+        });
+
+        it("emails the tenant again when the box is ticked", async () => {
+            withWorkOrder(reopened);
+            vi.mocked(notifyTenant).mockReturnValueOnce(true);
+
+            await sendWorkOrder("wo1", "PRINT", true);
+
+            expect(notifyTenant).toHaveBeenCalledTimes(1);
+        });
+
+        it("emails the tenant again through the email button when asked", async () => {
+            withWorkOrder({ ...reopened, deliveryMethod: "EMAIL" });
+            vi.mocked(notifyTenant).mockReturnValueOnce(true);
+
+            expect(await emailWorkOrder("wo1", true)).toEqual({ ok: true, to: "joe@example.com" });
+            expect(notifyTenant).toHaveBeenCalledTimes(1);
+        });
+
+        it("refuses a choice that isn't true or false", async () => {
+            withWorkOrder(reopened);
+
+            expect(await sendWorkOrder("wo1", "PRINT", "yes" as never)).toMatchObject({ ok: false });
+            expect(await emailWorkOrder("wo1", "yes" as never)).toMatchObject({ ok: false });
+            expect(await startWorkOrder("wo1", "yes" as never)).toMatchObject({ ok: false });
+            expect(prisma.workOrder.update).not.toHaveBeenCalled();
+            expect(startInHouseWorkOrder).not.toHaveBeenCalled();
         });
     });
 });
@@ -372,7 +419,10 @@ describe("status changes", () => {
     it("cancelWorkOrder refuses a reason over 500 characters", async () => {
         withWorkOrder({ status: "SENT" });
 
-        await expect(cancelWorkOrder("wo1", "x".repeat(501))).rejects.toThrow();
+        expect(await cancelWorkOrder("wo1", "x".repeat(501))).toEqual({
+            ok: false,
+            error: "Use 500 characters or fewer",
+        });
         expect(prisma.workOrder.update).not.toHaveBeenCalled();
         expect(logEvent).not.toHaveBeenCalled();
     });
@@ -380,8 +430,103 @@ describe("status changes", () => {
     it("doesn't log a refused change", async () => {
         withWorkOrder({ status: "SENT" });
 
-        await expect(closeWorkOrder("wo1")).rejects.toThrow();
+        expect(await closeWorkOrder("wo1")).toEqual({ ok: false, error: "Only completed work orders can be closed" });
         expect(logEvent).not.toHaveBeenCalled();
+    });
+
+    describe("markWorkOrderCompleted", () => {
+        it.each(["SENT", "IN_PROGRESS"])("completes a %s work order", async (status) => {
+            withWorkOrder({ status });
+
+            expect(await markWorkOrderCompleted("wo1")).toEqual({ ok: true });
+            expect(prisma.workOrder.update).toHaveBeenCalledWith({
+                where: { id: "wo1" },
+                data: { status: "COMPLETED", completedAt: expect.any(Date) },
+            });
+        });
+
+        const notOut = "Only sent or in-progress work orders can be marked as completed.";
+
+        it.each([
+            ["a draft", { status: "DRAFT" }, notOut],
+            ["a completed one", { status: "COMPLETED" }, notOut],
+            ["a closed one", { status: "CLOSED" }, notOut],
+            ["a cancelled one", { status: "CANCELLED" }, notOut],
+            ["an archived one", { status: "SENT", archived: true }, "Restore this work order before changing it."],
+        ])("refuses %s", async (_name, changes, error) => {
+            withWorkOrder(changes);
+
+            expect(await markWorkOrderCompleted("wo1")).toEqual({ ok: false, error });
+            expect(prisma.workOrder.update).not.toHaveBeenCalled();
+            expect(logEvent).not.toHaveBeenCalled();
+        });
+    });
+
+    describe("reopenWorkOrder", () => {
+        const sentAt = new Date("2026-11-01");
+
+        function reopenedTo() {
+            return vi.mocked(prisma.workOrder.update).mock.calls[0][0].data;
+        }
+
+        it("takes a completed work order back to Sent when nothing was checked off", async () => {
+            withWorkOrder({ status: "COMPLETED", sentAt });
+            vi.mocked(prisma.lineItem.count).mockResolvedValue(0);
+
+            expect(await reopenWorkOrder("wo1")).toEqual({ ok: true, status: "SENT" });
+            expect(prisma.lineItem.count).toHaveBeenCalledWith({
+                where: { area: { workOrderId: "wo1" }, completed: true },
+            });
+            expect(reopenedTo()).toEqual({
+                status: "SENT",
+                closedAt: null,
+                completedAt: null,
+                cancelledAt: null,
+                cancelReason: null,
+            });
+        });
+
+        it("takes a completed work order back to In progress when items were checked off", async () => {
+            withWorkOrder({ status: "COMPLETED", sentAt });
+            vi.mocked(prisma.lineItem.count).mockResolvedValue(1);
+
+            expect(await reopenWorkOrder("wo1")).toEqual({ ok: true, status: "IN_PROGRESS" });
+        });
+
+        it("takes a closed work order back to Completed, keeping its completion date", async () => {
+            withWorkOrder({ status: "CLOSED", sentAt });
+
+            expect(await reopenWorkOrder("wo1")).toEqual({ ok: true, status: "COMPLETED" });
+            expect(reopenedTo()).toEqual({ status: "COMPLETED", closedAt: null });
+            expect(prisma.lineItem.count).not.toHaveBeenCalled();
+        });
+
+        it("takes a cancelled work order back to Draft and clears the cancel reason", async () => {
+            withWorkOrder({ status: "CANCELLED", sentAt, cancelReason: "Tenant fixed it" });
+
+            expect(await reopenWorkOrder("wo1")).toEqual({ ok: true, status: "DRAFT" });
+            expect(reopenedTo()).toMatchObject({ status: "DRAFT", cancelledAt: null, cancelReason: null });
+            expect(logEvent).toHaveBeenCalledWith({ ...ids, type: "REOPENED", actor: office });
+        });
+
+        const notFinished = "Only completed, closed or cancelled work orders can be reopened.";
+
+        it.each([
+            ["a draft", { status: "DRAFT" }, notFinished],
+            ["a sent one", { status: "SENT", sentAt }, notFinished],
+            ["an in-progress one", { status: "IN_PROGRESS", sentAt }, notFinished],
+            [
+                "an archived one",
+                { status: "CANCELLED", archived: true },
+                "Restore this work order before reopening it.",
+            ],
+        ])("refuses %s", async (_name, changes, error) => {
+            withWorkOrder(changes);
+
+            expect(await reopenWorkOrder("wo1")).toEqual({ ok: false, error });
+            expect(prisma.workOrder.update).not.toHaveBeenCalled();
+            expect(logEvent).not.toHaveBeenCalled();
+        });
     });
 
     it("doesn't log for a work order in another organization", async () => {
@@ -518,14 +663,20 @@ describe("in-house work orders", () => {
     it("can't be marked as sent", async () => {
         withWorkOrder(inHouse);
 
-        await expect(sendWorkOrder("wo1", "PRINT")).rejects.toThrow("started, not sent");
+        expect(await sendWorkOrder("wo1", "PRINT")).toEqual({
+            ok: false,
+            error: "In-house work orders are started, not sent",
+        });
         expect(prisma.workOrder.update).not.toHaveBeenCalled();
     });
 
     it("have no contractor link to regenerate", async () => {
         withWorkOrder(inHouse);
 
-        await expect(regeneratePublicToken("wo1")).rejects.toThrow("no contractor link");
+        expect(await regeneratePublicToken("wo1")).toEqual({
+            ok: false,
+            error: "In-house work orders have no contractor link",
+        });
         expect(prisma.workOrder.update).not.toHaveBeenCalled();
     });
 
@@ -534,8 +685,11 @@ describe("in-house work orders", () => {
 
         expect(await startWorkOrder("wo1")).toEqual({ ok: true });
         expect(startInHouseWorkOrder).toHaveBeenCalledWith(
-            expect.objectContaining({ organizationId: "org1", user, workOrderId: "wo1" }),
+            expect.objectContaining({ organizationId: "org1", user, workOrderId: "wo1", notifyTenantAgain: false }),
         );
+
+        await startWorkOrder("wo1", true);
+        expect(startInHouseWorkOrder).toHaveBeenLastCalledWith(expect.objectContaining({ notifyTenantAgain: true }));
     });
 
     it("reopen to In progress once started", async () => {
@@ -599,7 +753,10 @@ describe("in-house work orders", () => {
             async (changes) => {
                 withItem(changes);
 
-                await expect(setLineItemCompleted("li1", true)).rejects.toThrow();
+                expect(await setLineItemCompleted("li1", true)).toEqual({
+                    ok: false,
+                    error: "Only started in-house work orders can be checked off here",
+                });
                 expect(prisma.lineItem.updateMany).not.toHaveBeenCalled();
                 expect(logEvent).not.toHaveBeenCalled();
             },
@@ -615,9 +772,25 @@ describe("in-house work orders", () => {
 
 describe("regeneratePublicToken", () => {
     it("logs the new link as an edit", async () => {
-        await regeneratePublicToken("wo1");
+        expect(await regeneratePublicToken("wo1")).toEqual({ ok: true });
 
         expect(logEvent).toHaveBeenCalledWith({ ...ids, type: "EDITED", actor: office, detail: { fields: ["link"] } });
+    });
+
+    it.each([
+        { status: "COMPLETED" },
+        { status: "CLOSED" },
+        { status: "CANCELLED" },
+        { status: "SENT", archived: true },
+    ])("refuses a work order that isn't open (%o)", async (changes) => {
+        withWorkOrder(changes);
+
+        expect(await regeneratePublicToken("wo1")).toEqual({
+            ok: false,
+            error: "Only open work orders can get a new link.",
+        });
+        expect(prisma.workOrder.update).not.toHaveBeenCalled();
+        expect(logEvent).not.toHaveBeenCalled();
     });
 });
 
@@ -803,8 +976,8 @@ describe("areas and line items", () => {
 
     it("rejects a blank or over-long area name, or an area in another organization", async () => {
         onSent();
-        await expect(renameArea("area1", "   ")).rejects.toThrow("Enter an area name");
-        await expect(renameArea("area1", "x".repeat(101))).rejects.toThrow("Use 100 characters or fewer");
+        expect(await renameArea("area1", "   ")).toEqual({ ok: false, error: "Enter an area name" });
+        expect(await renameArea("area1", "x".repeat(101))).toEqual({ ok: false, error: "Use 100 characters or fewer" });
 
         vi.mocked(prisma.area.findFirst).mockResolvedValue({
             ...kitchen("SENT"),
@@ -812,6 +985,41 @@ describe("areas and line items", () => {
         } as never);
         await expect(renameArea("area1", "Pantry")).rejects.toThrow("Invalid area");
         expect(prisma.area.update).not.toHaveBeenCalled();
+    });
+
+    it("refuses a blank, over-long or unknown-priority line item before saving", async () => {
+        onSent();
+
+        expect(await addLineItem("area1", "  ", "LOW")).toEqual({ ok: false, error: "Describe the work" });
+        expect(await addLineItem("area1", "x".repeat(1001), "LOW")).toEqual({
+            ok: false,
+            error: "Use 1000 characters or fewer",
+        });
+        expect(await addLineItem("area1", "Fix gate latch", "URGENT" as never)).toEqual({
+            ok: false,
+            error: "Choose a priority",
+        });
+        expect(await updateLineItem("li1", "Fix it", "SOON" as never)).toEqual({
+            ok: false,
+            error: "Choose a priority",
+        });
+        expect(await addArea("wo1", "x".repeat(101))).toEqual({ ok: false, error: "Use 100 characters or fewer" });
+        expect(await moveArea("area1", "sideways" as never)).toMatchObject({ ok: false });
+
+        expect(prisma.lineItem.create).not.toHaveBeenCalled();
+        expect(prisma.lineItem.update).not.toHaveBeenCalled();
+        expect(prisma.area.create).not.toHaveBeenCalled();
+        expect(prisma.$transaction).not.toHaveBeenCalled();
+    });
+
+    it("trims a line item's description before saving it", async () => {
+        onSent();
+
+        expect(await addLineItem("area1", "  Fix gate latch  ", "LOW")).toEqual({ ok: true });
+        expect(vi.mocked(prisma.lineItem.create).mock.calls[0][0].data).toMatchObject({
+            description: "Fix gate latch",
+            priority: "LOW",
+        });
     });
 
     it("logs adding and removing a line item", async () => {
@@ -898,7 +1106,7 @@ describe("areas and line items", () => {
             () => updateLineItem("li1", "Replace kitchen faucet", "HIGH"),
         ];
         for (const attempt of attempts) {
-            await expect(attempt()).rejects.toThrow("This work order can't be edited");
+            expect(await attempt()).toEqual({ ok: false, error: "This work order can't be edited" });
         }
 
         expect(prisma.area.create).not.toHaveBeenCalled();

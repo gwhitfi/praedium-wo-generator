@@ -10,24 +10,27 @@ import { workOrderEmail } from "@/lib/emails/workOrderEmail";
 import prisma from "@/lib/prisma";
 import { RATE_LIMITS, rateLimit } from "@/lib/rateLimit";
 import { logEvent } from "@/lib/workOrderEvents";
-import { formatWorkOrderAddress } from "@/lib/workOrders";
+import { formatWorkOrderAddress, mayNotifyTenant } from "@/lib/workOrders";
 
 export type EmailWorkOrderResult =
     | { ok: true; to: string; jobNumber: string; resent: boolean; tenantNotified: boolean }
     | { ok: false; error: string };
 
 // Works on Draft, Sent and In progress work orders: a draft becomes Sent, and the tenant is emailed on that first
-// send when the work order asks for it. Later sends are resends (the email says "Reminder"). Logs a SENT event.
+// send when the work order asks for it. Later sends are resends (the email says "Reminder"). A reopened draft
+// emails the tenant again only with `notifyTenantAgain` (see mayNotifyTenant). Logs a SENT event.
 export async function emailWorkOrderToContractor({
     organizationId,
     organization,
     user,
     workOrderId,
+    notifyTenantAgain = false,
 }: {
     organizationId: string;
     organization: { name: string; phone: string | null; email: string | null };
     user: Pick<User, "id" | "firstName" | "lastName" | "email">;
     workOrderId: string;
+    notifyTenantAgain?: boolean;
 }): Promise<EmailWorkOrderResult> {
     const workOrder = await prisma.workOrder.findFirst({
         where: { id: workOrderId, organizationId },
@@ -66,6 +69,16 @@ export async function emailWorkOrderToContractor({
     const recipientChanged =
         !!workOrder.contractorEmail && normalizeEmail(workOrder.contractorEmail) !== normalizeEmail(to);
     const publicToken = recipientChanged ? randomBytes(24).toString("base64url") : workOrder.publicToken;
+    // Saved before the email goes out, so the link in it always works. If the send then fails, the old recipient's
+    // link is already dead (as intended) and the office can send again.
+    if (recipientChanged) {
+        try {
+            await prisma.workOrder.update({ where: { id: workOrderId }, data: { publicToken } });
+        } catch (error) {
+            console.error("emailWorkOrder: saving the new link failed", error);
+            return { ok: false, error: "Couldn't save the new contractor link, so nothing was sent. Try again." };
+        }
+    }
 
     try {
         const email = workOrderEmail({
@@ -77,7 +90,8 @@ export async function emailWorkOrderToContractor({
             notes: workOrder.notes,
             itemCount,
             url: `${getAppUrl()}/wo/${publicToken}`,
-            isResend: workOrder.deliveryMethod === "EMAIL",
+            // A draft that was emailed before was cancelled and reopened: this send puts it back on, not a reminder.
+            isResend: workOrder.deliveryMethod === "EMAIL" && workOrder.status !== "DRAFT",
         });
 
         await sendEmail({ to, ...email, replyTo: organization.email, fromName: organization.name });
@@ -93,14 +107,14 @@ export async function emailWorkOrderToContractor({
             contractorName: workOrder.contractor.displayName,
             contractorPhone: workOrder.contractor.phone,
             contractorEmail: workOrder.contractor.email,
-            ...(recipientChanged ? { publicToken } : {}),
             ...(workOrder.status === "DRAFT" ? { status: "SENT", sentAt: new Date() } : {}),
         },
     });
-    // Only the first send tells the tenant; resends don't.
+    // Only the first send tells the tenant; resends don't, and a reopened draft only when asked.
     const resent = workOrder.status !== "DRAFT";
     const tenantNotified =
-        !resent && notifyTenant(organization, { ...workOrder, address, contractor: workOrder.contractor });
+        mayNotifyTenant(workOrder, notifyTenantAgain) &&
+        notifyTenant(organization, { ...workOrder, address, contractor: workOrder.contractor });
     await logEvent({
         type: "SENT",
         workOrderId,

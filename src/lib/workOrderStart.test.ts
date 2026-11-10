@@ -115,4 +115,25 @@ describe("startInHouseWorkOrder", () => {
         expect(notifyTenant).not.toHaveBeenCalled();
         expect(logEvent).not.toHaveBeenCalled();
     });
+
+    it("doesn't email the tenant again on a reopened draft unless asked (MCP never asks)", async () => {
+        withWorkOrder({ startedAt: new Date("2026-11-03") });
+        vi.mocked(notifyTenant).mockReturnValue(true);
+
+        expect(await startInHouseWorkOrder(start)).toMatchObject({ ok: true, tenantNotified: false });
+        expect(notifyTenant).not.toHaveBeenCalled();
+        expect(logEvent).toHaveBeenCalledWith(expect.objectContaining({ type: "STARTED", detail: {} }));
+
+        vi.clearAllMocks();
+        withWorkOrder({ startedAt: new Date("2026-11-03") });
+        vi.mocked(prisma.workOrder.updateMany).mockResolvedValue({ count: 1 } as never);
+        vi.mocked(prisma.lineItem.count).mockResolvedValue(2);
+        vi.mocked(notifyTenant).mockReturnValue(true);
+
+        expect(await startInHouseWorkOrder({ ...start, notifyTenantAgain: true })).toMatchObject({
+            ok: true,
+            tenantNotified: true,
+        });
+        expect(notifyTenant).toHaveBeenCalledTimes(1);
+    });
 });

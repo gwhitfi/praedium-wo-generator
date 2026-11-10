@@ -4,7 +4,7 @@ vi.mock("@clerk/nextjs/server", () => ({ auth: vi.fn(), currentUser: vi.fn(), cl
 vi.mock("@/lib/prisma", () => ({
     default: {
         organization: { findUnique: vi.fn(), create: vi.fn(), findUniqueOrThrow: vi.fn() },
-        user: { findUnique: vi.fn(), create: vi.fn(), findUniqueOrThrow: vi.fn() },
+        user: { findUnique: vi.fn(), create: vi.fn(), findUniqueOrThrow: vi.fn(), update: vi.fn() },
         membership: { findUnique: vi.fn(), create: vi.fn(), update: vi.fn() },
     },
 }));
@@ -15,7 +15,9 @@ import prisma from "@/lib/prisma";
 import { getCurrentUser } from "./auth";
 
 const organization = { id: "org1", clerkOrgId: "clerk_org1", name: "Acme" };
-const user = { id: "user1", clerkId: "clerk_user1", email: "sam@example.com" };
+// Checked against Clerk less than a day ago, so most tests don't refresh the profile.
+const user = { id: "user1", clerkId: "clerk_user1", email: "sam@example.com", updatedAt: new Date() };
+const DAY_MS = 24 * 60 * 60 * 1000;
 
 function signedIn(orgRole: string | null = "org:member", orgId: string | null = "clerk_org1") {
     vi.mocked(auth).mockResolvedValue({ userId: "clerk_user1", orgId, orgRole } as never);
@@ -122,5 +124,78 @@ describe("getCurrentUser", () => {
         expect(prisma.membership.create).toHaveBeenCalledWith({
             data: { userId: "user2", organizationId: "org1", role: "USER" },
         });
+    });
+
+    it("creates a new user with Clerk's primary email, not the first one listed", async () => {
+        signedIn("org:member");
+        vi.mocked(prisma.user.findUnique).mockResolvedValue(null);
+        vi.mocked(currentUser).mockResolvedValue({
+            primaryEmailAddress: { emailAddress: "sam@work.example.com" },
+            emailAddresses: [{ emailAddress: "sam@example.com" }, { emailAddress: "sam@work.example.com" }],
+            firstName: "Sam",
+            lastName: null,
+        } as never);
+        vi.mocked(prisma.user.create).mockResolvedValue(user as never);
+
+        await getCurrentUser();
+
+        expect(vi.mocked(prisma.user.create).mock.calls[0][0].data).toMatchObject({ email: "sam@work.example.com" });
+    });
+});
+
+describe("profile refresh", () => {
+    const stale = { ...user, firstName: "Sam", lastName: null, updatedAt: new Date(Date.now() - DAY_MS - 1000) };
+
+    beforeEach(() => {
+        signedIn("org:member");
+        vi.mocked(prisma.user.findUnique).mockResolvedValue(stale as never);
+    });
+
+    it("doesn't ask Clerk when the copy was checked within a day", async () => {
+        vi.mocked(prisma.user.findUnique).mockResolvedValue(user as never);
+
+        await getCurrentUser();
+
+        expect(currentUser).not.toHaveBeenCalled();
+        expect(prisma.user.update).not.toHaveBeenCalled();
+    });
+
+    it("copies a changed name and primary email after a day, and returns the updated row", async () => {
+        vi.mocked(currentUser).mockResolvedValue({
+            primaryEmailAddress: { emailAddress: "sam@new.example.com" },
+            emailAddresses: [{ emailAddress: "sam@example.com" }],
+            firstName: "Samantha",
+            lastName: "Lee",
+        } as never);
+        const updated = { ...stale, email: "sam@new.example.com", firstName: "Samantha", lastName: "Lee" };
+        vi.mocked(prisma.user.update).mockResolvedValue(updated as never);
+
+        expect(await getCurrentUser()).toMatchObject({ state: "ready", user: updated });
+        expect(prisma.user.update).toHaveBeenCalledWith({
+            where: { id: "user1" },
+            data: { email: "sam@new.example.com", firstName: "Samantha", lastName: "Lee" },
+        });
+    });
+
+    it("still writes when nothing changed, so the next check waits another day", async () => {
+        vi.mocked(currentUser).mockResolvedValue({
+            primaryEmailAddress: { emailAddress: "sam@example.com" },
+            emailAddresses: [{ emailAddress: "sam@example.com" }],
+            firstName: "Sam",
+            lastName: null,
+        } as never);
+        vi.mocked(prisma.user.update).mockResolvedValue(stale as never);
+
+        await getCurrentUser();
+
+        expect(prisma.user.update).toHaveBeenCalledTimes(1);
+    });
+
+    it("keeps the old copy when Clerk fails", async () => {
+        vi.spyOn(console, "error").mockImplementation(() => {});
+        vi.mocked(currentUser).mockRejectedValue(new Error("Clerk is down"));
+
+        expect(await getCurrentUser()).toMatchObject({ state: "ready", user: stale });
+        expect(prisma.user.update).not.toHaveBeenCalled();
     });
 });

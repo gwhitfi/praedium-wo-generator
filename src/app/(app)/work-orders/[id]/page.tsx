@@ -15,10 +15,10 @@ import { ButtonLink } from "@/components/Button";
 import { StatusBadge } from "@/components/StatusBadge";
 import { LinkIcon, MailIcon, PencilIcon, PhoneIcon } from "@/components/Icons";
 import { deleteWorkOrder } from "../actions";
-import { formatDueDate, formatTimestamp } from "@/lib/dates";
+import { dateInAppTimeZone, formatDueDate, formatFullDate, formatTimestamp } from "@/lib/dates";
 import { formatPhone } from "@/lib/phone";
 import { getWorkOrderPager, readWorkOrderListView } from "@/lib/workOrderList";
-import { isOverdue, listQuery } from "@/lib/workOrders";
+import { isOverdue, isReopenedDraft, listQuery } from "@/lib/workOrders";
 import type { SearchParams } from "@/lib/sorting";
 import { buttonClass, cardClass, cardTitleClass, noticeClass, pageClass } from "@/lib/ui";
 import Link from "next/link";
@@ -112,6 +112,20 @@ export default async function WorkOrderDetail({
         name: workOrder.contractor.displayName,
         email: workOrder.contractor.email,
     };
+    // A cancelled and reopened draft that would email the tenant: the Next step card asks whether to email them
+    // again, naming the day they were last told (the newest send or start that emailed them).
+    const lastTenantNotice = events.find(
+        (event) =>
+            (event.type === "SENT" || event.type === "STARTED") &&
+            typeof event.detail === "object" &&
+            event.detail !== null &&
+            !Array.isArray(event.detail) &&
+            event.detail.tenantNotified === true,
+    );
+    const tenantAgain =
+        isReopenedDraft(workOrder) && workOrder.notifyTenant && !!workOrder.tenantEmail?.trim()
+            ? { emailedOn: lastTenantNotice ? formatFullDate(dateInAppTimeZone(lastTenantNotice.createdAt)) : null }
+            : null;
 
     const details: Detail[] = [
         {
@@ -336,6 +350,7 @@ export default async function WorkOrderDetail({
                         doneCount={doneCount}
                         itemCount={lineItems.length}
                         archived={workOrder.archived}
+                        tenantAgain={tenantAgain}
                     />
                 </div>
 

@@ -1,6 +1,7 @@
 // Server-only. Contractor sessions: a verified browser holds a random key in the `praedium_contractor` cookie, and
 // the `ContractorSession` row it points at says which email it proved. The database decides expiry (30 days from
-// last use); the cookie is only a key. Verification itself is in src/lib/contractorVerify.ts.
+// last use, and never more than 180 days from verifying); the cookie is only a key. Verification itself is in
+// src/lib/contractorVerify.ts.
 import { createHash, randomBytes } from "node:crypto";
 import { cookies } from "next/headers";
 import prisma from "@/lib/prisma";
@@ -8,8 +9,15 @@ import { normalizeEmail } from "@/lib/contractorWorkOrders";
 
 export const CONTRACTOR_COOKIE = "praedium_contractor";
 export const SESSION_DAYS = 30;
+// However often it's used, a session ends this long after the contractor verified, so they enter a code again.
+export const MAX_SESSION_DAYS = 180;
 
 const DAY_MS = 24 * 60 * 60 * 1000;
+
+// The latest moment a session created at `createdAt` may last until.
+function sessionEnd(createdAt: Date): Date {
+    return new Date(createdAt.getTime() + MAX_SESSION_DAYS * DAY_MS);
+}
 const COOKIE_MAX_AGE_SECONDS = 365 * 24 * 60 * 60;
 const MAX_USER_AGENT_LENGTH = 500;
 
@@ -20,7 +28,7 @@ export function hashSessionToken(token: string): string {
 export type ContractorSessionInfo = { id: string; email: string };
 
 // The browser's live session, or null when there's no cookie or the session is unknown, revoked or expired. A
-// session used more than a day ago is extended to 30 days from now. Never throws.
+// session used more than a day ago is extended to 30 days from now, but not past MAX_SESSION_DAYS. Never throws.
 export async function getContractorSession(): Promise<ContractorSessionInfo | null> {
     try {
         const token = (await cookies()).get(CONTRACTOR_COOKIE)?.value;
@@ -29,11 +37,15 @@ export async function getContractorSession(): Promise<ContractorSessionInfo | nu
         const session = await prisma.contractorSession.findUnique({ where: { tokenHash: hashSessionToken(token) } });
         const now = new Date();
         if (!session || session.revokedAt || session.expiresAt <= now) return null;
+        // Sessions extended before the cap existed can have an expiry past it.
+        const end = sessionEnd(session.createdAt);
+        if (end <= now) return null;
 
         if (now.getTime() - session.lastUsedAt.getTime() > DAY_MS) {
+            const extended = new Date(Math.min(now.getTime() + SESSION_DAYS * DAY_MS, end.getTime()));
             await prisma.contractorSession.update({
                 where: { id: session.id },
-                data: { lastUsedAt: now, expiresAt: new Date(now.getTime() + SESSION_DAYS * DAY_MS) },
+                data: { lastUsedAt: now, expiresAt: extended },
             });
         }
         return { id: session.id, email: session.email };
@@ -98,9 +110,15 @@ export async function revokeContractorSessions(email: string): Promise<number> {
     return result.count;
 }
 
-// Live sessions (not revoked, not expired) for an email.
+// Live sessions (not revoked, not expired, not past MAX_SESSION_DAYS) for an email.
 export async function countContractorSessions(email: string): Promise<number> {
+    const now = new Date();
     return prisma.contractorSession.count({
-        where: { email: normalizeEmail(email), revokedAt: null, expiresAt: { gt: new Date() } },
+        where: {
+            email: normalizeEmail(email),
+            revokedAt: null,
+            expiresAt: { gt: now },
+            createdAt: { gt: new Date(now.getTime() - MAX_SESSION_DAYS * DAY_MS) },
+        },
     });
 }

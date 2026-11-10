@@ -3,6 +3,7 @@
 import { useState } from "react";
 import { addArea, removeArea, moveArea, renameArea, setLineItemCompleted } from "../actions";
 import { inputClass } from "@/lib/defaults";
+import { resultError } from "@/lib/actionResult";
 import { Button } from "@/components/Button";
 import { useToast } from "@/components/Toaster";
 import { InfoIcon, PlusIcon } from "@/components/Icons";
@@ -54,7 +55,11 @@ export default function AreaBuilder({
 
         setPending(true);
         try {
-            await addArea(workOrderId, trimmed);
+            const refused = resultError(await addArea(workOrderId, trimmed));
+            if (refused) {
+                setError(refused);
+                return;
+            }
             setName("");
             setError(null);
         } catch {
@@ -67,7 +72,8 @@ export default function AreaBuilder({
     async function handleMove(areaId: string, direction: "up" | "down") {
         setBusyId(areaId);
         try {
-            await moveArea(areaId, direction);
+            const refused = resultError(await moveArea(areaId, direction));
+            if (refused) setError(refused);
         } catch {
             setError("Couldn't move that area. Try again.");
         } finally {
@@ -78,7 +84,11 @@ export default function AreaBuilder({
     async function handleRemove(areaId: string) {
         setBusyId(areaId);
         try {
-            await removeArea(areaId);
+            const refused = resultError(await removeArea(areaId));
+            if (refused) {
+                setError(refused);
+                return;
+            }
             toast("Area removed.");
         } catch {
             setError("Couldn't remove that area. Try again.");
@@ -87,11 +97,11 @@ export default function AreaBuilder({
         }
     }
 
-    // Errors reach SpaceCard, which shows them in the area's card.
+    // Errors and refusals reach SpaceCard, which shows them in the area's card.
     async function handleRename(areaId: string, newName: string) {
         setBusyId(areaId);
         try {
-            await renameArea(areaId, newName);
+            return await renameArea(areaId, newName);
         } finally {
             setBusyId(null);
         }

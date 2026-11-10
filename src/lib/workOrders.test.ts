@@ -3,8 +3,10 @@ import {
     findNeighbors,
     formatWorkOrderAddress,
     isOverdue,
+    isReopenedDraft,
     isWorkOrderFilter,
     listQuery,
+    mayNotifyTenant,
     orderForView,
     WORK_ORDER_SORTS,
 } from "./workOrders";
@@ -216,5 +218,28 @@ describe("isOverdue", () => {
 
     it("is not overdue without a due date", () => {
         expect(isOverdue({ status: "SENT", dueDate: null })).toBe(false);
+    });
+});
+
+describe("tenant notice on send", () => {
+    const at = new Date("2026-11-03");
+    const fresh = { status: "DRAFT" as const, sentAt: null, startedAt: null };
+
+    it("treats a draft that was sent or started before as reopened", () => {
+        expect(isReopenedDraft(fresh)).toBe(false);
+        expect(isReopenedDraft({ ...fresh, sentAt: at })).toBe(true);
+        expect(isReopenedDraft({ ...fresh, startedAt: at })).toBe(true);
+        expect(isReopenedDraft({ status: "SENT", sentAt: at, startedAt: null })).toBe(false);
+    });
+
+    it("lets a first send notify, and a reopened draft only when asked", () => {
+        expect(mayNotifyTenant(fresh, false)).toBe(true);
+        expect(mayNotifyTenant({ ...fresh, sentAt: at }, false)).toBe(false);
+        expect(mayNotifyTenant({ ...fresh, sentAt: at }, true)).toBe(true);
+    });
+
+    it("never notifies on a resend", () => {
+        expect(mayNotifyTenant({ status: "SENT", sentAt: at, startedAt: null }, true)).toBe(false);
+        expect(mayNotifyTenant({ status: "IN_PROGRESS", sentAt: at, startedAt: null }, true)).toBe(false);
     });
 });

@@ -48,7 +48,11 @@ export default function ContractorLink({
     async function handleRegenerate() {
         setPending(true);
         try {
-            await regeneratePublicToken(workOrderId);
+            const res = await regeneratePublicToken(workOrderId);
+            if (!res.ok) {
+                setError(res.error);
+                return;
+            }
             setError(null);
             setConfirming(false);
             toast("New link created. The old one no longer works.");

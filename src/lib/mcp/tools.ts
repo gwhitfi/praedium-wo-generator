@@ -540,8 +540,9 @@ function registerStatusTools(
                 "Email the contractor the work order link. Works on Draft, Sent and In progress work orders that " +
                 "aren't archived, so it can also re-send, for example after a contractor change. The contractor " +
                 "needs an email address; in-house work orders can't be sent (use start_work_order). On the first " +
-                "send, the tenant is emailed too when the work order has " +
-                'tenant notification on. Confirm with the user first. Returns { id, jobNumber, status: "SENT", ' +
+                "send, the tenant is emailed too when the work order has tenant notification on; a draft that was " +
+                "cancelled and reopened doesn't email the tenant again (the office decides that in the app). " +
+                'Confirm with the user first. Returns { id, jobNumber, status: "SENT", ' +
                 "sentTo, resent, tenantNotified }.",
             inputSchema: statusInput,
         },
@@ -559,7 +560,8 @@ function registerStatusTools(
             description:
                 "Start an in-house Draft work order (inHouse: true), the counterpart of send_work_order for work " +
                 "the office's own team does: it becomes In progress and nothing is sent to a contractor. The " +
-                "tenant is emailed when the work order has tenant notification on. Confirm with the user first. " +
+                "tenant is emailed when the work order has tenant notification on, except for a draft that was " +
+                "cancelled and reopened (the office decides that in the app). Confirm with the user first. " +
                 'Returns { id, jobNumber, status: "IN_PROGRESS", tenantNotified }.',
             inputSchema: statusInput,
         },

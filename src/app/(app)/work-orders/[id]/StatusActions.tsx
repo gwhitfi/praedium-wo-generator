@@ -20,10 +20,17 @@ import { inputClass } from "@/lib/defaults";
 
 type Contractor = { id: string; name: string; email: string | null };
 type Confirming = "email" | "complete" | null;
+type Refused = { ok: false; error: string };
 
-// An error message from an action's { ok: false, error } result, safe to show as is. Errors thrown on the server
-// arrive without their message in production, so those get the generic text.
-class ActionError extends Error {}
+// What the toast says after Reopen, by where the work order landed.
+const REOPENED: Record<string, string> = {
+    DRAFT: "Reopened as a draft. Send it again when the work is back on.",
+    COMPLETED: "Reopened. It's back to completed.",
+};
+
+function reopenedMessage(result: { status: string }): string {
+    return REOPENED[result.status] ?? "Reopened.";
+}
 
 // The work order's "Next step" card: what's happening now, the one action that moves it forward (a filled button),
 // and any secondary actions. Cancelling lives in the page's danger zone instead (CancelWorkOrderButton).
@@ -35,6 +42,7 @@ export default function StatusActions({
     doneCount,
     itemCount,
     archived,
+    tenantAgain = null,
 }: {
     workOrderId: string;
     status: string;
@@ -44,38 +52,69 @@ export default function StatusActions({
     doneCount: number;
     itemCount: number;
     archived: boolean;
+    // Set on a cancelled and reopened draft that would email the tenant: asks whether to email them again.
+    // `emailedOn` is the day they were last told, or null if they never were.
+    tenantAgain?: { emailedOn: string | null } | null;
 }): React.ReactElement {
     const toast = useToast();
     const [pending, setPending] = useState<string | null>(null);
     const [error, setError] = useState<string | null>(null);
     const [confirming, setConfirming] = useState<Confirming>(null);
+    // Ticked by default: the work order asks for the tenant to be told; unticking skips this one email.
+    const [emailTenantAgain, setEmailTenantAgain] = useState(true);
+    const notifyTenantAgain = !!tenantAgain && emailTenantAgain;
+
+    const tenantAgainBox = tenantAgain && (
+        <label className="flex items-start gap-3 text-sm hover:cursor-pointer">
+            <input
+                type="checkbox"
+                checked={emailTenantAgain}
+                onChange={(e) => setEmailTenantAgain(e.target.checked)}
+                disabled={!!pending}
+                className="mt-0.5 h-4 w-4 shrink-0 accent-accent disabled:opacity-50"
+            />
+            <span>
+                <span className="block font-medium text-foreground">
+                    {tenantAgain.emailedOn ? "Email the tenant again" : "Email the tenant"}
+                </span>
+                <span className="block text-[0.8125rem] text-muted">
+                    {tenantAgain.emailedOn
+                        ? `They were emailed about this work order on ${tenantAgain.emailedOn}. Untick if they don't need another email.`
+                        : "This work order was cancelled and reopened. Untick if they don't need an email."}
+                </span>
+            </span>
+        </label>
+    );
 
     const remaining = itemCount - doneCount;
     const name = contractor?.name ?? "the contractor";
 
-    async function run(key: string, fn: () => Promise<void>, success: string) {
+    // Runs an action and shows its refusal message, which is safe to show as is. Errors thrown on the server arrive
+    // without their message in production, so those get the generic text.
+    async function run<R extends { ok: true }>(
+        key: string,
+        fn: () => Promise<R | Refused>,
+        success: string | ((result: R) => string),
+    ) {
         setPending(key);
         setError(null);
         try {
-            await fn();
+            const res = await fn();
+            if (!res.ok) {
+                setError(res.error);
+                return;
+            }
             setConfirming(null);
-            toast(success);
-        } catch (e) {
-            setError(e instanceof ActionError ? e.message : "Something went wrong. Try again.");
+            toast(typeof success === "string" ? success : success(res));
+        } catch {
+            setError("Something went wrong. Try again.");
         } finally {
             setPending(null);
         }
     }
 
     const email = () =>
-        run(
-            "email",
-            async () => {
-                const res = await emailWorkOrder(workOrderId);
-                if (!res.ok) throw new ActionError(res.error);
-            },
-            `Emailed to ${contractor?.email ?? name}.`,
-        );
+        run("email", () => emailWorkOrder(workOrderId, notifyTenantAgain), `Emailed to ${contractor?.email ?? name}.`);
 
     const complete = () =>
         run("complete", () => markWorkOrderCompleted(workOrderId), "Marked as completed. Review it, then close it.");
@@ -93,25 +132,19 @@ export default function StatusActions({
                 ? "Add at least one line item to the work below, then you can start it."
                 : "Your team is doing this work. Start it when they begin.";
         body = (
-            <Button
-                variant="primary"
-                full
-                disabled={itemCount === 0}
-                pending={pending === "start"}
-                pendingLabel="Starting…"
-                onClick={() =>
-                    run(
-                        "start",
-                        async () => {
-                            const res = await startWorkOrder(workOrderId);
-                            if (!res.ok) throw new ActionError(res.error);
-                        },
-                        "Work started.",
-                    )
-                }
-            >
-                Start work
-            </Button>
+            <>
+                {itemCount > 0 && tenantAgainBox}
+                <Button
+                    variant="primary"
+                    full
+                    disabled={itemCount === 0}
+                    pending={pending === "start"}
+                    pendingLabel="Starting…"
+                    onClick={() => run("start", () => startWorkOrder(workOrderId, notifyTenantAgain), "Work started.")}
+                >
+                    Start work
+                </Button>
+            </>
         );
     } else if (status === "DRAFT" && !contractor) {
         message = "Choose who's doing the work: a contractor, or your own team.";
@@ -146,7 +179,7 @@ export default function StatusActions({
         body =
             confirming === "email" ? (
                 <ConfirmRow
-                    question={`Email this work order to ${contractor?.email}?`}
+                    question={`Email this work order to ${contractor?.email}?${notifyTenantAgain ? " The tenant is emailed again too." : ""}`}
                     confirmLabel="Send email"
                     pending={pending === "email"}
                     pendingLabel="Sending…"
@@ -155,6 +188,7 @@ export default function StatusActions({
                 />
             ) : (
                 <>
+                    {tenantAgainBox}
                     {contractor?.email && (
                         <Button variant="primary" full onClick={() => setConfirming("email")} disabled={!!pending}>
                             <SendIcon />
@@ -170,7 +204,7 @@ export default function StatusActions({
                         onClick={() =>
                             run(
                                 "sent",
-                                () => sendWorkOrder(workOrderId, "PRINT" as DeliveryMethod),
+                                () => sendWorkOrder(workOrderId, "PRINT" as DeliveryMethod, notifyTenantAgain),
                                 "Marked as sent. The contractor link is live.",
                             )
                         }
@@ -273,7 +307,7 @@ export default function StatusActions({
                     pending={pending === "reopen"}
                     pendingLabel="Reopening…"
                     disabled={!!pending}
-                    onClick={() => run("reopen", () => reopenWorkOrder(workOrderId), "Reopened.")}
+                    onClick={() => run("reopen", () => reopenWorkOrder(workOrderId), reopenedMessage)}
                 >
                     Reopen
                 </Button>
@@ -288,7 +322,7 @@ export default function StatusActions({
                 pending={pending === "reopen"}
                 pendingLabel="Reopening…"
                 disabled={!!pending}
-                onClick={() => run("reopen", () => reopenWorkOrder(workOrderId), "Reopened.")}
+                onClick={() => run("reopen", () => reopenWorkOrder(workOrderId), reopenedMessage)}
             >
                 Reopen
             </Button>
@@ -374,7 +408,11 @@ export function CancelWorkOrderButton({
         setPending(true);
         setError(null);
         try {
-            await cancelWorkOrder(workOrderId, reason);
+            const res = await cancelWorkOrder(workOrderId, reason);
+            if (!res.ok) {
+                setError(res.error);
+                return;
+            }
             setReason("");
             setConfirming(false);
             toast("Work order cancelled.");

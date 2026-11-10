@@ -30,6 +30,8 @@ export function assistantGuide(canChangeStatus: boolean): string {
                   "emailed too when the work order has tenant notification on. Confirm with the user first.",
               "- start_work_order is the in-house counterpart: it moves an in-house Draft to In progress without " +
                   "sending anything, and emails the tenant when tenant notification is on. Confirm first.",
+              "- A draft that was cancelled and reopened is sent or started without emailing the tenant again. If " +
+                  "the tenant should hear again, the user does it from the work order page in Praedium.",
               "- cancel_work_order works only on Sent or In progress work orders and emails the contractor. " +
                   "Archive a draft instead.",
               "- archive_work_order hides a work order. A Sent or In progress one is also cancelled and its " +

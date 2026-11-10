@@ -6,22 +6,25 @@ import type { User } from "@/generated/prisma/client";
 import { notifyTenant } from "@/lib/emails/notifyTenant";
 import prisma from "@/lib/prisma";
 import { logEvent } from "@/lib/workOrderEvents";
-import { formatWorkOrderAddress } from "@/lib/workOrders";
+import { formatWorkOrderAddress, mayNotifyTenant } from "@/lib/workOrders";
 
 export type StartWorkOrderResult =
     | { ok: true; jobNumber: string; tenantNotified: boolean }
     | { ok: false; error: string };
 
+// A reopened draft (started or sent before) emails the tenant again only with `notifyTenantAgain`; MCP never sets it.
 export async function startInHouseWorkOrder({
     organizationId,
     organization,
     user,
     workOrderId,
+    notifyTenantAgain = false,
 }: {
     organizationId: string;
     organization: { name: string; phone: string | null; email: string | null };
     user: Pick<User, "id" | "firstName" | "lastName" | "email">;
     workOrderId: string;
+    notifyTenantAgain?: boolean;
 }): Promise<StartWorkOrderResult> {
     const workOrder = await prisma.workOrder.findFirst({
         where: { id: workOrderId, organizationId },
@@ -45,11 +48,13 @@ export async function startInHouseWorkOrder({
     });
     if (updated.count === 0) return { ok: false, error: "Only draft work orders can be started" };
 
-    const tenantNotified = notifyTenant(organization, {
-        ...workOrder,
-        address: formatWorkOrderAddress(workOrder.property, workOrder.unit),
-        contractor: null,
-    });
+    const tenantNotified =
+        mayNotifyTenant(workOrder, notifyTenantAgain) &&
+        notifyTenant(organization, {
+            ...workOrder,
+            address: formatWorkOrderAddress(workOrder.property, workOrder.unit),
+            contractor: null,
+        });
     await logEvent({
         type: "STARTED",
         workOrderId: workOrder.id,

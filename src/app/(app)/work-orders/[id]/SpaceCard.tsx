@@ -5,6 +5,7 @@ import { addLineItem, removeLineItem, moveLineItem, updateLineItem } from "../ac
 import { LineItemPriority } from "@/generated/prisma/enums";
 import { inputClass, PRIORITY_LABELS } from "@/lib/defaults";
 import { formatShortDate } from "@/lib/dates";
+import { resultError } from "@/lib/actionResult";
 import { cardClass, iconButtonClass } from "@/lib/ui";
 import { Button } from "@/components/Button";
 import ActionMenu, { type MenuAction } from "@/components/ActionMenu";
@@ -111,7 +112,12 @@ export default function SpaceCard({
         }
 
         try {
-            await onRename(area.id, trimmed);
+            const refused = resultError(await onRename(area.id, trimmed));
+            if (refused) {
+                skipNameBlur.current = false;
+                setError(refused);
+                return;
+            }
             setRenaming(false);
             setError(null);
         } catch {
@@ -129,7 +135,11 @@ export default function SpaceCard({
 
         setPending(true);
         try {
-            await actions.addLineItem(area.id, trimmed, priority as LineItemPriority);
+            const refused = resultError(await actions.addLineItem(area.id, trimmed, priority as LineItemPriority));
+            if (refused) {
+                setError(refused);
+                return false;
+            }
             setDescription("");
             setPriority("MEDIUM");
             setError(null);
@@ -384,12 +394,13 @@ function ItemRow({
     const [confirming, setConfirming] = useState(false);
     const hasPhoto = item.attachments.length > 0;
 
+    // `failure` is shown when the action throws; a refusal it returns shows its own message.
     async function run(fn: () => Promise<unknown>, failure: string) {
         setBusy(true);
         try {
-            await fn();
-            setError(null);
-            return true;
+            const refused = resultError(await fn());
+            setError(refused);
+            return !refused;
         } catch {
             setError(failure);
             return false;

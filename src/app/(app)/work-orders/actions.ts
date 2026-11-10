@@ -11,7 +11,13 @@ import { notifyContractorsCancelled } from "@/lib/emails/notifyCancelled";
 import { notifyTenant } from "@/lib/emails/notifyTenant";
 import { DELETE_NOT_CONFIRMED, isDeleteConfirmed } from "@/lib/confirmDelete";
 import { startInHouseWorkOrder } from "@/lib/workOrderStart";
-import { COLOR_SECTIONS_COOKIE, formatWorkOrderAddress, OPEN_STATUSES, SPLIT_VIEW_COOKIE } from "@/lib/workOrders";
+import {
+    COLOR_SECTIONS_COOKIE,
+    formatWorkOrderAddress,
+    mayNotifyTenant,
+    OPEN_STATUSES,
+    SPLIT_VIEW_COOKIE,
+} from "@/lib/workOrders";
 import { contractorSnapshot, findTenant, nextJobNumber, tenantSnapshot } from "@/lib/workOrderCreate";
 import { z } from "zod";
 import { checkPhoto, MAX_LINE_ITEM_PHOTOS, MAX_PHOTO_BYTES } from "@/lib/photos";
@@ -20,8 +26,14 @@ import { attachmentKeys, onWorkOrders } from "@/lib/attachments";
 import { logEvent } from "@/lib/workOrderEvents";
 import { emailWorkOrderToContractor } from "@/lib/workOrderSend";
 import { tooLong } from "@/lib/validation";
+import type { ActionResult } from "@/lib/actionResult";
 import {
+    areaNameInput,
+    deliveryMethodInput,
+    directionInput,
     firstItemInput,
+    lineItemInput,
+    reopenTarget,
     readFirstItemFormData,
     readWorkOrderFormData,
     submittedValues,
@@ -81,10 +93,15 @@ function assignmentName(assignment: { inHouse: boolean; contractorName: string |
 }
 
 // Areas and line items can change only while the work order is open and not archived, matching the page's readOnly.
-function assertEditable(workOrder: { status: WorkOrderStatus; archived: boolean }): void {
-    if (workOrder.archived || !OPEN_STATUSES.includes(workOrder.status)) {
-        throw new Error("This work order can't be edited");
-    }
+const NOT_EDITABLE: ActionResult = { ok: false, error: "This work order can't be edited" };
+
+function isEditable(workOrder: { status: WorkOrderStatus; archived: boolean }): boolean {
+    return !workOrder.archived && OPEN_STATUSES.includes(workOrder.status);
+}
+
+// The first message from a failed Zod parse, as a refusal.
+function invalid(error: z.ZodError): { ok: false; error: string } {
+    return { ok: false, error: error.issues[0]?.message ?? "Invalid input" };
 }
 
 // Saves the work order list's "Split view by status" setting in a cookie, so the page renders the right view.
@@ -366,19 +383,23 @@ export async function deleteWorkOrder(
     redirect("/work-orders");
 }
 
-export async function addArea(workOrderId: string, name: string) {
+export async function addArea(workOrderId: string, rawName: string): Promise<ActionResult> {
     const result = await getCurrentUser();
 
     if (result.state !== "ready") {
         throw new Error("Not authorized");
     }
 
+    const parsed = areaNameInput.safeParse(rawName);
+    if (!parsed.success) return invalid(parsed.error);
+    const name = parsed.data;
+
     const workOrder = await prisma.workOrder.findFirst({
         where: { id: workOrderId, organizationId: result.organization.id },
     });
 
     if (!workOrder) throw new Error("Invalid work order");
-    assertEditable(workOrder);
+    if (!isEditable(workOrder)) return NOT_EDITABLE;
 
     const last = await prisma.area.findFirst({
         where: { workOrderId },
@@ -405,9 +426,10 @@ export async function addArea(workOrderId: string, name: string) {
         });
     }
     revalidatePath(`/work-orders/${workOrderId}`);
+    return { ok: true };
 }
 
-export async function removeArea(areaId: string) {
+export async function removeArea(areaId: string): Promise<ActionResult> {
     const result = await getCurrentUser();
     if (result.state !== "ready") throw new Error("Not authorized");
 
@@ -419,7 +441,7 @@ export async function removeArea(areaId: string) {
     if (!area || area.workOrder.organizationId !== result.organization.id) {
         throw new Error("Invalid area");
     }
-    assertEditable(area.workOrder);
+    if (!isEditable(area.workOrder)) return NOT_EDITABLE;
 
     const photoKeys = await attachmentKeys(result.organization.id, { lineItem: { areaId } });
     await prisma.area.delete({ where: { id: areaId } });
@@ -435,16 +457,15 @@ export async function removeArea(areaId: string) {
         });
     }
     revalidatePath(`/work-orders/${area.workOrderId}`);
+    return { ok: true };
 }
 
-const areaNameInput = z.string().trim().min(1, "Enter an area name").max(100, tooLong(100));
-
-export async function renameArea(areaId: string, rawName: string): Promise<void> {
+export async function renameArea(areaId: string, rawName: string): Promise<ActionResult> {
     const result = await getCurrentUser();
     if (result.state !== "ready") throw new Error("Not authorized");
 
     const parsed = areaNameInput.safeParse(rawName);
-    if (!parsed.success) throw new Error(parsed.error.issues[0].message);
+    if (!parsed.success) return invalid(parsed.error);
     const name = parsed.data;
 
     const area = await prisma.area.findFirst({
@@ -455,8 +476,8 @@ export async function renameArea(areaId: string, rawName: string): Promise<void>
     if (!area || area.workOrder.organizationId !== result.organization.id) {
         throw new Error("Invalid area");
     }
-    assertEditable(area.workOrder);
-    if (name === area.name) return;
+    if (!isEditable(area.workOrder)) return NOT_EDITABLE;
+    if (name === area.name) return { ok: true };
 
     await prisma.area.update({ where: { id: area.id }, data: { name } });
     if (area.workOrder.status !== "DRAFT") {
@@ -469,11 +490,16 @@ export async function renameArea(areaId: string, rawName: string): Promise<void>
         });
     }
     revalidatePath(`/work-orders/${area.workOrderId}`);
+    return { ok: true };
 }
 
-export async function moveArea(areaId: string, direction: "up" | "down") {
+export async function moveArea(areaId: string, rawDirection: "up" | "down"): Promise<ActionResult> {
     const result = await getCurrentUser();
     if (result.state !== "ready") throw new Error("Not authorized");
+
+    const parsed = directionInput.safeParse(rawDirection);
+    if (!parsed.success) return invalid(parsed.error);
+    const direction = parsed.data;
 
     const area = await prisma.area.findFirst({
         where: { id: areaId },
@@ -483,7 +509,7 @@ export async function moveArea(areaId: string, direction: "up" | "down") {
     if (!area || area.workOrder.organizationId !== result.organization.id) {
         throw new Error("Invalid area");
     }
-    assertEditable(area.workOrder);
+    if (!isEditable(area.workOrder)) return NOT_EDITABLE;
 
     const neighbour = await prisma.area.findFirst({
         where: {
@@ -493,7 +519,7 @@ export async function moveArea(areaId: string, direction: "up" | "down") {
         orderBy: { sortOrder: direction === "up" ? "desc" : "asc" },
     });
 
-    if (!neighbour) return;
+    if (!neighbour) return { ok: true };
 
     await prisma.$transaction([
         prisma.area.update({
@@ -507,11 +533,20 @@ export async function moveArea(areaId: string, direction: "up" | "down") {
     ]);
 
     revalidatePath(`/work-orders/${area.workOrderId}`);
+    return { ok: true };
 }
 
-export async function addLineItem(areaId: string, description: string, priority: LineItemPriority) {
+export async function addLineItem(
+    areaId: string,
+    rawDescription: string,
+    rawPriority: LineItemPriority,
+): Promise<ActionResult> {
     const result = await getCurrentUser();
     if (result.state !== "ready") throw new Error("Not authorized");
+
+    const parsed = lineItemInput.safeParse({ description: rawDescription, priority: rawPriority });
+    if (!parsed.success) return invalid(parsed.error);
+    const { description, priority } = parsed.data;
 
     const area = await prisma.area.findFirst({
         where: { id: areaId },
@@ -521,7 +556,7 @@ export async function addLineItem(areaId: string, description: string, priority:
     if (!area || area.workOrder.organizationId !== result.organization.id) {
         throw new Error("Invalid area");
     }
-    assertEditable(area.workOrder);
+    if (!isEditable(area.workOrder)) return NOT_EDITABLE;
 
     const last = await prisma.lineItem.findFirst({
         where: { areaId },
@@ -547,9 +582,10 @@ export async function addLineItem(areaId: string, description: string, priority:
         });
     }
     revalidatePath(`/work-orders/${area.workOrderId}`);
+    return { ok: true };
 }
 
-export async function removeLineItem(lineItemId: string) {
+export async function removeLineItem(lineItemId: string): Promise<ActionResult> {
     const result = await getCurrentUser();
     if (result.state !== "ready") throw new Error("Not authorized");
 
@@ -565,7 +601,7 @@ export async function removeLineItem(lineItemId: string) {
     if (!lineItem || lineItem.area.workOrder.organizationId !== result.organization.id) {
         throw new Error("Invalid line item");
     }
-    assertEditable(lineItem.area.workOrder);
+    if (!isEditable(lineItem.area.workOrder)) return NOT_EDITABLE;
 
     const photoKeys = await attachmentKeys(result.organization.id, { lineItemId });
     await prisma.lineItem.delete({ where: { id: lineItemId } });
@@ -580,11 +616,16 @@ export async function removeLineItem(lineItemId: string) {
         });
     }
     revalidatePath(`/work-orders/${lineItem.area.workOrderId}`);
+    return { ok: true };
 }
 
-export async function moveLineItem(lineItemId: string, direction: "up" | "down") {
+export async function moveLineItem(lineItemId: string, rawDirection: "up" | "down"): Promise<ActionResult> {
     const result = await getCurrentUser();
     if (result.state !== "ready") throw new Error("Not authorized");
+
+    const parsed = directionInput.safeParse(rawDirection);
+    if (!parsed.success) return invalid(parsed.error);
+    const direction = parsed.data;
 
     const lineItem = await prisma.lineItem.findFirst({
         where: { id: lineItemId },
@@ -596,7 +637,7 @@ export async function moveLineItem(lineItemId: string, direction: "up" | "down")
     if (!lineItem || lineItem.area.workOrder.organizationId !== result.organization.id) {
         throw new Error("Invalid line item");
     }
-    assertEditable(lineItem.area.workOrder);
+    if (!isEditable(lineItem.area.workOrder)) return NOT_EDITABLE;
 
     const neighbour = await prisma.lineItem.findFirst({
         where: {
@@ -606,7 +647,7 @@ export async function moveLineItem(lineItemId: string, direction: "up" | "down")
         orderBy: { sortOrder: direction === "up" ? "desc" : "asc" },
     });
 
-    if (!neighbour) return;
+    if (!neighbour) return { ok: true };
 
     await prisma.$transaction([
         prisma.lineItem.update({
@@ -620,11 +661,20 @@ export async function moveLineItem(lineItemId: string, direction: "up" | "down")
     ]);
 
     revalidatePath(`/work-orders/${lineItem.area.workOrderId}`);
+    return { ok: true };
 }
 
-export async function updateLineItem(lineItemId: string, description: string, priority: LineItemPriority) {
+export async function updateLineItem(
+    lineItemId: string,
+    rawDescription: string,
+    rawPriority: LineItemPriority,
+): Promise<ActionResult> {
     const result = await getCurrentUser();
     if (result.state !== "ready") throw new Error("Not authorized");
+
+    const parsed = lineItemInput.safeParse({ description: rawDescription, priority: rawPriority });
+    if (!parsed.success) return invalid(parsed.error);
+    const { description, priority } = parsed.data;
 
     const lineItem = await prisma.lineItem.findFirst({
         where: { id: lineItemId },
@@ -636,7 +686,7 @@ export async function updateLineItem(lineItemId: string, description: string, pr
     if (!lineItem || lineItem.area.workOrder.organizationId !== result.organization.id) {
         throw new Error("Invalid line item");
     }
-    assertEditable(lineItem.area.workOrder);
+    if (!isEditable(lineItem.area.workOrder)) return NOT_EDITABLE;
 
     await prisma.lineItem.update({
         where: { id: lineItemId },
@@ -661,6 +711,7 @@ export async function updateLineItem(lineItemId: string, description: string, pr
     }
 
     revalidatePath(`/work-orders/${lineItem.area.workOrderId}`);
+    return { ok: true };
 }
 
 type PhotoResult = { ok: true } | { ok: false; error: string };
@@ -809,9 +860,22 @@ export async function removeLineItemPhoto(attachmentId: string): Promise<PhotoRe
     return { ok: true };
 }
 
-export async function sendWorkOrder(workOrderId: string, deliveryMethod: DeliveryMethod) {
+// "Email the tenant again" on a reopened draft (see mayNotifyTenant); ignored on a first send.
+const notifyTenantAgainInput = z.boolean().default(false);
+
+export async function sendWorkOrder(
+    workOrderId: string,
+    rawDeliveryMethod: DeliveryMethod,
+    rawNotifyTenantAgain?: boolean,
+): Promise<ActionResult> {
     const result = await getCurrentUser();
     if (result.state !== "ready") throw new Error("Not authorized");
+
+    const parsed = deliveryMethodInput.safeParse(rawDeliveryMethod);
+    if (!parsed.success) return invalid(parsed.error);
+    const deliveryMethod = parsed.data;
+    const again = notifyTenantAgainInput.safeParse(rawNotifyTenantAgain);
+    if (!again.success) return invalid(again.error);
 
     const workOrder = await prisma.workOrder.findFirst({
         where: { id: workOrderId, organizationId: result.organization.id },
@@ -819,13 +883,13 @@ export async function sendWorkOrder(workOrderId: string, deliveryMethod: Deliver
     });
 
     if (!workOrder) throw new Error("Invalid work order");
-    if (workOrder.inHouse) throw new Error("In-house work orders are started, not sent");
-    if (!workOrder.contractorId) throw new Error("Assign a contractor before sending");
-    if (workOrder.archived) throw new Error("Archived work orders can't be sent");
-    if (workOrder.status !== "DRAFT") throw new Error("Only draft work orders can be marked as sent");
+    if (workOrder.inHouse) return { ok: false, error: "In-house work orders are started, not sent" };
+    if (!workOrder.contractorId) return { ok: false, error: "Assign a contractor before sending" };
+    if (workOrder.archived) return { ok: false, error: "Archived work orders can't be sent" };
+    if (workOrder.status !== "DRAFT") return { ok: false, error: "Only draft work orders can be marked as sent" };
     // Nothing to send without work in it (the same rule as emailing it, in src/lib/workOrderSend.ts).
     const itemCount = await prisma.lineItem.count({ where: { area: { workOrderId } } });
-    if (itemCount === 0) throw new Error("Add at least one line item before sending");
+    if (itemCount === 0) return { ok: false, error: "Add at least one line item before sending" };
 
     await prisma.workOrder.update({
         where: { id: workOrderId },
@@ -840,6 +904,7 @@ export async function sendWorkOrder(workOrderId: string, deliveryMethod: Deliver
     });
     const tenantNotified =
         !!workOrder.contractor &&
+        mayNotifyTenant(workOrder, again.data) &&
         notifyTenant(result.organization, {
             ...workOrder,
             address: formatWorkOrderAddress(workOrder.property, workOrder.unit),
@@ -855,19 +920,24 @@ export async function sendWorkOrder(workOrderId: string, deliveryMethod: Deliver
 
     revalidatePath(`/work-orders/${workOrderId}`);
     revalidatePath("/work-orders");
+    return { ok: true };
 }
 
 type EmailResult = { ok: true; to: string } | { ok: false; error: string };
 
-export async function emailWorkOrder(workOrderId: string): Promise<EmailResult> {
+export async function emailWorkOrder(workOrderId: string, rawNotifyTenantAgain?: boolean): Promise<EmailResult> {
     const result = await getCurrentUser();
     if (result.state !== "ready") return { ok: false, error: "Not authorized" };
+
+    const again = notifyTenantAgainInput.safeParse(rawNotifyTenantAgain);
+    if (!again.success) return invalid(again.error);
 
     const sent = await emailWorkOrderToContractor({
         organizationId: result.organization.id,
         organization: result.organization,
         user: result.user,
         workOrderId,
+        notifyTenantAgain: again.data,
     });
     if (!sent.ok) return sent;
 
@@ -877,18 +947,24 @@ export async function emailWorkOrder(workOrderId: string): Promise<EmailResult> 
 }
 
 // "Start work" on an in-house draft: it moves to In progress without sending anything to a contractor.
-export async function startWorkOrder(workOrderId: string): Promise<{ ok: true } | { ok: false; error: string }> {
+export async function startWorkOrder(
+    workOrderId: string,
+    rawNotifyTenantAgain?: boolean,
+): Promise<{ ok: true } | { ok: false; error: string }> {
     const result = await getCurrentUser();
     if (result.state !== "ready") return { ok: false, error: "Not authorized" };
 
     const id = z.string().min(1).max(100).safeParse(workOrderId);
     if (!id.success) return { ok: false, error: "Work order not found" };
+    const again = notifyTenantAgainInput.safeParse(rawNotifyTenantAgain);
+    if (!again.success) return invalid(again.error);
 
     const started = await startInHouseWorkOrder({
         organizationId: result.organization.id,
         organization: result.organization,
         user: result.user,
         workOrderId: id.data,
+        notifyTenantAgain: again.data,
     });
     if (!started.ok) return started;
 
@@ -902,11 +978,15 @@ const checkOffInput = z.object({ lineItemId: z.string().min(1).max(100), complet
 
 // The office checks off line items itself on an in-house work order that has started (Sent or In progress, not
 // archived). Contractor work orders are checked off from the contractor page instead.
-export async function setLineItemCompleted(lineItemId: string, completed: boolean): Promise<void> {
+const NOT_CHECKABLE: ActionResult = { ok: false, error: "Only started in-house work orders can be checked off here" };
+
+export async function setLineItemCompleted(lineItemId: string, completed: boolean): Promise<ActionResult> {
     const result = await getCurrentUser();
     if (result.state !== "ready") throw new Error("Not authorized");
 
-    const input = checkOffInput.parse({ lineItemId, completed });
+    const parsed = checkOffInput.safeParse({ lineItemId, completed });
+    if (!parsed.success) return invalid(parsed.error);
+    const input = parsed.data;
     const organizationId = result.organization.id;
     const lineItem = await prisma.lineItem.findFirst({
         where: { id: input.lineItemId, area: { workOrder: { organizationId } } },
@@ -917,17 +997,15 @@ export async function setLineItemCompleted(lineItemId: string, completed: boolea
     const workOrder = lineItem.area.workOrder;
     const started: WorkOrderStatus[] = ["SENT", "IN_PROGRESS"];
     const startedInHouse = { inHouse: true, archived: false, status: { in: started } };
-    if (!workOrder.inHouse || workOrder.archived || !started.includes(workOrder.status)) {
-        throw new Error("Only started in-house work orders can be checked off here");
-    }
-    if (lineItem.completed === input.completed) return;
+    if (!workOrder.inHouse || workOrder.archived || !started.includes(workOrder.status)) return NOT_CHECKABLE;
+    if (lineItem.completed === input.completed) return { ok: true };
 
     // Conditional, in case the work order was completed, cancelled or handed to a contractor since the check above.
     const updated = await prisma.lineItem.updateMany({
         where: { id: lineItem.id, area: { workOrder: { id: workOrder.id, organizationId, ...startedInHouse } } },
         data: { completed: input.completed, completedAt: input.completed ? new Date() : null },
     });
-    if (updated.count === 0) throw new Error("Only started in-house work orders can be checked off here");
+    if (updated.count === 0) return NOT_CHECKABLE;
 
     await logEvent({
         type: input.completed ? "ITEM_CHECKED" : "ITEM_UNCHECKED",
@@ -939,9 +1017,11 @@ export async function setLineItemCompleted(lineItemId: string, completed: boolea
 
     revalidatePath(`/work-orders/${workOrder.id}`);
     revalidatePath("/work-orders");
+    return { ok: true };
 }
 
-export async function markWorkOrderCompleted(workOrderId: string) {
+// Only work that's out with the contractor (or started by the office's own team) can be marked completed.
+export async function markWorkOrderCompleted(workOrderId: string): Promise<ActionResult> {
     const result = await getCurrentUser();
     if (result.state !== "ready") throw new Error("Not authorized");
 
@@ -950,6 +1030,10 @@ export async function markWorkOrderCompleted(workOrderId: string) {
     });
 
     if (!workOrder) throw new Error("Invalid work order");
+    if (workOrder.archived) return { ok: false, error: "Restore this work order before changing it." };
+    if (workOrder.status !== "SENT" && workOrder.status !== "IN_PROGRESS") {
+        return { ok: false, error: "Only sent or in-progress work orders can be marked as completed." };
+    }
 
     await prisma.workOrder.update({
         where: { id: workOrderId },
@@ -967,9 +1051,13 @@ export async function markWorkOrderCompleted(workOrderId: string) {
 
     revalidatePath(`/work-orders/${workOrderId}`);
     revalidatePath("/work-orders");
+    return { ok: true };
 }
 
-export async function reopenWorkOrder(workOrderId: string) {
+// Where it lands is decided by reopenTarget() in ./schemas. Returns the new status, so the page can say what's next.
+export async function reopenWorkOrder(
+    workOrderId: string,
+): Promise<{ ok: true; status: WorkOrderStatus } | { ok: false; error: string }> {
     const result = await getCurrentUser();
     if (result.state !== "ready") throw new Error("Not authorized");
 
@@ -979,16 +1067,20 @@ export async function reopenWorkOrder(workOrderId: string) {
 
     if (!workOrder) throw new Error("Invalid work order");
 
+    const checkedCount =
+        workOrder.status === "COMPLETED"
+            ? await prisma.lineItem.count({ where: { area: { workOrderId }, completed: true } })
+            : 0;
+    const target = reopenTarget(workOrder, checkedCount);
+    if (!target.ok) return target;
+
     await prisma.workOrder.update({
         where: { id: workOrderId },
-        data: {
-            // A started in-house work order goes back to In progress, since it's never sent.
-            status: workOrder.sentAt ? "SENT" : workOrder.startedAt ? "IN_PROGRESS" : "DRAFT",
-            closedAt: null,
-            completedAt: null,
-            cancelledAt: null,
-            cancelReason: null,
-        },
+        // Back to Completed keeps its completion date; anything earlier clears it.
+        data:
+            target.status === "COMPLETED"
+                ? { status: target.status, closedAt: null }
+                : { status: target.status, closedAt: null, completedAt: null, cancelledAt: null, cancelReason: null },
     });
     await logEvent({
         type: "REOPENED",
@@ -999,9 +1091,11 @@ export async function reopenWorkOrder(workOrderId: string) {
 
     revalidatePath(`/work-orders/${workOrderId}`);
     revalidatePath("/work-orders");
+    revalidatePath(`/wo/${workOrder.publicToken}`);
+    return { ok: true, status: target.status };
 }
 
-export async function closeWorkOrder(workOrderId: string) {
+export async function closeWorkOrder(workOrderId: string): Promise<ActionResult> {
     const result = await getCurrentUser();
     if (result.state !== "ready") throw new Error("Not authorized");
 
@@ -1010,7 +1104,7 @@ export async function closeWorkOrder(workOrderId: string) {
     });
 
     if (!workOrder) throw new Error("Invalid work order");
-    if (workOrder.status !== "COMPLETED") throw new Error("Only completed work orders can be closed");
+    if (workOrder.status !== "COMPLETED") return { ok: false, error: "Only completed work orders can be closed" };
 
     await prisma.workOrder.update({
         where: { id: workOrderId },
@@ -1028,6 +1122,7 @@ export async function closeWorkOrder(workOrderId: string) {
 
     revalidatePath(`/work-orders/${workOrderId}`);
     revalidatePath("/work-orders");
+    return { ok: true };
 }
 
 const cancelReasonInput = z
@@ -1037,12 +1132,12 @@ const cancelReasonInput = z
     .optional()
     .transform((val) => val || null);
 
-export async function cancelWorkOrder(workOrderId: string, rawReason?: string) {
+export async function cancelWorkOrder(workOrderId: string, rawReason?: string): Promise<ActionResult> {
     const result = await getCurrentUser();
     if (result.state !== "ready") throw new Error("Not authorized");
 
     const parsed = cancelReasonInput.safeParse(rawReason);
-    if (!parsed.success) throw new Error(parsed.error.issues[0].message);
+    if (!parsed.success) return invalid(parsed.error);
     const reason = parsed.data;
 
     const workOrder = await prisma.workOrder.findFirst({
@@ -1052,7 +1147,7 @@ export async function cancelWorkOrder(workOrderId: string, rawReason?: string) {
 
     if (!workOrder) throw new Error("Invalid work order");
     if (workOrder.status !== "SENT" && workOrder.status !== "IN_PROGRESS") {
-        throw new Error("Only sent or in-progress work orders can be cancelled");
+        return { ok: false, error: "Only sent or in-progress work orders can be cancelled" };
     }
 
     await prisma.workOrder.update({
@@ -1077,9 +1172,10 @@ export async function cancelWorkOrder(workOrderId: string, rawReason?: string) {
     revalidatePath("/work-orders");
     revalidatePath(`/wo/${workOrder.publicToken}`);
     revalidatePath("/");
+    return { ok: true };
 }
 
-export async function regeneratePublicToken(workOrderId: string) {
+export async function regeneratePublicToken(workOrderId: string): Promise<ActionResult> {
     const result = await getCurrentUser();
     if (result.state !== "ready") throw new Error("Not authorized");
 
@@ -1088,7 +1184,8 @@ export async function regeneratePublicToken(workOrderId: string) {
     });
 
     if (!workOrder) throw new Error("Invalid work order");
-    if (workOrder.inHouse) throw new Error("In-house work orders have no contractor link");
+    if (workOrder.inHouse) return { ok: false, error: "In-house work orders have no contractor link" };
+    if (!isEditable(workOrder)) return { ok: false, error: "Only open work orders can get a new link." };
 
     await prisma.workOrder.update({
         where: { id: workOrderId },
@@ -1104,4 +1201,5 @@ export async function regeneratePublicToken(workOrderId: string) {
 
     revalidatePath(`/work-orders/${workOrderId}`);
     revalidatePath(`/wo/${workOrder.publicToken}`);
+    return { ok: true };
 }

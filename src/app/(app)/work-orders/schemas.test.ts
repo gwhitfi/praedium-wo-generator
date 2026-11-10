@@ -3,11 +3,55 @@ import { z } from "zod";
 import { IN_HOUSE } from "@/lib/defaults";
 import {
     firstItemInput,
+    lineItemInput,
     readFirstItemFormData,
     readWorkOrderFormData,
+    reopenTarget,
     submittedValues,
     workOrderFormInput,
 } from "./schemas";
+
+describe("reopenTarget", () => {
+    const sentAt = new Date("2026-11-01");
+    const base = { archived: false, inHouse: false, sentAt: null, startedAt: null };
+
+    it.each([
+        ["completed, sent, nothing checked", { status: "COMPLETED", sentAt }, 0, "SENT"],
+        ["completed, sent, items checked", { status: "COMPLETED", sentAt }, 2, "IN_PROGRESS"],
+        ["completed, never sent", { status: "COMPLETED" }, 0, "DRAFT"],
+        ["completed in-house, started", { status: "COMPLETED", inHouse: true, startedAt: sentAt }, 0, "IN_PROGRESS"],
+        ["completed in-house, never started", { status: "COMPLETED", inHouse: true }, 0, "DRAFT"],
+        ["closed", { status: "CLOSED", sentAt }, 3, "COMPLETED"],
+        ["cancelled", { status: "CANCELLED", sentAt }, 1, "DRAFT"],
+        ["cancelled in-house", { status: "CANCELLED", inHouse: true, startedAt: sentAt }, 0, "DRAFT"],
+    ] as const)("%s → %s", (_name, changes, checked, status) => {
+        expect(reopenTarget({ ...base, ...changes }, checked)).toEqual({ ok: true, status });
+    });
+
+    it.each(["DRAFT", "SENT", "IN_PROGRESS"] as const)("refuses %s", (status) => {
+        expect(reopenTarget({ ...base, status, sentAt }, 0)).toMatchObject({ ok: false });
+    });
+
+    it("refuses an archived work order, whatever its status", () => {
+        expect(reopenTarget({ ...base, status: "CANCELLED", archived: true }, 0)).toEqual({
+            ok: false,
+            error: "Restore this work order before reopening it.",
+        });
+    });
+});
+
+describe("lineItemInput", () => {
+    it("trims the description and keeps a known priority", () => {
+        expect(lineItemInput.parse({ description: "  Fix latch ", priority: "HIGH" })).toEqual({
+            description: "Fix latch",
+            priority: "HIGH",
+        });
+    });
+
+    it("refuses an unknown priority instead of defaulting it", () => {
+        expect(lineItemInput.safeParse({ description: "Fix latch", priority: "URGENT" }).success).toBe(false);
+    });
+});
 
 describe("firstItemInput", () => {
     const parse = (values: Record<string, string>) => {

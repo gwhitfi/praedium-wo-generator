@@ -41,6 +41,7 @@ function withSession(overrides: Record<string, unknown> = {}) {
         revokedAt: null,
         expiresAt: new Date(Date.now() + 10 * DAY_MS),
         lastUsedAt: new Date(),
+        createdAt: new Date(Date.now() - 20 * DAY_MS),
         ...overrides,
     } as never);
 }
@@ -99,6 +100,23 @@ describe("getContractorSession", () => {
         const data = call.data as { lastUsedAt: Date; expiresAt: Date };
         expect(data.lastUsedAt.getTime()).toBeGreaterThanOrEqual(before);
         expect(data.expiresAt.getTime() - data.lastUsedAt.getTime()).toBe(30 * DAY_MS);
+    });
+
+    it("doesn't extend a session past 180 days from when it was created", async () => {
+        const createdAt = new Date(Date.now() - 170 * DAY_MS);
+        withSession({ createdAt, lastUsedAt: new Date(Date.now() - 2 * DAY_MS) });
+
+        expect(await getContractorSession()).toEqual({ id: "s1", email: "sam@example.com" });
+
+        const data = vi.mocked(prisma.contractorSession.update).mock.calls[0][0].data as { expiresAt: Date };
+        expect(data.expiresAt.getTime()).toBe(createdAt.getTime() + 180 * DAY_MS);
+    });
+
+    it("returns null for a session over 180 days old, even if its expiry is later", async () => {
+        withSession({ createdAt: new Date(Date.now() - 181 * DAY_MS), expiresAt: new Date(Date.now() + 20 * DAY_MS) });
+
+        expect(await getContractorSession()).toBeNull();
+        expect(prisma.contractorSession.update).not.toHaveBeenCalled();
     });
 
     it("never throws", async () => {
@@ -177,12 +195,21 @@ describe("revokeContractorSessions", () => {
 });
 
 describe("countContractorSessions", () => {
-    it("counts live sessions only", async () => {
+    it("counts live sessions only, leaving out those past 180 days", async () => {
         vi.mocked(prisma.contractorSession.count).mockResolvedValue(3);
+        const before = Date.now();
 
         expect(await countContractorSessions("Sam@example.com")).toBe(3);
-        expect(prisma.contractorSession.count).toHaveBeenCalledWith({
-            where: { email: "sam@example.com", revokedAt: null, expiresAt: { gt: expect.any(Date) } },
+        const where = vi.mocked(prisma.contractorSession.count).mock.calls[0][0]?.where as {
+            createdAt: { gt: Date };
+        };
+        expect(where).toEqual({
+            email: "sam@example.com",
+            revokedAt: null,
+            expiresAt: { gt: expect.any(Date) },
+            createdAt: { gt: expect.any(Date) },
         });
+        expect(before - where.createdAt.gt.getTime()).toBeGreaterThanOrEqual(180 * DAY_MS - 5000);
+        expect(before - where.createdAt.gt.getTime()).toBeLessThanOrEqual(180 * DAY_MS);
     });
 });
