@@ -1,6 +1,9 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
 vi.mock("@clerk/nextjs/server", () => ({ auth: vi.fn(), currentUser: vi.fn(), clerkClient: vi.fn() }));
+vi.mock("@clerk/nextjs/errors", () => ({
+    isClerkAPIResponseError: (error: unknown) => typeof error === "object" && error !== null && "status" in error,
+}));
 vi.mock("@/lib/prisma", () => ({
     default: {
         organization: { findUnique: vi.fn(), create: vi.fn(), findUniqueOrThrow: vi.fn() },
@@ -9,7 +12,7 @@ vi.mock("@/lib/prisma", () => ({
     },
 }));
 
-import { auth, currentUser } from "@clerk/nextjs/server";
+import { auth, clerkClient, currentUser } from "@clerk/nextjs/server";
 import { Prisma } from "@/generated/prisma/client";
 import prisma from "@/lib/prisma";
 import { getCurrentUser } from "./auth";
@@ -52,6 +55,39 @@ describe("getCurrentUser", () => {
         expect(await getCurrentUser()).toEqual({ state: "needs-org", clerkUserId: "clerk_user1" });
         expect(prisma.user.findUnique).not.toHaveBeenCalled();
         expect(prisma.membership.findUnique).not.toHaveBeenCalled();
+    });
+
+    it("treats a session still naming an organization just deleted from Clerk as no organization", async () => {
+        signedIn("org:admin");
+        vi.mocked(prisma.organization.findUnique).mockResolvedValue(null);
+        vi.mocked(clerkClient).mockResolvedValue({
+            organizations: { getOrganization: vi.fn().mockRejectedValue({ status: 404 }) },
+        } as never);
+
+        expect(await getCurrentUser()).toEqual({ state: "needs-org", clerkUserId: "clerk_user1" });
+        expect(prisma.organization.create).not.toHaveBeenCalled();
+    });
+
+    it("still fails on other Clerk errors while looking up the organization", async () => {
+        signedIn("org:admin");
+        vi.mocked(prisma.organization.findUnique).mockResolvedValue(null);
+        vi.mocked(clerkClient).mockResolvedValue({
+            organizations: { getOrganization: vi.fn().mockRejectedValue({ status: 500 }) },
+        } as never);
+
+        await expect(getCurrentUser()).rejects.toEqual({ status: 500 });
+    });
+
+    it("treats a session of a user just deleted from Clerk as signed out", async () => {
+        signedIn("org:member");
+        vi.mocked(prisma.user.findUnique).mockResolvedValue(null);
+
+        vi.mocked(currentUser).mockRejectedValueOnce({ status: 404 });
+        expect(await getCurrentUser()).toEqual({ state: "signed-out" });
+
+        vi.mocked(currentUser).mockResolvedValueOnce(null);
+        expect(await getCurrentUser()).toEqual({ state: "signed-out" });
+        expect(prisma.user.create).not.toHaveBeenCalled();
     });
 
     it("gives ADMIN to an org:admin", async () => {

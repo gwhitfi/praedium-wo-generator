@@ -1,6 +1,7 @@
 // Clerk decides who belongs to an organization and who is an admin (org:admin). Each request reads the role
 // from Clerk; the Membership row mirrors it so the database knows the members of each organization.
 import { auth, currentUser, clerkClient } from "@clerk/nextjs/server";
+import { isClerkAPIResponseError } from "@clerk/nextjs/errors";
 import { Prisma, type User, type Organization } from "@/generated/prisma/client";
 import type { UserRole } from "@/generated/prisma/enums";
 import prisma from "./prisma";
@@ -15,6 +16,11 @@ type ClerkUser = NonNullable<Awaited<ReturnType<typeof currentUser>>>;
 // How often a user's name and email are re-read from Clerk. The local copy names them in the Activity log and on
 // API keys; checking once a day costs one Clerk call per user per day.
 const PROFILE_REFRESH_MS = 24 * 60 * 60 * 1000;
+
+// Clerk's answer for something that doesn't exist (any more).
+function isNotFound(error: unknown): boolean {
+    return isClerkAPIResponseError(error) && error.status === 404;
+}
 
 // The primary address, falling back to the first one when Clerk has none marked primary.
 function clerkEmail(clerkUser: ClerkUser): string | undefined {
@@ -57,7 +63,15 @@ export async function getCurrentUser(): Promise<AuthResult> {
     });
     if (!organization) {
         const client = await clerkClient();
-        const clerkOrg = await client.organizations.getOrganization({ organizationId: orgId });
+        let clerkOrg: Awaited<ReturnType<typeof client.organizations.getOrganization>>;
+        try {
+            clerkOrg = await client.organizations.getOrganization({ organizationId: orgId });
+        } catch (error) {
+            // The session still names an organization that was just deleted (its token lives up to a minute after
+            // the delete): treat it as no organization rather than failing the page.
+            if (isNotFound(error)) return { state: "needs-org", clerkUserId: userId };
+            throw error;
+        }
         try {
             organization = await prisma.organization.create({
                 data: { clerkOrgId: orgId, name: clerkOrg.name },
@@ -77,8 +91,16 @@ export async function getCurrentUser(): Promise<AuthResult> {
     });
 
     if (!user) {
-        const clerkUser = await currentUser();
-        const email = clerkUser ? clerkEmail(clerkUser) : undefined;
+        let clerkUser: ClerkUser | null;
+        try {
+            clerkUser = await currentUser();
+        } catch (error) {
+            // Likewise for a user deleted moments ago: their session is over.
+            if (isNotFound(error)) return { state: "signed-out" };
+            throw error;
+        }
+        if (!clerkUser) return { state: "signed-out" };
+        const email = clerkEmail(clerkUser);
         if (!email) {
             throw new Error("Clerk user has no email address");
         }

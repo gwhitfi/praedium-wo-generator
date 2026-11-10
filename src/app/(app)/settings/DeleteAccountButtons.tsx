@@ -1,14 +1,22 @@
 "use client";
 
 import { useRef, useState } from "react";
+import { useClerk } from "@clerk/nextjs";
 import DeleteButton from "@/components/DeleteButton";
 import { Button } from "@/components/Button";
 import { noticeClass } from "@/lib/ui";
 import { deleteMyAccount, deleteOrganization, previewAccountDeletion } from "./actions";
 
-// Settings → Account → "Delete organization" (admins): typing its name confirms. Afterwards a full page load to
-// /setup, so Clerk's session drops the organization.
+// A full page load, not router.push, so every part of the page starts from the new session.
+function reloadAt(path: string): void {
+    window.location.assign(path);
+}
+
+// Settings → Account → "Delete organization" (admins): typing its name confirms. Afterwards the session's active
+// organization is cleared before going to /setup: the browser's session token still names the deleted organization
+// for up to a minute, and pages would otherwise look it up.
 export function DeleteOrganizationButton({ name }: { name: string }): React.ReactElement {
+    const clerk = useClerk();
     return (
         <DeleteButton
             itemName={name}
@@ -16,9 +24,14 @@ export function DeleteOrganizationButton({ name }: { name: string }): React.Reac
             confirmWord={name}
             onDelete={async (confirmation) => {
                 const result = await deleteOrganization(confirmation);
-                // A full load, not router.push: Clerk's session must drop the deleted organization.
-                // eslint-disable-next-line @next/next/no-location-assign-relative-destination
-                if (result.ok) window.location.assign("/setup");
+                if (result.ok) {
+                    try {
+                        await clerk.setActive({ organization: null });
+                    } catch (error) {
+                        console.error("Couldn't clear the active organization", error);
+                    }
+                    reloadAt("/setup");
+                }
                 return result;
             }}
         >
@@ -36,6 +49,7 @@ type Preview = { blockedBy: string[]; organizationsToDelete: string[] };
 // Settings → Account → "Delete my account": first asks the server what it would do, then either explains what
 // blocks it (only admin of an organization with other members) or confirms, listing the organizations that go too.
 export function DeleteMyAccountButton(): React.ReactElement {
+    const clerk = useClerk();
     const openRef = useRef<(() => void) | null>(null);
     const [preview, setPreview] = useState<Preview | null>(null);
     const [checking, setChecking] = useState(false);
@@ -82,9 +96,17 @@ export function DeleteMyAccountButton(): React.ReactElement {
                 openRef={openRef}
                 onDelete={async (confirmation) => {
                     const result = await deleteMyAccount(confirmation);
-                    // A full load, so the deleted user's session is gone everywhere on the page.
-                    // eslint-disable-next-line @next/next/no-location-assign-relative-destination
-                    if (result.ok) window.location.assign("/");
+                    if (result.ok) {
+                        // The browser still holds the deleted user's session token for up to a minute: sign out so
+                        // the landing page doesn't treat them as signed in. Clerk may already have ended the
+                        // session, so a failure here doesn't matter.
+                        try {
+                            await clerk.signOut();
+                        } catch (error) {
+                            console.error("Sign-out after account deletion failed", error);
+                        }
+                        reloadAt("/");
+                    }
                     return result;
                 }}
             >
