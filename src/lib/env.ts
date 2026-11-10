@@ -38,6 +38,9 @@ const envSchema = z
         // nothing else changes.
         CLERK_WEBHOOK_SIGNING_SECRET: webhookSecret,
         RESEND_WEBHOOK_SECRET: webhookSecret,
+        // Vercel sends it to the daily cleanup job (src/app/api/cron/cleanup/route.ts). Optional: without it the job
+        // refuses to run, and deleted organizations and old logs simply aren't cleaned up.
+        CRON_SECRET: z.string().trim().min(16, "is too short (use at least 16 random characters)").optional(),
     })
     .refine((env) => env.BLOB_STORE_ID || env.BLOB_READ_WRITE_TOKEN, {
         path: ["BLOB_STORE_ID"],

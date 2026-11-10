@@ -40,6 +40,14 @@ export const revokeApiKeyInput = z.object({
     id: z.string().min(1),
 });
 
+// What was typed to confirm a delete.
+export const deleteConfirmationInput = z.string().max(300);
+
+// "Delete organization" asks for the organization's name, compared ignoring case and the spaces around it.
+export function confirmsOrganizationName(typed: string, organizationName: string): boolean {
+    return typed.trim().toLowerCase() === organizationName.trim().toLowerCase() && typed.trim() !== "";
+}
+
 // `key` is the full key, returned only by the create that made it.
 export type ApiKeyFormState = {
     key?: string;

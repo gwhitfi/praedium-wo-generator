@@ -10,7 +10,8 @@ type Result = { ok: true } | { ok: false; error: string } | void;
 // "Delete permanently" and its confirmation dialog: the consequences, an "Archive instead" way out, and a typed
 // "yes" before the red button works. The server action gets the typed text too and refuses anything but "yes".
 // `requireTyping={false}` is for things with no history to lose (an empty unit): the dialog alone is the check.
-// `open` lets a menu item open the dialog instead of the built-in trigger (`hideTrigger`).
+// `open` lets a menu item open the dialog instead of the built-in trigger (`hideTrigger`). `confirmWord` replaces
+// "yes" for the biggest deletes (an organization asks for its name); the server checks it either way.
 export default function DeleteButton({
     itemName,
     label = "Delete permanently",
@@ -18,6 +19,7 @@ export default function DeleteButton({
     archiveInstead,
     triggerClassName = buttonClass({ variant: "danger-outline", size: "sm" }),
     requireTyping = true,
+    confirmWord = "yes",
     openRef,
     hideTrigger = false,
     children,
@@ -28,6 +30,7 @@ export default function DeleteButton({
     archiveInstead?: () => void;
     triggerClassName?: string;
     requireTyping?: boolean;
+    confirmWord?: string;
     openRef?: React.RefObject<(() => void) | null>;
     hideTrigger?: boolean;
     children?: React.ReactNode;
@@ -38,7 +41,7 @@ export default function DeleteButton({
     const [typed, setTyped] = useState("");
     const [pending, setPending] = useState(false);
     const [error, setError] = useState<string | null>(null);
-    const confirmed = !requireTyping || typed.trim().toLowerCase() === "yes";
+    const confirmed = !requireTyping || typed.trim().toLowerCase() === confirmWord.trim().toLowerCase();
 
     function open() {
         setTyped("");
@@ -53,8 +56,8 @@ export default function DeleteButton({
         setPending(true);
         setError(null);
         try {
-            // The server still checks for "yes"; without typing, the confirming click supplies it.
-            const res = await onDelete(requireTyping ? typed : "yes");
+            // The server still checks the word; without typing, the confirming click supplies it.
+            const res = await onDelete(requireTyping ? typed : confirmWord);
             if (res && !res.ok) {
                 setError(res.error);
             } else {
@@ -112,7 +115,7 @@ export default function DeleteButton({
 
                     {requireTyping && (
                         <label className="mt-5 block text-sm font-medium text-secondary">
-                            Type <strong className="text-foreground">yes</strong> to confirm
+                            Type <strong className="text-foreground">{confirmWord}</strong> to confirm
                             <input
                                 value={typed}
                                 onChange={(e) => setTyped(e.target.value)}

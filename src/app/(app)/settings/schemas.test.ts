@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 import {
     aiPreferenceInput,
+    confirmsOrganizationName,
     apiKeyNameInput,
     notificationPreferenceInput,
     organizationInput,
@@ -89,5 +90,13 @@ describe("revokeApiKeyInput", () => {
         expect(revokeApiKeyInput.parse({ id: "key1" })).toEqual({ id: "key1" });
         expect(revokeApiKeyInput.safeParse({ id: "" }).success).toBe(false);
         expect(revokeApiKeyInput.safeParse({}).success).toBe(false);
+    });
+});
+
+describe("confirmsOrganizationName", () => {
+    it("matches the name ignoring case and surrounding spaces, but never an empty name", () => {
+        expect(confirmsOrganizationName("  acme property ", "Acme Property")).toBe(true);
+        expect(confirmsOrganizationName("Acme", "Acme Property")).toBe(false);
+        expect(confirmsOrganizationName("  ", "  ")).toBe(false);
     });
 });

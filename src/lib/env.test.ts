@@ -70,6 +70,14 @@ describe("checkEnv", () => {
         });
     });
 
+    it("treats the cron secret as optional, but refuses a short one", () => {
+        expect(checkEnv({ ...valid, CRON_SECRET: "a".repeat(32) })).toEqual({ ok: true });
+        expect(checkEnv({ ...valid, CRON_SECRET: "short" })).toEqual({
+            ok: false,
+            problems: ["CRON_SECRET is too short (use at least 16 random characters)"],
+        });
+    });
+
     it("needs somewhere to store photos", () => {
         expect(checkEnv({ ...valid, BLOB_STORE_ID: undefined })).toEqual({
             ok: false,

@@ -30,6 +30,8 @@ export const RATE_LIMITS = {
     emailNewOrganization: { limit: 25, windowSeconds: 86400 },
     // Per public token, verification codes per day: one leaked link can't use up the organization's daily email.
     verifyTokenDay: { limit: 20, windowSeconds: 86400 },
+    // Per organization, data exports (each reads the whole organization).
+    export: { limit: 5, windowSeconds: 3600 },
 } as const satisfies Record<string, RateLimitRule>;
 
 export type RateLimitResult = { ok: boolean; remaining: number; retryAfterSeconds: number };

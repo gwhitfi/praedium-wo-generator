@@ -9,6 +9,8 @@ import { z } from "zod";
 import {
     aiPreferenceInput,
     apiKeyNameInput,
+    confirmsOrganizationName,
+    deleteConfirmationInput,
     notificationPreferenceInput,
     organizationInput,
     revokeApiKeyInput,
@@ -17,6 +19,9 @@ import {
     type OrganizationFormState,
 } from "./schemas";
 import { storedNotificationTypes } from "@/lib/notificationTypes";
+import type { ActionResult } from "@/lib/actionResult";
+import { DELETE_NOT_CONFIRMED, isDeleteConfirmed } from "@/lib/confirmDelete";
+import { deleteAccount, deleteOrganizationEverywhere, planAccountDeletion } from "@/lib/deletion";
 
 // Sent back on failure so the form can refill what the user typed.
 function submittedValues(formData: FormData) {
@@ -136,6 +141,64 @@ export async function createApiKey(prevState: ApiKeyFormState, formData: FormDat
 
     revalidatePath("/settings");
     return { key, name: parsed.data.name };
+}
+
+// What "Delete my account" would do: which organizations block it (only admin, with other members) and which go
+// with it (only member). Shown in the confirmation before anything is deleted.
+export async function previewAccountDeletion(): Promise<
+    { ok: true; blockedBy: string[]; organizationsToDelete: string[] } | { ok: false; error: string }
+> {
+    const result = await getCurrentUser();
+    if (result.state !== "ready") return { ok: false, error: "Not authorized" };
+    try {
+        const plan = await planAccountDeletion(await clerkClient(), result.user.clerkId);
+        return {
+            ok: true,
+            blockedBy: plan.blockedBy,
+            organizationsToDelete: plan.organizationsToDelete.map((organization) => organization.name),
+        };
+    } catch (error) {
+        console.error("previewAccountDeletion failed", error);
+        return { ok: false, error: "Couldn't check your organizations. Try again." };
+    }
+}
+
+// Deletes the signed-in user's account (and organizations only they belong to). Confirmed by typing "yes".
+export async function deleteMyAccount(rawConfirmation: string): Promise<ActionResult> {
+    const confirmation = deleteConfirmationInput.safeParse(rawConfirmation);
+    if (!confirmation.success || !isDeleteConfirmed(confirmation.data)) return DELETE_NOT_CONFIRMED;
+
+    const result = await getCurrentUser();
+    if (result.state !== "ready") return { ok: false, error: "Not authorized" };
+    try {
+        return await deleteAccount(await clerkClient(), result.user.clerkId);
+    } catch (error) {
+        console.error("deleteMyAccount failed", error);
+        return { ok: false, error: "Couldn't delete your account. Try again." };
+    }
+}
+
+// Deletes the active organization and all of its data, for everyone in it. Admins only; confirmed by typing its
+// name.
+export async function deleteOrganization(rawConfirmation: string): Promise<ActionResult> {
+    const result = await getCurrentUser();
+    if (result.state !== "ready" || result.role !== "ADMIN") {
+        return { ok: false, error: "Only admins can delete the organization." };
+    }
+    const { organization } = result;
+    const confirmation = deleteConfirmationInput.safeParse(rawConfirmation);
+    if (!confirmation.success || !confirmsOrganizationName(confirmation.data, organization.name)) {
+        return { ok: false, error: `Type "${organization.name}" to confirm.` };
+    }
+
+    try {
+        await deleteOrganizationEverywhere(await clerkClient(), organization.clerkOrgId);
+    } catch (error) {
+        console.error("deleteOrganization failed", error);
+        return { ok: false, error: "Couldn't delete the organization. Try again." };
+    }
+    console.info(`Organization ${organization.id} deleted by user ${result.user.id}`);
+    return { ok: true };
 }
 
 export async function revokeApiKey(formData: FormData): Promise<void> {

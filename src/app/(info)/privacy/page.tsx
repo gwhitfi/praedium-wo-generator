@@ -207,12 +207,21 @@ export default function Privacy(): React.ReactElement {
                     into the activity log stay in the log so the history still makes sense.
                 </P>
                 <P>
-                    To delete your account, or your whole organization, email <Email /> and we&apos;ll do it within 30
-                    days. Deleting your account removes your sign-in; your organization&apos;s records stay for its
-                    other members, and your name stays in the activity log. Deleting an organization removes all of its
-                    properties, contacts, work orders, photos, activity log and API keys for everyone, and can&apos;t be
-                    undone. Copies already sent by email or read by an AI assistant you connected are outside our
-                    control. Our hosting provider keeps server logs for a short time, typically no more than a few days.
+                    You can delete your account, and an admin can delete the whole organization, in Settings; it happens
+                    right away. You can also email <Email /> and we&apos;ll do it within 30 days. Deleting your account
+                    removes your sign-in; your organizations&apos; records stay for their other members, and your name
+                    stays in the activity log. An organization you&apos;re the only member of is deleted along with your
+                    account. Deleting an organization removes all of its properties, contacts, work orders, photos,
+                    activity log, email records and API keys for everyone, and can&apos;t be undone. If an organization
+                    is deleted another way (for example from the sign-in provider&apos;s account settings), it&apos;s
+                    locked at once and its data is removed within 30 days.
+                </P>
+                <P>
+                    We keep a record of the emails Praedium sends for your organization (who it went to, what kind of
+                    email, and whether it arrived) for 90 days. An address that bounced or reported our email as spam is
+                    remembered so we don&apos;t email it again. Copies already sent by email or read by an AI assistant
+                    you connected are outside our control. Our hosting provider keeps server logs for a short time,
+                    typically no more than a few days.
                 </P>
             </Section>
 
@@ -229,8 +238,9 @@ export default function Privacy(): React.ReactElement {
             <Section title="Your choices and rights">
                 <P>
                     You can view and edit your organization&apos;s data in the app, turn Praedium Bot off in Settings,
-                    and (as an admin) revoke API keys. For a copy of your data, or to delete your account or
-                    organization, email <Email />. We may ask you to confirm who you are. Depending on where you live,
+                    and (as an admin) revoke API keys, download a copy of all of your organization&apos;s data, and
+                    delete the organization. Anyone can delete their own account in Settings. You can also ask for any
+                    of this by emailing <Email />. We may ask you to confirm who you are. Depending on where you live,
                     you may have further rights under local privacy law, including the right to complain to a privacy
                     regulator.
                 </P>

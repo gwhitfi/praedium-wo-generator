@@ -17,6 +17,8 @@ import ApiKeyForm from "./ApiKeyForm";
 import RevokeApiKeyButton from "./RevokeApiKeyButton";
 import SettingsNav from "./SettingsNav";
 import RecentEmails from "./RecentEmails";
+import { DangerRow } from "@/components/DangerZone";
+import { DeleteMyAccountButton, DeleteOrganizationButton } from "./DeleteAccountButtons";
 
 export const metadata: Metadata = { title: "Settings" };
 
@@ -35,6 +37,7 @@ const SECTIONS = [
     { id: "organization", label: "Details", group: "Organization" },
     { id: "api-keys", label: "API keys", group: "Organization" },
     { id: "emails", label: "Recent emails", group: "Organization", adminOnly: true },
+    { id: "export", label: "Export data", group: "Organization", adminOnly: true },
     { id: "appearance", label: "Appearance", group: "You" },
     { id: "notifications", label: "Notifications", group: "You" },
     { id: "praedium-bot", label: "Praedium Bot", group: "You" },
@@ -193,6 +196,25 @@ export default async function Settings() {
                         </section>
                     )}
 
+                    {isAdmin && (
+                        <section id="export" aria-labelledby="export-title" className="scroll-mt-24">
+                            <GroupHeading
+                                id="export-title"
+                                title="Export your data"
+                                description="Download everything in this organization as spreadsheets (CSV) and one JSON file, in a ZIP: properties, units, contacts, work orders, line items, activity and emails. Photos aren't included yet."
+                            />
+                            <div
+                                className={`${cardClass} flex flex-wrap items-center justify-between gap-3 p-5 sm:px-6`}
+                            >
+                                <p className="text-sm text-muted">It includes tenant and contractor contact details.</p>
+                                {/* A plain link: the browser downloads the file. */}
+                                <a href="/settings/export" download className={buttonClass({ size: "sm" })}>
+                                    Download ZIP
+                                </a>
+                            </div>
+                        </section>
+                    )}
+
                     {/* The second group: settings for you alone (the sections above are the organization's). */}
                     <section aria-labelledby="preferences-title" className="flex flex-col gap-6 border-t border-line pt-10">
                         <GroupHeading
@@ -216,22 +238,20 @@ export default async function Settings() {
                             description="Your profile and sign-in are managed from the account menu: your initials, top right."
                         />
                         <div className={`${cardClass} divide-y divide-line`}>
-                            <div className="flex flex-col gap-3 p-5 sm:flex-row sm:items-center sm:justify-between sm:px-6">
-                                <div>
-                                    <h3 className="text-sm font-semibold text-foreground">
-                                        Delete your account or organization
-                                    </h3>
-                                    <p className="mt-0.5 text-sm text-muted">
-                                        Email us to have it removed, along with its data.
-                                    </p>
-                                </div>
-                                <a
-                                    href="mailto:justinwclemson@gmail.com?subject=Delete%20my%20Praedium%20account"
-                                    className={buttonClass({ size: "sm" })}
+                            <DangerRow
+                                title="Delete my account"
+                                description="Removes your sign-in. Organizations you share stay for their other members; any you're the only member of are deleted too."
+                            >
+                                <DeleteMyAccountButton />
+                            </DangerRow>
+                            {isAdmin && (
+                                <DangerRow
+                                    title={`Delete ${organization.name}`}
+                                    description="Removes the organization and all of its data for everyone in it, right away. This can't be undone."
                                 >
-                                    Request deletion
-                                </a>
-                            </div>
+                                    <DeleteOrganizationButton name={organization.name} />
+                                </DangerRow>
+                            )}
                             <p className="px-5 py-3.5 text-sm text-muted sm:px-6">
                                 Read the{" "}
                                 <Link href="/terms" className={textLinkClass}>

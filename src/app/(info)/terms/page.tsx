@@ -42,7 +42,7 @@ export default function Terms(): React.ReactElement {
     return (
         <main id="main" className="mx-auto max-w-3xl px-4 pt-10 pb-16 text-foreground">
             <h1 className="text-3xl font-semibold tracking-tight">Terms of Service</h1>
-            <p className="mt-1 text-sm text-subtle">Effective: November 4, 2026</p>
+            <p className="mt-1 text-sm text-subtle">Effective: November 10, 2026</p>
             <TableOfContents />
 
             <Section title="1. Agreement">
@@ -166,10 +166,11 @@ export default function Terms(): React.ReactElement {
 
             <Section title="10. Ending the agreement">
                 <P>
-                    You can stop using Praedium at any time and ask us to delete your account or your organization. We
-                    may suspend or close accounts that break these terms, create a security risk, or where the law
-                    requires it. Where it&apos;s reasonable, we&apos;ll tell you why and give you a chance to fix the
-                    problem. The <PrivacyLink /> explains what happens to your data afterwards.
+                    You can stop using Praedium at any time and delete your account or (as an admin) your organization
+                    in Settings, or ask us to do it. We may suspend or close accounts that break these terms, create a
+                    security risk, or where the law requires it. Where it&apos;s reasonable, we&apos;ll tell you why and
+                    give you a chance to fix the problem. The <PrivacyLink /> explains what happens to your data
+                    afterwards.
                 </P>
             </Section>
 

@@ -16,6 +16,22 @@ export function anonymizedEmail(userId: string): string {
     return `deleted-${userId}@users.invalid`;
 }
 
+// A deleted user: their keys revoked, memberships removed, name and email cleared. Their events and keys keep
+// pointing at the row. Used by the user.deleted webhook and by "Delete my account" (src/lib/deletion.ts).
+export async function anonymizeUser(userId: string): Promise<void> {
+    await prisma.$transaction([
+        prisma.apiKey.updateMany({
+            where: { createdById: userId, revokedAt: null },
+            data: { revokedAt: new Date(), revokedReason: REVOKED_REASONS.creatorDeleted },
+        }),
+        prisma.membership.deleteMany({ where: { userId } }),
+        prisma.user.update({
+            where: { id: userId },
+            data: { firstName: null, lastName: null, email: anonymizedEmail(userId) },
+        }),
+    ]);
+}
+
 export async function handleClerkEvent(event: WebhookEvent): Promise<void> {
     switch (event.type) {
         case "organizationMembership.deleted": {
@@ -83,17 +99,7 @@ export async function handleClerkEvent(event: WebhookEvent): Promise<void> {
             if (!event.data.id) return;
             const user = await prisma.user.findUnique({ where: { clerkId: event.data.id } });
             if (!user) return;
-            await prisma.$transaction([
-                prisma.apiKey.updateMany({
-                    where: { createdById: user.id, revokedAt: null },
-                    data: { revokedAt: new Date(), revokedReason: REVOKED_REASONS.creatorDeleted },
-                }),
-                prisma.membership.deleteMany({ where: { userId: user.id } }),
-                prisma.user.update({
-                    where: { id: user.id },
-                    data: { firstName: null, lastName: null, email: anonymizedEmail(user.id) },
-                }),
-            ]);
+            await anonymizeUser(user.id);
             return;
         }
 

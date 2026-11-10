@@ -3,6 +3,12 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 vi.mock("next/cache", () => ({ revalidatePath: vi.fn() }));
 vi.mock("@clerk/nextjs/server", () => ({ clerkClient: vi.fn() }));
 vi.mock("@/lib/auth", () => ({ getCurrentUser: vi.fn() }));
+vi.mock("@/lib/deletion", async (importOriginal) => ({
+    ...(await importOriginal<typeof import("@/lib/deletion")>()),
+    deleteAccount: vi.fn(),
+    deleteOrganizationEverywhere: vi.fn(),
+    planAccountDeletion: vi.fn(),
+}));
 vi.mock("@/lib/prisma", () => ({
     default: {
         apiKey: { create: vi.fn(), updateMany: vi.fn() },
@@ -14,12 +20,21 @@ vi.mock("@/lib/prisma", () => ({
 import { clerkClient } from "@clerk/nextjs/server";
 import { getCurrentUser } from "@/lib/auth";
 import prisma from "@/lib/prisma";
-import { createApiKey, revokeApiKey, setNotificationPreferences, updateOrganization } from "./actions";
+import { deleteAccount, deleteOrganizationEverywhere, planAccountDeletion } from "@/lib/deletion";
+import {
+    createApiKey,
+    deleteMyAccount,
+    deleteOrganization,
+    previewAccountDeletion,
+    revokeApiKey,
+    setNotificationPreferences,
+    updateOrganization,
+} from "./actions";
 
 function signedInAs(role: "ADMIN" | "USER") {
     vi.mocked(getCurrentUser).mockResolvedValue({
         state: "ready",
-        user: { id: "user1" },
+        user: { id: "user1", clerkId: "clerk_user1" },
         organization: { id: "org1", clerkOrgId: "clerk_org1", name: "Acme" },
         role,
     } as never);
@@ -174,5 +189,85 @@ describe("setNotificationPreferences", () => {
         vi.mocked(getCurrentUser).mockResolvedValue({ state: "signed-out" });
         await expect(setNotificationPreferences({}, checked("completed"))).rejects.toThrow("Not authorized");
         expect(prisma.user.update).not.toHaveBeenCalled();
+    });
+});
+
+describe("deleteOrganization", () => {
+    it("deletes the admin's own organization once its name is typed, ignoring case and spaces", async () => {
+        signedInAs("ADMIN");
+        vi.mocked(clerkClient).mockResolvedValue("clerk" as never);
+
+        expect(await deleteOrganization("  acme ")).toEqual({ ok: true });
+        expect(deleteOrganizationEverywhere).toHaveBeenCalledWith("clerk", "clerk_org1");
+    });
+
+    it("refuses a wrong or empty name without deleting anything", async () => {
+        signedInAs("ADMIN");
+
+        expect(await deleteOrganization("Acme Rentals")).toEqual({ ok: false, error: 'Type "Acme" to confirm.' });
+        expect(await deleteOrganization("   ")).toEqual({ ok: false, error: 'Type "Acme" to confirm.' });
+        expect(deleteOrganizationEverywhere).not.toHaveBeenCalled();
+    });
+
+    it("refuses anyone but an admin", async () => {
+        signedInAs("USER");
+
+        expect(await deleteOrganization("Acme")).toEqual({
+            ok: false,
+            error: "Only admins can delete the organization.",
+        });
+        expect(deleteOrganizationEverywhere).not.toHaveBeenCalled();
+    });
+
+    it("explains a failure instead of throwing", async () => {
+        signedInAs("ADMIN");
+        vi.spyOn(console, "error").mockImplementation(() => {});
+        vi.mocked(deleteOrganizationEverywhere).mockRejectedValue(new Error("Clerk is down"));
+
+        expect(await deleteOrganization("Acme")).toEqual({
+            ok: false,
+            error: "Couldn't delete the organization. Try again.",
+        });
+    });
+});
+
+describe("deleteMyAccount", () => {
+    it("deletes the signed-in user's own account once confirmed", async () => {
+        signedInAs("USER");
+        vi.mocked(clerkClient).mockResolvedValue("clerk" as never);
+        vi.mocked(deleteAccount).mockResolvedValue({ ok: true });
+
+        expect(await deleteMyAccount("yes")).toEqual({ ok: true });
+        expect(deleteAccount).toHaveBeenCalledWith("clerk", "clerk_user1");
+    });
+
+    it("refuses without the typed confirmation", async () => {
+        signedInAs("USER");
+
+        expect(await deleteMyAccount("sure")).toMatchObject({ ok: false });
+        expect(deleteAccount).not.toHaveBeenCalled();
+    });
+
+    it("passes on a refusal, such as being the only admin", async () => {
+        signedInAs("ADMIN");
+        vi.mocked(deleteAccount).mockResolvedValue({ ok: false, error: "You're the only admin of Acme." });
+
+        expect(await deleteMyAccount("yes")).toEqual({ ok: false, error: "You're the only admin of Acme." });
+    });
+});
+
+describe("previewAccountDeletion", () => {
+    it("lists what blocks the deletion and which organizations would go with it", async () => {
+        signedInAs("USER");
+        vi.mocked(planAccountDeletion).mockResolvedValue({
+            blockedBy: ["Acme"],
+            organizationsToDelete: [{ clerkOrgId: "clerk_solo", name: "Solo" }],
+        });
+
+        expect(await previewAccountDeletion()).toEqual({
+            ok: true,
+            blockedBy: ["Acme"],
+            organizationsToDelete: ["Solo"],
+        });
     });
 });
