@@ -46,17 +46,26 @@ export function contentSecurityPolicy({
     const clerk = clerkHost ? `https://${clerkHost}` : "https://*.clerk.accounts.dev";
     // Cloudflare Turnstile, Clerk's bot check on sign-up.
     const turnstile = "https://challenges.cloudflare.com";
+    // Clerk's abuse and fraud protection, as listed in Clerk's CSP guide. Its checks also use ports other than 443,
+    // hence the ":*" for connections.
+    const protect = "https://*.protect.clerk.com";
     const directives: Record<string, string[]> = {
         "default-src": ["'self'"],
         // Next.js and the theme startup script (src/lib/theme.ts) run inline scripts; dev also needs eval.
-        "script-src": ["'self'", "'unsafe-inline'", ...(dev ? ["'unsafe-eval'"] : []), clerk, turnstile],
+        "script-src": ["'self'", "'unsafe-inline'", ...(dev ? ["'unsafe-eval'"] : []), clerk, turnstile, protect],
         "style-src": ["'self'", "'unsafe-inline'"],
         // Photo previews before upload are blob: and data: URLs; Clerk serves avatars from img.clerk.com.
         "img-src": ["'self'", "data:", "blob:", "https://img.clerk.com"],
         "font-src": ["'self'", "data:"],
         // Dev's hot reload uses a websocket.
-        "connect-src": ["'self'", clerk, ...(sentry ? [sentry.origin] : []), ...(dev ? ["ws:"] : [])],
-        "frame-src": ["'self'", turnstile],
+        "connect-src": [
+            "'self'",
+            clerk,
+            `${protect}:*`,
+            ...(sentry ? [sentry.origin] : []),
+            ...(dev ? ["ws:"] : []),
+        ],
+        "frame-src": ["'self'", turnstile, protect],
         "worker-src": ["'self'", "blob:"],
         "form-action": ["'self'"],
         "base-uri": ["'self'"],

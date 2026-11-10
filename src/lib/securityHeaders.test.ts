@@ -48,13 +48,15 @@ describe("clerkFrontendApiHost", () => {
 });
 
 describe("contentSecurityPolicy", () => {
-    it("allows Clerk's host and nothing else from outside for scripts and connections", () => {
+    it("allows Clerk's hosts and nothing else from outside for scripts and connections", () => {
         const csp = contentSecurityPolicy({ clerkHost: "clerk.example.com", dev: false });
 
         expect(csp).toContain(
-            "script-src 'self' 'unsafe-inline' https://clerk.example.com https://challenges.cloudflare.com",
+            "script-src 'self' 'unsafe-inline' https://clerk.example.com https://challenges.cloudflare.com https://*.protect.clerk.com;",
         );
-        expect(csp).toContain("connect-src 'self' https://clerk.example.com;");
+        // Clerk's protection checks use ports other than 443.
+        expect(csp).toContain("connect-src 'self' https://clerk.example.com https://*.protect.clerk.com:*;");
+        expect(csp).toContain("frame-src 'self' https://challenges.cloudflare.com https://*.protect.clerk.com;");
         expect(csp).toContain("frame-ancestors 'none'");
         expect(csp).toContain("object-src 'none'");
         expect(csp).not.toContain("unsafe-eval");
