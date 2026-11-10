@@ -8,11 +8,15 @@ export const metadata: Metadata = { title: "Privacy Policy" };
 const LINK = "underline hover:text-foreground";
 
 const PROVIDERS: { name: string; role: string }[] = [
-    { name: "Vercel", role: "Hosts the app, stores photos (private storage), keeps logs" },
+    {
+        name: "Vercel",
+        role: "Hosts the app, stores photos (private storage), keeps logs, counts page views anonymously",
+    },
     { name: "Neon", role: "The database" },
     { name: "Clerk", role: "Sign-in, accounts and organization membership" },
     { name: "Resend", role: "Sends email" },
     { name: "Anthropic", role: "Drafts work orders, only when you use Praedium Bot" },
+    { name: "Sentry", role: "Error reports, with personal details removed" },
 ];
 
 function Section({ title, children }: { title: string; children: React.ReactNode }): React.ReactElement {
@@ -46,7 +50,7 @@ export default function Privacy(): React.ReactElement {
     return (
         <main id="main" className="mx-auto max-w-3xl px-4 pt-10 pb-16 text-foreground">
             <h1 className="text-3xl font-semibold tracking-tight">Privacy Policy</h1>
-            <p className="mt-1 text-sm text-subtle">Effective: November 4, 2026</p>
+            <p className="mt-1 text-sm text-subtle">Effective: November 10, 2026</p>
             <TableOfContents />
 
             <Section title="Who we are">
@@ -91,8 +95,11 @@ export default function Privacy(): React.ReactElement {
                 </P>
                 <P>
                     <B>Technical information.</B> Our hosting provider keeps short-lived server logs, which may include
-                    error messages, request paths and IP addresses. We don&apos;t use them to track or profile anyone.
-                    Praedium has no advertising, analytics or tracking scripts.
+                    error messages, request paths and IP addresses. When something breaks, an error report goes to
+                    Sentry with the page and the technical details; cookies, what was typed into forms, contractor links
+                    and IP addresses are removed first. We count page views with Vercel Web Analytics, which uses no
+                    cookies, doesn&apos;t identify you and doesn&apos;t follow you to other sites. We don&apos;t use any
+                    of this to track or profile anyone. Praedium has no advertising.
                 </P>
             </Section>
 

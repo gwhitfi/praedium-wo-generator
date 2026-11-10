@@ -4,6 +4,7 @@ import "./globals.css";
 import { ClerkProvider } from "@clerk/nextjs";
 import { themeScript } from "@/lib/theme";
 import { ToastProvider } from "@/components/Toaster";
+import SiteAnalytics from "@/components/SiteAnalytics";
 
 const geistSans = Geist({
     variable: "--font-geist-sans",
@@ -91,6 +92,7 @@ export default function RootLayout({ children }: LayoutProps<"/">) {
                         Skip to content
                     </a>
                     <ToastProvider>{children}</ToastProvider>
+                    <SiteAnalytics />
                 </body>
             </html>
         </ClerkProvider>
