@@ -6,8 +6,10 @@ vi.mock("next/headers", () => ({ cookies: vi.fn() }));
 vi.mock("@/lib/auth", () => ({ getCurrentUser: vi.fn() }));
 vi.mock("@/lib/prisma", () => ({
     default: {
-        property: { findFirst: vi.fn(), update: vi.fn() },
-        workOrder: { findMany: vi.fn(), updateMany: vi.fn() },
+        property: { findFirst: vi.fn(), update: vi.fn(), delete: vi.fn() },
+        unit: { findFirst: vi.fn(), count: vi.fn(), delete: vi.fn() },
+        contact: { updateMany: vi.fn() },
+        workOrder: { findMany: vi.fn(), updateMany: vi.fn(), deleteMany: vi.fn() },
         $transaction: vi.fn(),
     },
 }));
@@ -20,7 +22,7 @@ import { getCurrentUser } from "@/lib/auth";
 import prisma from "@/lib/prisma";
 import { logEvents } from "@/lib/workOrderEvents";
 import { cookies } from "next/headers";
-import { archiveProperty, setGroupByType } from "./actions";
+import { archiveProperty, deleteProperty, deleteUnit, setGroupByType } from "./actions";
 
 const user = { id: "user1", firstName: "Justin", lastName: "Whitfield", email: "justin@example.com" };
 const actor = { kind: "office", user };
@@ -94,5 +96,61 @@ describe("archiveProperty", () => {
             where: { propertyId: "prop1", organizationId: "org1" },
             select: { id: true, status: true, archived: true },
         });
+    });
+});
+
+// The bulk statements in the two deletes once filtered only by the ID the caller sent (finding N-1). Each one now
+// names the looked-up record and the organization.
+describe("deleteProperty", () => {
+    it("scopes every statement to the looked-up property and the organization", async () => {
+        vi.mocked(prisma.workOrder.findMany).mockResolvedValue([]);
+
+        await expect(deleteProperty("prop1", "yes")).resolves.toBeUndefined();
+
+        const onProperty = { propertyId: "prop1", organizationId: "org1" };
+        expect(prisma.workOrder.findMany).toHaveBeenCalledWith({
+            where: { ...onProperty, archived: false, status: { in: ["SENT", "IN_PROGRESS"] } },
+            include: { unit: true },
+        });
+        expect(prisma.contact.updateMany).toHaveBeenCalledWith({
+            where: { organizationId: "org1", unit: { propertyId: "prop1" } },
+            data: { unitId: null },
+        });
+        expect(prisma.workOrder.deleteMany).toHaveBeenCalledWith({ where: onProperty });
+        expect(prisma.property.delete).toHaveBeenCalledWith({ where: { id: "prop1", organizationId: "org1" } });
+    });
+
+    it("refuses a property from another organization before changing anything", async () => {
+        vi.mocked(prisma.property.findFirst).mockResolvedValue(null);
+
+        expect(await deleteProperty("prop2", "yes")).toEqual({ ok: false, error: "Property not found." });
+        expect(prisma.property.findFirst).toHaveBeenCalledWith({ where: { id: "prop2", organizationId: "org1" } });
+        expect(prisma.$transaction).not.toHaveBeenCalled();
+    });
+});
+
+describe("deleteUnit", () => {
+    it("scopes every statement to the looked-up unit and the organization", async () => {
+        vi.mocked(prisma.unit.findFirst).mockResolvedValue({
+            id: "unit1",
+            propertyId: "prop1",
+            organizationId: "org1",
+            property: { id: "prop1" },
+        } as never);
+        vi.mocked(prisma.unit.count).mockResolvedValue(2);
+        vi.mocked(prisma.workOrder.findMany).mockResolvedValue([]);
+
+        expect(await deleteUnit("unit1", "yes")).toEqual({ ok: true });
+
+        const onUnit = { unitId: "unit1", organizationId: "org1" };
+        expect(prisma.unit.count).toHaveBeenCalledWith({
+            where: { propertyId: "prop1", organizationId: "org1", archived: false },
+        });
+        expect(prisma.workOrder.findMany).toHaveBeenCalledWith({
+            where: { ...onUnit, archived: false, status: { in: ["SENT", "IN_PROGRESS"] } },
+        });
+        expect(prisma.contact.updateMany).toHaveBeenCalledWith({ where: onUnit, data: { unitId: null } });
+        expect(prisma.workOrder.deleteMany).toHaveBeenCalledWith({ where: onUnit });
+        expect(prisma.unit.delete).toHaveBeenCalledWith({ where: { id: "unit1", organizationId: "org1" } });
     });
 });

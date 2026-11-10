@@ -10,6 +10,7 @@ import { formatWorkOrderAddress, OPEN_STATUSES } from "@/lib/workOrders";
 import { logEvents, type EventInput } from "@/lib/workOrderEvents";
 import { attachmentKeys, onWorkOrders } from "@/lib/attachments";
 import { deleteFiles } from "@/lib/storage";
+import { parseId } from "@/lib/validation";
 import { cookies } from "next/headers";
 import { GROUP_BY_TYPE_COOKIE, propertyInput, unitsInput, type PropertyFormState } from "./schemas";
 
@@ -108,10 +109,13 @@ async function findProperty(propertyId: string) {
 }
 
 export async function updateProperty(
-    propertyId: string,
+    rawPropertyId: string,
     prevState: PropertyFormState,
     formData: FormData,
 ): Promise<PropertyFormState> {
+    const propertyId = parseId(rawPropertyId);
+    if (!propertyId) throw new Error("Invalid property");
+
     const { property } = await findProperty(propertyId);
     if (property.archived) {
         return { error: "Restore this property before editing it.", values: submittedValues(formData) };
@@ -127,7 +131,10 @@ export async function updateProperty(
     redirect(`/properties/${propertyId}?flash=property-saved`);
 }
 
-export async function archiveProperty(propertyId: string) {
+export async function archiveProperty(rawPropertyId: string) {
+    const propertyId = parseId(rawPropertyId);
+    if (!propertyId) throw new Error("Invalid property");
+
     const { property, organization, user } = await findProperty(propertyId);
 
     const now = new Date();
@@ -182,7 +189,10 @@ export async function archiveProperty(propertyId: string) {
     redirect("/properties");
 }
 
-export async function restoreProperty(propertyId: string) {
+export async function restoreProperty(rawPropertyId: string) {
+    const propertyId = parseId(rawPropertyId);
+    if (!propertyId) throw new Error("Invalid property");
+
     await findProperty(propertyId);
 
     await prisma.property.update({ where: { id: propertyId }, data: { archived: false } });
@@ -191,7 +201,10 @@ export async function restoreProperty(propertyId: string) {
     revalidatePath(`/properties/${propertyId}`);
 }
 
-export async function togglePropertyFavorite(propertyId: string) {
+export async function togglePropertyFavorite(rawPropertyId: string) {
+    const propertyId = parseId(rawPropertyId);
+    if (!propertyId) throw new Error("Invalid property");
+
     const { property } = await findProperty(propertyId);
 
     await prisma.property.update({ where: { id: propertyId }, data: { favorite: !property.favorite } });
@@ -200,7 +213,9 @@ export async function togglePropertyFavorite(propertyId: string) {
     revalidatePath(`/properties/${propertyId}`);
 }
 
-export async function deleteProperty(propertyId: string, confirmation: string): Promise<ActionResult> {
+export async function deleteProperty(rawPropertyId: string, confirmation: string): Promise<ActionResult> {
+    const propertyId = parseId(rawPropertyId);
+    if (!propertyId) return { ok: false, error: "Property not found." };
     if (!isDeleteConfirmed(confirmation)) return DELETE_NOT_CONFIRMED;
 
     const result = await getCurrentUser();
@@ -210,21 +225,28 @@ export async function deleteProperty(propertyId: string, confirmation: string): 
     const property = await prisma.property.findFirst({ where: { id: propertyId, organizationId: organization.id } });
     if (!property) return { ok: false, error: "Property not found." };
 
+    // Every statement below names the looked-up property and the organization, so a bulk statement can never reach
+    // another organization's rows, whatever the caller sent.
+    const onProperty = { propertyId: property.id, organizationId: organization.id };
+
     const toNotify = await prisma.workOrder.findMany({
-        where: { propertyId, archived: false, status: { in: ["SENT", "IN_PROGRESS"] } },
+        where: { ...onProperty, archived: false, status: { in: ["SENT", "IN_PROGRESS"] } },
         include: { unit: true },
     });
 
     // Photos on the property itself or on any of its work orders.
     const photoKeys = await attachmentKeys(organization.id, {
-        OR: [{ propertyId }, onWorkOrders({ propertyId })],
+        OR: [{ propertyId: property.id }, onWorkOrders({ propertyId: property.id })],
     });
 
     // Work orders block the property delete (onDelete: Restrict), so they go first. Units cascade.
     await prisma.$transaction([
-        prisma.contact.updateMany({ where: { unit: { propertyId } }, data: { unitId: null } }),
-        prisma.workOrder.deleteMany({ where: { propertyId } }),
-        prisma.property.delete({ where: { id: propertyId } }),
+        prisma.contact.updateMany({
+            where: { organizationId: organization.id, unit: { propertyId: property.id } },
+            data: { unitId: null },
+        }),
+        prisma.workOrder.deleteMany({ where: onProperty }),
+        prisma.property.delete({ where: { id: property.id, organizationId: organization.id } }),
     ]);
     await deleteFiles(photoKeys);
 
@@ -263,7 +285,10 @@ function revalidateProperty(propertyId: string) {
     revalidatePath("/properties");
 }
 
-export async function addUnit(propertyId: string, rawName: string): Promise<ActionResult> {
+export async function addUnit(rawPropertyId: string, rawName: string): Promise<ActionResult> {
+    const propertyId = parseId(rawPropertyId);
+    if (!propertyId) return { ok: false, error: "Property not found." };
+
     const orgId = await currentOrgId();
     if (!orgId) return { ok: false, error: "Not authorized" };
 
@@ -299,7 +324,10 @@ async function findOpenUnit(unitId: string, orgId: string) {
     });
 }
 
-export async function renameUnit(unitId: string, rawName: string): Promise<ActionResult> {
+export async function renameUnit(rawUnitId: string, rawName: string): Promise<ActionResult> {
+    const unitId = parseId(rawUnitId);
+    if (!unitId) return { ok: false, error: "Unit not found." };
+
     const orgId = await currentOrgId();
     if (!orgId) return { ok: false, error: "Not authorized" };
 
@@ -328,7 +356,10 @@ export async function renameUnit(unitId: string, rawName: string): Promise<Actio
     return { ok: true };
 }
 
-export async function archiveUnit(unitId: string): Promise<ActionResult> {
+export async function archiveUnit(rawUnitId: string): Promise<ActionResult> {
+    const unitId = parseId(rawUnitId);
+    if (!unitId) return { ok: false, error: "Unit not found." };
+
     const orgId = await currentOrgId();
     if (!orgId) return { ok: false, error: "Not authorized" };
 
@@ -337,9 +368,14 @@ export async function archiveUnit(unitId: string): Promise<ActionResult> {
 
     const [openCount, unitCount] = await Promise.all([
         prisma.workOrder.count({
-            where: { unitId, archived: false, status: { in: ["DRAFT", "SENT", "IN_PROGRESS"] } },
+            where: {
+                unitId,
+                organizationId: orgId,
+                archived: false,
+                status: { in: ["DRAFT", "SENT", "IN_PROGRESS"] },
+            },
         }),
-        prisma.unit.count({ where: { propertyId: unit.propertyId, archived: false } }),
+        prisma.unit.count({ where: { propertyId: unit.propertyId, organizationId: orgId, archived: false } }),
     ]);
     if (openCount > 0) {
         return { ok: false, error: "This unit has open work orders. Close or cancel them first." };
@@ -356,7 +392,9 @@ export async function archiveUnit(unitId: string): Promise<ActionResult> {
     return { ok: true };
 }
 
-export async function deleteUnit(unitId: string, confirmation: string): Promise<ActionResult> {
+export async function deleteUnit(rawUnitId: string, confirmation: string): Promise<ActionResult> {
+    const unitId = parseId(rawUnitId);
+    if (!unitId) return { ok: false, error: "Unit not found." };
     if (!isDeleteConfirmed(confirmation)) return DELETE_NOT_CONFIRMED;
 
     const result = await getCurrentUser();
@@ -369,20 +407,25 @@ export async function deleteUnit(unitId: string, confirmation: string): Promise<
     });
     if (!unit) return { ok: false, error: "Unit not found." };
 
-    const unitCount = await prisma.unit.count({ where: { propertyId: unit.propertyId, archived: false } });
+    // As in deleteProperty: every statement names the looked-up unit and the organization.
+    const onUnit = { unitId: unit.id, organizationId: organization.id };
+
+    const unitCount = await prisma.unit.count({
+        where: { propertyId: unit.propertyId, organizationId: organization.id, archived: false },
+    });
     if (unitCount <= 1) return { ok: false, error: "A property needs at least one unit. Delete the property instead." };
 
     const toNotify = await prisma.workOrder.findMany({
-        where: { unitId, archived: false, status: { in: ["SENT", "IN_PROGRESS"] } },
+        where: { ...onUnit, archived: false, status: { in: ["SENT", "IN_PROGRESS"] } },
     });
 
-    const photoKeys = await attachmentKeys(organization.id, onWorkOrders({ unitId }));
+    const photoKeys = await attachmentKeys(organization.id, onWorkOrders({ unitId: unit.id }));
 
     // Work orders would only lose their unit, so they're deleted outright.
     await prisma.$transaction([
-        prisma.contact.updateMany({ where: { unitId }, data: { unitId: null } }),
-        prisma.workOrder.deleteMany({ where: { unitId } }),
-        prisma.unit.delete({ where: { id: unitId } }),
+        prisma.contact.updateMany({ where: onUnit, data: { unitId: null } }),
+        prisma.workOrder.deleteMany({ where: onUnit }),
+        prisma.unit.delete({ where: { id: unit.id, organizationId: organization.id } }),
     ]);
     await deleteFiles(photoKeys);
 

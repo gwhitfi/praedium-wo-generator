@@ -4,6 +4,7 @@ import prisma from "@/lib/prisma";
 import { OPEN_STATUSES } from "@/lib/workOrders";
 import { DELETE_NOT_CONFIRMED, isDeleteConfirmed } from "@/lib/confirmDelete";
 import { revokeContractorSessions } from "@/lib/contractorAccess";
+import { parseId } from "@/lib/validation";
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 import { z } from "zod";
@@ -103,10 +104,13 @@ export async function createContact(prevState: ContactFormState, formData: FormD
 }
 
 export async function updateContact(
-    contactId: string,
+    rawContactId: string,
     prevState: ContactFormState,
     formData: FormData,
 ): Promise<ContactFormState> {
+    const contactId = parseId(rawContactId);
+    if (!contactId) throw new Error("Invalid contact");
+
     const contact = await findContact(contactId);
     if (contact.archived) {
         return { error: "Restore this contact before editing it.", values: submittedValues(formData) };
@@ -116,7 +120,7 @@ export async function updateContact(
     if (!form.ok) return form.state;
     const fields = form.fields;
 
-    if (fields.contactType !== contact.contactType && (await workOrderCount(contactId)) > 0) {
+    if (fields.contactType !== contact.contactType && (await workOrderCount(contact)) > 0) {
         return {
             errors: { contactType: ["This contact is on work orders, so its type can't change."] },
             values: submittedValues(formData),
@@ -147,16 +151,24 @@ export async function updateContact(
     redirect(`/contacts/${contactId}?flash=contact-saved`);
 }
 
-function workOrderCount(contactId: string) {
+function workOrderCount(contact: { id: string; organizationId: string }) {
     return prisma.workOrder.count({
-        where: { OR: [{ contractorId: contactId }, { tenantId: contactId }] },
+        where: {
+            organizationId: contact.organizationId,
+            OR: [{ contractorId: contact.id }, { tenantId: contact.id }],
+        },
     });
 }
 
 // A removed contractor would leave open jobs unassigned while their link still works.
-async function openWorkOrdersError(contact: { id: string; displayName: string }) {
+async function openWorkOrdersError(contact: { id: string; organizationId: string; displayName: string }) {
     const openCount = await prisma.workOrder.count({
-        where: { contractorId: contact.id, archived: false, status: { in: OPEN_STATUSES } },
+        where: {
+            contractorId: contact.id,
+            organizationId: contact.organizationId,
+            archived: false,
+            status: { in: OPEN_STATUSES },
+        },
     });
     if (openCount === 0) return null;
 
@@ -164,7 +176,9 @@ async function openWorkOrdersError(contact: { id: string; displayName: string })
     return `${contact.displayName} has ${openCount} open ${noun}. Reassign, close or cancel ${openCount === 1 ? "it" : "them"} first.`;
 }
 
-export async function deleteContact(contactId: string, confirmation: string): Promise<ActionResult> {
+export async function deleteContact(rawContactId: string, confirmation: string): Promise<ActionResult> {
+    const contactId = parseId(rawContactId);
+    if (!contactId) return { ok: false, error: "Contact not found." };
     if (!isDeleteConfirmed(confirmation)) return DELETE_NOT_CONFIRMED;
 
     const result = await getCurrentUser();
@@ -187,7 +201,10 @@ export async function deleteContact(contactId: string, confirmation: string): Pr
     redirect("/contacts");
 }
 
-export async function archiveContact(contactId: string): Promise<ActionResult> {
+export async function archiveContact(rawContactId: string): Promise<ActionResult> {
+    const contactId = parseId(rawContactId);
+    if (!contactId) return { ok: false, error: "Contact not found." };
+
     const result = await getCurrentUser();
     if (result.state !== "ready") return { ok: false, error: "Not authorized" };
 
@@ -207,15 +224,15 @@ export async function archiveContact(contactId: string): Promise<ActionResult> {
 }
 
 // Revokes every verified contractor session for the contact's email. They verify again from their next work order.
-export async function signOutContractorDevices(contactId: string): Promise<ActionResult> {
-    const id = z.string().min(1).max(100).safeParse(contactId);
-    if (!id.success) return { ok: false, error: "Contact not found." };
+export async function signOutContractorDevices(rawContactId: string): Promise<ActionResult> {
+    const contactId = parseId(rawContactId);
+    if (!contactId) return { ok: false, error: "Contact not found." };
 
     const result = await getCurrentUser();
     if (result.state !== "ready") return { ok: false, error: "Not authorized" };
 
     const contact = await prisma.contact.findFirst({
-        where: { id: id.data, organizationId: result.organization.id },
+        where: { id: contactId, organizationId: result.organization.id },
     });
     if (!contact) return { ok: false, error: "Contact not found." };
     if (contact.contactType === "TENANT" || !contact.email) {
@@ -238,7 +255,10 @@ export async function signOutContractorDevices(contactId: string): Promise<Actio
     return { ok: true };
 }
 
-export async function restoreContact(contactId: string) {
+export async function restoreContact(rawContactId: string) {
+    const contactId = parseId(rawContactId);
+    if (!contactId) throw new Error("Invalid contact");
+
     const contact = await findContact(contactId);
 
     const unit = contact.unitId
@@ -256,7 +276,10 @@ export async function restoreContact(contactId: string) {
     if (unit) revalidatePath("/properties", "layout");
 }
 
-export async function toggleContactFavorite(contactId: string) {
+export async function toggleContactFavorite(rawContactId: string) {
+    const contactId = parseId(rawContactId);
+    if (!contactId) throw new Error("Invalid contact");
+
     const contact = await findContact(contactId);
 
     await prisma.contact.update({ where: { id: contactId }, data: { favorite: !contact.favorite } });
