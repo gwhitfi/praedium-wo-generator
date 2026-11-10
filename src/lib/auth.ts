@@ -67,6 +67,10 @@ export async function getCurrentUser(): Promise<AuthResult> {
             organization = await prisma.organization.findUniqueOrThrow({ where: { clerkOrgId: orgId } });
         }
     }
+    // Deleted in Clerk (webhook): locked until it's purged. The user picks or creates another one at /setup.
+    if (organization.deletedAt) {
+        return { state: "needs-org", clerkUserId: userId };
+    }
 
     let user = await prisma.user.findUnique({
         where: { clerkId: userId },

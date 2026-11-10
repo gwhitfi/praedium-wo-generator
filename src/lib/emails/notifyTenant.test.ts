@@ -1,14 +1,15 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
 vi.mock("next/server", () => ({ after: vi.fn() }));
-vi.mock("@/lib/email", () => ({ sendEmail: vi.fn() }));
+vi.mock("@/lib/emailLog", () => ({ sendLoggedEmail: vi.fn() }));
 
 import { after } from "next/server";
-import { sendEmail } from "@/lib/email";
+import { sendLoggedEmail } from "@/lib/emailLog";
 import { notifyTenant } from "./notifyTenant";
 import { tenantNotifiedEmail } from "./tenantNotifiedEmail";
 
-const organization = { name: "Acme Property", phone: "864-555-0100", email: "office@acme.test" };
+const sendEmail = vi.mocked(sendLoggedEmail);
+const organization = { id: "org1", name: "Acme Property", phone: "864-555-0100", email: "office@acme.test" };
 const workOrder = {
     id: "wo1",
     title: "Fix kitchen sink",
@@ -36,6 +37,9 @@ describe("notifyTenant", () => {
         await runAfter();
 
         expect(sendEmail).toHaveBeenCalledWith({
+            organizationId: "org1",
+            kind: "TENANT_NOTICE",
+            workOrderId: "wo1",
             to: "pat@example.com",
             ...tenantNotifiedEmail({
                 organization,
@@ -59,7 +63,7 @@ describe("notifyTenant", () => {
     });
 
     it("logs a failed send instead of throwing", async () => {
-        vi.mocked(sendEmail).mockRejectedValue(new Error("Resend is down"));
+        sendEmail.mockRejectedValue(new Error("Resend is down"));
         const log = vi.spyOn(console, "error").mockImplementation(() => {});
 
         notifyTenant(organization, workOrder);

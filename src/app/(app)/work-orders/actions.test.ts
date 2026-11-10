@@ -23,7 +23,8 @@ vi.mock("@/lib/prisma", () => ({
         $transaction: vi.fn(),
     },
 }));
-vi.mock("@/lib/email", () => ({ getAppUrl: vi.fn(() => "https://example.com"), sendEmail: vi.fn() }));
+vi.mock("@/lib/email", () => ({ getAppUrl: vi.fn(() => "https://example.com") }));
+vi.mock("@/lib/emailLog", () => ({ sendLoggedEmail: vi.fn() }));
 vi.mock("@/lib/emails/workOrderEmail", () => ({ workOrderEmail: vi.fn(() => ({ subject: "", html: "", text: "" })) }));
 vi.mock("@/lib/emails/notifyCancelled", () => ({ notifyContractorsCancelled: vi.fn() }));
 vi.mock("@/lib/emails/notifyTenant", () => ({ notifyTenant: vi.fn(() => false) }));
@@ -45,7 +46,7 @@ vi.mock("@/lib/photos", () => ({
 import { getCurrentUser } from "@/lib/auth";
 import { redirect } from "next/navigation";
 import prisma from "@/lib/prisma";
-import { sendEmail } from "@/lib/email";
+import { sendLoggedEmail as sendEmail } from "@/lib/emailLog";
 import { deleteFiles, lineItemPhotoKey, uploadFile } from "@/lib/storage";
 import { logEvent } from "@/lib/workOrderEvents";
 import { notifyTenant } from "@/lib/emails/notifyTenant";

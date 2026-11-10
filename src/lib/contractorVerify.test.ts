@@ -5,7 +5,7 @@ vi.mock("@/lib/prisma", () => ({
         contractorChallenge: { create: vi.fn(), delete: vi.fn(), findUnique: vi.fn(), updateMany: vi.fn() },
     },
 }));
-vi.mock("@/lib/email", () => ({ sendEmail: vi.fn() }));
+vi.mock("@/lib/emailLog", () => ({ sendLoggedEmail: vi.fn(), EmailNotSent: class EmailNotSent extends Error {} }));
 vi.mock("@/lib/emails/verifyCodeEmail", () => ({
     verifyCodeEmail: vi.fn(() => ({ subject: "s", html: "h", text: "t" })),
 }));
@@ -14,14 +14,17 @@ vi.mock("@/lib/rateLimit", async (importOriginal) => ({
     rateLimit: vi.fn(),
 }));
 
-import { sendEmail } from "@/lib/email";
+import { EmailNotSent, sendLoggedEmail } from "@/lib/emailLog";
 import { verifyCodeEmail } from "@/lib/emails/verifyCodeEmail";
 import prisma from "@/lib/prisma";
 import { rateLimit } from "@/lib/rateLimit";
 import { checkCode, generateCode, hashCode, startVerification } from "./contractorVerify";
 
+const sendEmail = vi.mocked(sendLoggedEmail);
 const workOrder = { id: "wo1", publicToken: "tok1", jobNumber: "2026-1001", contractorEmail: " Sam@Example.com " };
-const organization = { name: "Acme Property", email: "office@acme.test" };
+const organization = { id: "org1", name: "Acme Property", email: "office@acme.test" };
+const ok = { ok: true, remaining: 1, retryAfterSeconds: 0 };
+const limited = { ok: false, remaining: 0, retryAfterSeconds: 60 };
 const start = { workOrder, organization, appUrl: "https://example.com", ip: "203.0.113.7" };
 
 function createdData() {
@@ -83,9 +86,17 @@ describe("startVerification", () => {
             url: `https://example.com/wo/tok1/verify?c=${data.id}.${code}`,
         });
         expect(sendEmail).toHaveBeenCalledWith(
-            expect.objectContaining({ to: "sam@example.com", fromName: "Acme Property", replyTo: "office@acme.test" }),
+            expect.objectContaining({
+                organizationId: "org1",
+                kind: "VERIFY_CODE",
+                workOrderId: "wo1",
+                to: "sam@example.com",
+                fromName: "Acme Property",
+                replyTo: "office@acme.test",
+            }),
         );
         expect(rateLimit).toHaveBeenCalledWith("verify-send:tok1", expect.any(Object));
+        expect(rateLimit).toHaveBeenCalledWith("verify-day:tok1", { limit: 20, windowSeconds: 86400 });
         expect(rateLimit).toHaveBeenCalledWith("verify-ip:203.0.113.7", expect.any(Object));
         expect(rateLimit).toHaveBeenCalledWith("verify-email:sam@example.com", expect.any(Object));
     });
@@ -98,10 +109,16 @@ describe("startVerification", () => {
         expect(sendEmail).not.toHaveBeenCalled();
     });
 
+    it("refuses when only the link's daily limit is reached, before the per-IP check", async () => {
+        vi.mocked(rateLimit).mockResolvedValueOnce(ok).mockResolvedValueOnce(limited);
+
+        expect(await startVerification(start)).toEqual({ error: "Too many codes sent. Try again later." });
+        expect(rateLimit).toHaveBeenLastCalledWith("verify-day:tok1", expect.any(Object));
+        expect(prisma.contractorChallenge.create).not.toHaveBeenCalled();
+    });
+
     it("refuses when only the per-IP limit is reached, before the per-email check", async () => {
-        vi.mocked(rateLimit)
-            .mockResolvedValueOnce({ ok: true, remaining: 1, retryAfterSeconds: 0 })
-            .mockResolvedValueOnce({ ok: false, remaining: 0, retryAfterSeconds: 60 });
+        vi.mocked(rateLimit).mockResolvedValueOnce(ok).mockResolvedValueOnce(ok).mockResolvedValueOnce(limited);
 
         expect(await startVerification(start)).toEqual({ error: "Too many codes sent. Try again later." });
         expect(rateLimit).toHaveBeenLastCalledWith("verify-ip:203.0.113.7", expect.any(Object));
@@ -110,16 +127,28 @@ describe("startVerification", () => {
 
     it("refuses when only the per-email limit is reached", async () => {
         vi.mocked(rateLimit)
-            .mockResolvedValueOnce({ ok: true, remaining: 1, retryAfterSeconds: 0 })
-            .mockResolvedValueOnce({ ok: true, remaining: 1, retryAfterSeconds: 0 })
-            .mockResolvedValueOnce({ ok: false, remaining: 0, retryAfterSeconds: 60 });
+            .mockResolvedValueOnce(ok)
+            .mockResolvedValueOnce(ok)
+            .mockResolvedValueOnce(ok)
+            .mockResolvedValueOnce(limited);
 
         expect(await startVerification(start)).toEqual({ error: "Too many codes sent. Try again later." });
         expect(prisma.contractorChallenge.create).not.toHaveBeenCalled();
     });
 
+    it("tells the contractor to ask the office, without the office's reason, when the email is refused", async () => {
+        sendEmail.mockRejectedValue(new EmailNotSent("Email to sam@example.com bounced on November 3, 2026"));
+        vi.mocked(prisma.contractorChallenge.delete).mockResolvedValue({} as never);
+        vi.spyOn(console, "error").mockImplementation(() => {});
+
+        expect(await startVerification(start)).toEqual({
+            error: "Couldn't send a code to the email on file. Ask the office to check it.",
+        });
+        expect(prisma.contractorChallenge.delete).toHaveBeenCalled();
+    });
+
     it("deletes the row and reports an error when the email fails", async () => {
-        vi.mocked(sendEmail).mockRejectedValue(new Error("Resend down"));
+        sendEmail.mockRejectedValue(new Error("Resend down"));
         vi.mocked(prisma.contractorChallenge.delete).mockResolvedValue({} as never);
         vi.spyOn(console, "error").mockImplementation(() => {});
 

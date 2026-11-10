@@ -3,7 +3,8 @@
 import prisma from "@/lib/prisma";
 import { revalidatePath } from "next/cache";
 import { after } from "next/server";
-import { getAppUrl, sendEmail } from "@/lib/email";
+import { getAppUrl } from "@/lib/email";
+import { sendLoggedEmail } from "@/lib/emailLog";
 import { completedEmail } from "@/lib/emails/completedEmail";
 import { clientIp, RATE_LIMITS, rateLimit } from "@/lib/rateLimit";
 import { formatWorkOrderAddress } from "@/lib/workOrders";
@@ -44,7 +45,7 @@ async function requireVerified(workOrder: { contractorEmail: string | null }): P
 async function loadContractorWorkOrder(token: string) {
     const workOrder = await prisma.workOrder.findUnique({
         where: { publicToken: token },
-        include: { organization: { select: { name: true, email: true } } },
+        include: { organization: { select: { id: true, name: true, email: true } } },
     });
     if (
         !workOrder ||
@@ -346,7 +347,15 @@ async function notifyOffice(workOrder: CompletionWorkOrder) {
             url: `${getAppUrl()}/work-orders/${workOrder.id}`,
         });
 
-        await sendEmail({ to, ...email, replyTo: workOrder.contractorEmail, fromName: workOrder.contractorName });
+        await sendLoggedEmail({
+            organizationId: workOrder.organizationId,
+            kind: "COMPLETED",
+            workOrderId: workOrder.id,
+            to,
+            ...email,
+            replyTo: workOrder.contractorEmail,
+            fromName: workOrder.contractorName,
+        });
     } catch (error) {
         console.error(`Completion notice failed for work order ${workOrder.id}`, error);
     }

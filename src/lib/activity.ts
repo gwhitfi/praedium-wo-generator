@@ -4,7 +4,7 @@
 import { z } from "zod";
 import type { Prisma, WorkOrderEventType } from "@/generated/prisma/client";
 import { appTimeZone } from "./dates";
-import { PRIORITY_LABELS } from "./defaults";
+import { EMAIL_KIND_LABELS, PRIORITY_LABELS } from "./defaults";
 
 export type ActivityEvent = {
     id: string;
@@ -45,7 +45,14 @@ const PLAIN_LABELS: Record<WorkOrderEventType, string> = {
     NOTE_SAVED: "Note saved",
     COMPLETED_BY_CONTRACTOR: "Marked complete",
     VERIFIED: "Verified by the contractor",
+    EMAIL_DELIVERED: "Email delivered",
+    EMAIL_BOUNCED: "Email bounced",
 };
+
+// "work order email", mid-sentence.
+function emailKindLabel(kind: string): string {
+    return EMAIL_KIND_LABELS[kind]?.toLowerCase() ?? "email";
+}
 
 const FIELD_LABELS: Record<string, string> = {
     title: "title",
@@ -76,11 +83,18 @@ const schemas = {
     AREA_RENAMED: z.object({ from: z.string(), to: z.string() }),
     NOTE_SAVED: itemRef.extend({ note: z.string() }),
     COMPLETED_BY_CONTRACTOR: z.object({ notes: z.string().nullish() }),
+    EMAIL: z.object({
+        to: z.string(),
+        kind: z.string(),
+        reason: z.enum(["bounced", "complained"]).optional(),
+        message: z.string().optional(),
+    }),
 };
 
 // The wording for one event: `active` follows the actor's name ("Marcus Hill checked off ..."); `passive` stands
-// alone for backfilled rows with no actor. Null when the detail can't be read.
-type Phrase = { active: string; passive?: string; note?: string };
+// alone for backfilled rows with no actor. `alone` is a complete sentence with no actor, for what Praedium itself
+// reports (email delivery). Null when the detail can't be read.
+type Phrase = { active: string; passive?: string; note?: string; alone?: string };
 
 const quoted = (text: string) => `"${text}"`;
 const onItem = (ref: { item: string; area: string }) => `${quoted(ref.item)} (${ref.area})`;
@@ -216,6 +230,20 @@ function phrase(type: WorkOrderEventType, detail: Prisma.JsonValue): Phrase | nu
         }
         case "VERIFIED":
             return { active: "verified their email" };
+        case "EMAIL_DELIVERED": {
+            const d = read(schemas.EMAIL);
+            if (!d) return null;
+            return { active: "", alone: `The ${emailKindLabel(d.kind)} to ${d.to} was delivered` };
+        }
+        case "EMAIL_BOUNCED": {
+            const d = read(schemas.EMAIL);
+            if (!d) return null;
+            const label = emailKindLabel(d.kind);
+            const message = d.message ? { note: d.message } : {};
+            return d.reason === "complained"
+                ? { active: "", alone: `${d.to} marked the ${label} as spam`, ...message }
+                : { active: "", alone: `The ${label} to ${d.to} bounced`, ...message };
+        }
     }
 }
 
@@ -227,6 +255,7 @@ export function describeEvent(event: Omit<ActivityEvent, "id" | "createdAt">): A
     const note = words?.note ? { note: words.note } : {};
 
     if (!words) return { text: PLAIN_LABELS[event.type], backfilled };
+    if (words.alone) return { text: words.alone, ...note, backfilled };
     if (event.actorName) return { text: `${event.actorName} ${words.active}`, ...note, backfilled };
     if (backfilled) return { text: words.passive ?? PLAIN_LABELS[event.type], ...note, backfilled };
     return { text: `${event.byContractor ? "The contractor" : "The office"} ${words.active}`, ...note, backfilled };

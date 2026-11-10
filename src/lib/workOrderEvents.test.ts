@@ -106,6 +106,18 @@ describe("eventData", () => {
         });
     });
 
+    it("records Praedium's own reports with no actor", () => {
+        const detail = { to: "joe@example.com", kind: "WORK_ORDER" as const };
+        expect(eventData({ ...ids, type: "EMAIL_DELIVERED", actor: { kind: "system" }, detail })).toEqual({
+            ...ids,
+            type: "EMAIL_DELIVERED",
+            byContractor: false,
+            actorUserId: null,
+            actorName: null,
+            detail,
+        });
+    });
+
     it("saves a contractor with no name as null", () => {
         expect(eventData({ ...ids, type: "OPENED", actor: { kind: "contractor", name: null } }).actorName).toBeNull();
     });

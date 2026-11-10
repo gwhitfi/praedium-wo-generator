@@ -4,7 +4,8 @@
 import { randomBytes } from "node:crypto";
 import type { User } from "@/generated/prisma/client";
 import { normalizeEmail } from "@/lib/contractorWorkOrders";
-import { getAppUrl, sendEmail } from "@/lib/email";
+import { getAppUrl } from "@/lib/email";
+import { sendLoggedEmail } from "@/lib/emailLog";
 import { notifyTenant } from "@/lib/emails/notifyTenant";
 import { workOrderEmail } from "@/lib/emails/workOrderEmail";
 import prisma from "@/lib/prisma";
@@ -94,7 +95,15 @@ export async function emailWorkOrderToContractor({
             isResend: workOrder.deliveryMethod === "EMAIL" && workOrder.status !== "DRAFT",
         });
 
-        await sendEmail({ to, ...email, replyTo: organization.email, fromName: organization.name });
+        await sendLoggedEmail({
+            organizationId,
+            kind: "WORK_ORDER",
+            workOrderId,
+            to,
+            ...email,
+            replyTo: organization.email,
+            fromName: organization.name,
+        });
     } catch (error) {
         console.error("emailWorkOrder failed", error);
         return { ok: false, error: error instanceof Error ? error.message : "Email failed to send" };
@@ -114,7 +123,10 @@ export async function emailWorkOrderToContractor({
     const resent = workOrder.status !== "DRAFT";
     const tenantNotified =
         mayNotifyTenant(workOrder, notifyTenantAgain) &&
-        notifyTenant(organization, { ...workOrder, address, contractor: workOrder.contractor });
+        notifyTenant(
+            { ...organization, id: organizationId },
+            { ...workOrder, address, contractor: workOrder.contractor },
+        );
     await logEvent({
         type: "SENT",
         workOrderId,

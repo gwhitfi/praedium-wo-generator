@@ -16,13 +16,25 @@ import { resolveNotificationTypes } from "@/lib/notificationTypes";
 import ApiKeyForm from "./ApiKeyForm";
 import RevokeApiKeyButton from "./RevokeApiKeyButton";
 import SettingsNav from "./SettingsNav";
+import RecentEmails from "./RecentEmails";
 
 export const metadata: Metadata = { title: "Settings" };
 
-// The page's sections, in order, for the jump links: the organization's settings, then your own.
+// How many emails Settings → Recent emails lists, and how long a key Praedium revoked stays listed.
+const RECENT_EMAILS = 50;
+const REVOKED_SHOWN_DAYS = 30;
+
+// Keys Praedium revoked after this moment are still listed, with the reason.
+function revokedShownSince(): Date {
+    return new Date(Date.now() - REVOKED_SHOWN_DAYS * 24 * 60 * 60 * 1000);
+}
+
+// The page's sections, in order, for the jump links: the organization's settings, then your own. Recent emails is
+// for admins only.
 const SECTIONS = [
     { id: "organization", label: "Details", group: "Organization" },
     { id: "api-keys", label: "API keys", group: "Organization" },
+    { id: "emails", label: "Recent emails", group: "Organization", adminOnly: true },
     { id: "appearance", label: "Appearance", group: "You" },
     { id: "notifications", label: "Notifications", group: "You" },
     { id: "praedium-bot", label: "Praedium Bot", group: "You" },
@@ -42,18 +54,49 @@ export default async function Settings() {
 
     const { organization, user, role } = result;
     const isAdmin = role === "ADMIN";
+    // Active keys, plus those Praedium revoked lately (its creator left, say), so admins see why a key stopped.
     const apiKeys = await prisma.apiKey.findMany({
-        where: { organizationId: organization.id, revokedAt: null },
-        select: { id: true, name: true, prefix: true, createdAt: true, lastUsedAt: true, canChangeStatus: true },
+        where: {
+            organizationId: organization.id,
+            OR: [{ revokedAt: null }, { revokedReason: { not: null }, revokedAt: { gt: revokedShownSince() } }],
+        },
+        select: {
+            id: true,
+            name: true,
+            prefix: true,
+            createdAt: true,
+            lastUsedAt: true,
+            canChangeStatus: true,
+            revokedAt: true,
+            revokedReason: true,
+        },
         orderBy: { createdAt: "desc" },
     });
+    const emails = isAdmin
+        ? await prisma.emailLog.findMany({
+              where: { organizationId: organization.id },
+              orderBy: { createdAt: "desc" },
+              take: RECENT_EMAILS,
+              select: {
+                  id: true,
+                  kind: true,
+                  to: true,
+                  subject: true,
+                  status: true,
+                  error: true,
+                  createdAt: true,
+                  workOrder: { select: { id: true, jobNumber: true } },
+              },
+          })
+        : [];
+    const sections = SECTIONS.filter((section) => isAdmin || !section.adminOnly);
 
     return (
         <main id="main" className={pageClass}>
             <PageHeader title="Settings" subtitle="Your organization's details and your own preferences." />
 
             <div className="lg:grid lg:grid-cols-[11rem_minmax(0,1fr)] lg:gap-10">
-                <SettingsNav sections={SECTIONS} />
+                <SettingsNav sections={sections} />
 
                 <div className="flex min-w-0 max-w-2xl flex-col gap-10">
                     <section id="organization" aria-labelledby="organization-title" className="scroll-mt-24">
@@ -100,9 +143,20 @@ export default async function Settings() {
                                         <li key={apiKey.id} className="flex items-center gap-3 px-5 py-3.5 sm:px-6">
                                             <div className="min-w-0 flex-1">
                                                 <p className="flex flex-wrap items-center gap-2 text-sm font-medium text-foreground">
-                                                    <span className="truncate">{apiKey.name}</span>
+                                                    <span
+                                                        className={`truncate ${apiKey.revokedAt ? "text-muted" : ""}`}
+                                                    >
+                                                        {apiKey.name}
+                                                    </span>
+                                                    {apiKey.revokedAt && <Tag>Revoked</Tag>}
                                                     {apiKey.canChangeStatus && <Tag>Can change status</Tag>}
                                                 </p>
+                                                {apiKey.revokedAt && apiKey.revokedReason && (
+                                                    <p className="mt-0.5 text-[0.8125rem] text-secondary">
+                                                        Revoked {formatTimestamp(apiKey.revokedAt)}.{" "}
+                                                        {apiKey.revokedReason}
+                                                    </p>
+                                                )}
                                                 <p className="mt-0.5 text-[0.8125rem] text-muted">
                                                     <span className="font-mono">pr_{apiKey.prefix}…</span> · Created{" "}
                                                     {formatTimestamp(apiKey.createdAt)} ·{" "}
@@ -111,7 +165,9 @@ export default async function Settings() {
                                                         : "Never used"}
                                                 </p>
                                             </div>
-                                            {isAdmin && <RevokeApiKeyButton id={apiKey.id} name={apiKey.name} />}
+                                            {isAdmin && !apiKey.revokedAt && (
+                                                <RevokeApiKeyButton id={apiKey.id} name={apiKey.name} />
+                                            )}
                                         </li>
                                     ))}
                                 </ul>
@@ -126,7 +182,18 @@ export default async function Settings() {
                         </div>
                     </section>
 
-                    {/* The second group: settings for you alone (the first two sections are the organization's). */}
+                    {isAdmin && (
+                        <section id="emails" aria-labelledby="emails-title" className="scroll-mt-24">
+                            <GroupHeading
+                                id="emails-title"
+                                title="Recent emails"
+                                description={`The last ${RECENT_EMAILS} emails Praedium sent for ${organization.name}, and whether they arrived. An address that bounces or marks an email as spam isn't emailed again.`}
+                            />
+                            <RecentEmails emails={emails} />
+                        </section>
+                    )}
+
+                    {/* The second group: settings for you alone (the sections above are the organization's). */}
                     <section aria-labelledby="preferences-title" className="flex flex-col gap-6 border-t border-line pt-10">
                         <GroupHeading
                             id="preferences-title"

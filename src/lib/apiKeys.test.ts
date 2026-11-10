@@ -21,6 +21,8 @@ async function runAfterTask(): Promise<void> {
 
 const organization = { id: "org1", name: "Acme" };
 const user = { id: "user1", firstName: "Justin" };
+// The creator as verifyApiKey loads them, still a member of the key's organization.
+const creator = { ...user, memberships: [{ organizationId: "org1" }] };
 
 beforeEach(() => {
     vi.clearAllMocks();
@@ -47,14 +49,18 @@ describe("verifyApiKey", () => {
         vi.mocked(prisma.apiKey.findFirst).mockResolvedValue({
             id: "key1",
             organization,
-            createdBy: user,
+            organizationId: "org1",
+            createdBy: creator,
             canChangeStatus: false,
         } as never);
 
         await expect(verifyApiKey(key)).resolves.toEqual({ organization, user, canChangeStatus: false });
         expect(prisma.apiKey.findFirst).toHaveBeenCalledWith({
-            where: { keyHash, revokedAt: null },
-            include: { organization: true, createdBy: true },
+            where: { keyHash, revokedAt: null, organization: { deletedAt: null } },
+            include: {
+                organization: true,
+                createdBy: { include: { memberships: { select: { organizationId: true } } } },
+            },
         });
         expect(prisma.apiKey.update).not.toHaveBeenCalled();
         await runAfterTask();
@@ -77,16 +83,33 @@ describe("verifyApiKey", () => {
         expect(prisma.apiKey.findFirst).not.toHaveBeenCalled();
     });
 
-    it("returns a null user when the key's creator was deleted", async () => {
-        vi.mocked(prisma.apiKey.findFirst).mockResolvedValue({ id: "key1", organization, createdBy: null } as never);
-        await expect(verifyApiKey(generateApiKey().key)).resolves.toEqual({ organization, user: null });
+    it("refuses a key whose creator was deleted, without recording a use", async () => {
+        vi.mocked(prisma.apiKey.findFirst).mockResolvedValue({
+            id: "key1",
+            organization,
+            organizationId: "org1",
+            createdBy: null,
+        } as never);
+        await expect(verifyApiKey(generateApiKey().key)).resolves.toBeNull();
+        expect(after).not.toHaveBeenCalled();
+    });
+
+    it("refuses a key whose creator left the organization, even if no webhook revoked it", async () => {
+        vi.mocked(prisma.apiKey.findFirst).mockResolvedValue({
+            id: "key1",
+            organization,
+            organizationId: "org1",
+            createdBy: { ...user, memberships: [{ organizationId: "org2" }] },
+        } as never);
+        await expect(verifyApiKey(generateApiKey().key)).resolves.toBeNull();
     });
 
     it("passes on the key's status permission", async () => {
         vi.mocked(prisma.apiKey.findFirst).mockResolvedValue({
             id: "key1",
             organization,
-            createdBy: user,
+            organizationId: "org1",
+            createdBy: creator,
             canChangeStatus: true,
         } as never);
         await expect(verifyApiKey(generateApiKey().key)).resolves.toEqual({
@@ -98,7 +121,12 @@ describe("verifyApiKey", () => {
 
     it("logs, never throws, when the lastUsedAt update fails after the response", async () => {
         const errorLog = vi.spyOn(console, "error").mockImplementation(() => {});
-        vi.mocked(prisma.apiKey.findFirst).mockResolvedValue({ id: "key1", organization, createdBy: user } as never);
+        vi.mocked(prisma.apiKey.findFirst).mockResolvedValue({
+            id: "key1",
+            organization,
+            organizationId: "org1",
+            createdBy: creator,
+        } as never);
         vi.mocked(prisma.apiKey.update).mockRejectedValue(new Error("db down"));
 
         await expect(verifyApiKey(generateApiKey().key)).resolves.toEqual({ organization, user });
@@ -108,7 +136,12 @@ describe("verifyApiKey", () => {
     });
 
     it("hands the lastUsedAt update to an injected scheduler instead of after()", async () => {
-        vi.mocked(prisma.apiKey.findFirst).mockResolvedValue({ id: "key1", organization, createdBy: user } as never);
+        vi.mocked(prisma.apiKey.findFirst).mockResolvedValue({
+            id: "key1",
+            organization,
+            organizationId: "org1",
+            createdBy: creator,
+        } as never);
         vi.mocked(prisma.apiKey.update).mockReturnValue(new Promise(() => {}) as never);
         const schedule = vi.fn((task: () => Promise<void>) => void task());
 

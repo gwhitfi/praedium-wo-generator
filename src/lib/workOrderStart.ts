@@ -50,11 +50,14 @@ export async function startInHouseWorkOrder({
 
     const tenantNotified =
         mayNotifyTenant(workOrder, notifyTenantAgain) &&
-        notifyTenant(organization, {
-            ...workOrder,
-            address: formatWorkOrderAddress(workOrder.property, workOrder.unit),
-            contractor: null,
-        });
+        notifyTenant(
+            { ...organization, id: organizationId },
+            {
+                ...workOrder,
+                address: formatWorkOrderAddress(workOrder.property, workOrder.unit),
+                contractor: null,
+            },
+        );
     await logEvent({
         type: "STARTED",
         workOrderId: workOrder.id,

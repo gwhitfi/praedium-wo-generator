@@ -155,6 +155,40 @@ describe("describeEvent: backfilled rows", () => {
     });
 });
 
+describe("describeEvent: email reports", () => {
+    const report = (type: WorkOrderEventType, detail: Detail) =>
+        describeEvent({ type, detail, actorName: null, byContractor: false });
+
+    it("reads as a sentence of its own, with no actor", () => {
+        expect(report("EMAIL_DELIVERED", { to: "joe@example.com", kind: "WORK_ORDER" })).toEqual({
+            text: "The work order email to joe@example.com was delivered",
+            backfilled: false,
+        });
+    });
+
+    it("gives a bounce's reason as a note, and words a spam complaint differently", () => {
+        expect(
+            report("EMAIL_BOUNCED", {
+                to: "ana@example.com",
+                kind: "TENANT_NOTICE",
+                reason: "bounced",
+                message: "Mailbox does not exist",
+            }),
+        ).toEqual({
+            text: "The tenant notice to ana@example.com bounced",
+            note: "Mailbox does not exist",
+            backfilled: false,
+        });
+        expect(report("EMAIL_BOUNCED", { to: "joe@example.com", kind: "WORK_ORDER", reason: "complained" }).text).toBe(
+            "joe@example.com marked the work order email as spam",
+        );
+    });
+
+    it("falls back to a plain label when the detail can't be read", () => {
+        expect(report("EMAIL_BOUNCED", null).text).toBe("Email bounced");
+    });
+});
+
 describe("describeEvent: unreadable details", () => {
     it.each<[WorkOrderEventType, Detail]>([
         ["ITEM_CHECKED", null],

@@ -1,8 +1,8 @@
 import { after } from "next/server";
-import { sendEmail } from "@/lib/email";
+import { sendLoggedEmail } from "@/lib/emailLog";
 import { cancelledEmail } from "./cancelledEmail";
 
-type Organization = { name: string; phone: string | null; email: string | null };
+type Organization = { id: string; name: string; phone: string | null; email: string | null };
 type CancelledWorkOrder = {
     id: string;
     title: string | null;
@@ -25,7 +25,10 @@ export function notifyContractorsCancelled(organization: Organization, workOrder
                     jobNumber: workOrder.jobNumber,
                     address: workOrder.address,
                 });
-                await sendEmail({
+                await sendLoggedEmail({
+                    organizationId: organization.id,
+                    kind: "CANCELLED",
+                    workOrderId: workOrder.id,
                     to: workOrder.contractorEmail,
                     ...email,
                     replyTo: organization.email,

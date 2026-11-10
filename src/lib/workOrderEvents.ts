@@ -1,6 +1,13 @@
 // Server-only. A work order's activity history (the WorkOrderEvent model). Actions call logEvent() after their
 // main write. It never throws, so a problem saving history can't break sending, checking off an item, and so on.
-import type { DeliveryMethod, LineItemPriority, Prisma, User, WorkOrderEventType } from "@/generated/prisma/client";
+import type {
+    DeliveryMethod,
+    EmailKind,
+    LineItemPriority,
+    Prisma,
+    User,
+    WorkOrderEventType,
+} from "@/generated/prisma/client";
 import prisma from "./prisma";
 import { appTimeZone } from "./dates";
 
@@ -42,16 +49,21 @@ type DetailsByType = {
     NOTE_SAVED: ItemRef & { note: string };
     COMPLETED_BY_CONTRACTOR: { notes: string | null };
     VERIFIED: null;
+    // From Resend's webhooks (src/lib/resendWebhook.ts). `to` is the address; `message` is the bounce reason.
+    EMAIL_DELIVERED: { to: string; kind: EmailKind };
+    EMAIL_BOUNCED: { to: string; kind: EmailKind; reason: "bounced" | "complained"; message?: string };
 };
 
 // Fails to compile if an event type in the schema is missing from DetailsByType.
 type CoversEveryType<T extends Record<WorkOrderEventType, unknown>> = T;
 export type EventDetails = CoversEveryType<DetailsByType>;
 
-// Who did it: a signed-in office user, or the contractor on the public page (named as on the work order).
+// Who did it: a signed-in office user, the contractor on the public page (named as on the work order), or Praedium
+// itself (email delivery reports).
 export type Actor =
     | { kind: "office"; user: Pick<User, "id" | "firstName" | "lastName" | "email"> }
-    | { kind: "contractor"; name: string | null };
+    | { kind: "contractor"; name: string | null }
+    | { kind: "system" };
 
 // One event to save. workOrderId and organizationId must come from data the action has already checked,
 // never straight from the client.
@@ -105,7 +117,12 @@ export function eventData(input: EventInput, dedupeKey?: string): Prisma.WorkOrd
         organizationId: input.organizationId,
         byContractor: actor.kind === "contractor",
         actorUserId: actor.kind === "office" ? actor.user.id : null,
-        actorName: actor.kind === "office" ? officeActorName(actor.user) : actor.name?.trim() || null,
+        actorName:
+            actor.kind === "office"
+                ? officeActorName(actor.user)
+                : actor.kind === "contractor"
+                  ? actor.name?.trim() || null
+                  : null,
         ...(detail ? { detail } : {}),
         ...(dedupeKey ? { dedupeKey } : {}),
     };
@@ -115,6 +132,15 @@ export function eventData(input: EventInput, dedupeKey?: string): Prisma.WorkOrd
 export async function logEvent(input: EventInput): Promise<void> {
     try {
         await prisma.workOrderEvent.create({ data: eventData(input) });
+    } catch (error) {
+        console.error(`Could not log ${input.type} for work order ${input.workOrderId}`, error);
+    }
+}
+
+// Saves an event at most once per `dedupeKey` (webhooks can deliver the same report twice). Never throws.
+export async function logEventOnce(input: EventInput, dedupeKey: string): Promise<void> {
+    try {
+        await prisma.workOrderEvent.createMany({ data: [eventData(input, dedupeKey)], skipDuplicates: true });
     } catch (error) {
         console.error(`Could not log ${input.type} for work order ${input.workOrderId}`, error);
     }

@@ -42,6 +42,18 @@ describe("getCurrentUser", () => {
         expect(prisma.organization.findUnique).not.toHaveBeenCalled();
     });
 
+    it("treats an organization deleted in Clerk as no organization, without touching the user", async () => {
+        signedIn("org:admin");
+        vi.mocked(prisma.organization.findUnique).mockResolvedValue({
+            ...organization,
+            deletedAt: new Date(),
+        } as never);
+
+        expect(await getCurrentUser()).toEqual({ state: "needs-org", clerkUserId: "clerk_user1" });
+        expect(prisma.user.findUnique).not.toHaveBeenCalled();
+        expect(prisma.membership.findUnique).not.toHaveBeenCalled();
+    });
+
     it("gives ADMIN to an org:admin", async () => {
         signedIn("org:admin");
         vi.mocked(prisma.membership.findUnique).mockResolvedValue({ id: "m1", role: "ADMIN" } as never);

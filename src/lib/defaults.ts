@@ -62,6 +62,24 @@ export const PRIORITY_LABELS: Record<string, string> = {
     LOW: "Low",
 };
 
+// Which email an EmailLog row or an EMAIL_* Activity entry is about.
+export const EMAIL_KIND_LABELS: Record<string, string> = {
+    WORK_ORDER: "Work order email",
+    TENANT_NOTICE: "Tenant notice",
+    CANCELLED: "Cancellation email",
+    COMPLETED: "Completion notice",
+    VERIFY_CODE: "Verification code",
+};
+
+export const EMAIL_STATUS_LABELS: Record<string, string> = {
+    SENT: "Sent",
+    DELIVERED: "Delivered",
+    BOUNCED: "Bounced",
+    COMPLAINED: "Marked as spam",
+    FAILED: "Failed",
+    SKIPPED: "Not sent",
+};
+
 // Only the urgent priorities are marked. Emergency is a solid red pill; High is orange, kept apart from the amber
 // "In progress" status.
 export const PRIORITY_STYLES: Record<string, string> = {

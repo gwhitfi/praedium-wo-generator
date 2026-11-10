@@ -78,18 +78,82 @@ enum WorkOrderEventType {
   NOTE_SAVED
   COMPLETED_BY_CONTRACTOR
   VERIFIED
+  // Email (Resend webhooks)
+  EMAIL_DELIVERED // the contractor's work order email arrived
+  EMAIL_BOUNCED // an email for this work order bounced or was marked as spam
+}
+
+enum EmailKind {
+  WORK_ORDER // the work order link to the contractor
+  TENANT_NOTICE
+  CANCELLED
+  COMPLETED // the contractor finished; goes to the office
+  VERIFY_CODE // the contractor's 6-digit code
+}
+
+enum EmailStatus {
+  SENT // accepted by Resend
+  DELIVERED
+  BOUNCED
+  COMPLAINED // marked as spam
+  FAILED // Resend refused it
+  SKIPPED // not sent: a suppressed address or over the daily limit
+}
+
+// One row per email Praedium tries to send (src/lib/emailLog.ts), so the office can see whether it arrived.
+model EmailLog {
+  id        String      @id @default(cuid())
+  kind      EmailKind
+  // Trimmed and lower-cased.
+  to        String
+  subject   String
+  status    EmailStatus @default(SENT)
+  // Resend's id for the email, which its webhook events carry.
+  resendId  String?     @unique
+  // Why it bounced, failed or was skipped.
+  error     String?
+  createdAt DateTime    @default(now())
+  updatedAt DateTime    @updatedAt
+
+  organizationId String
+  organization   Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+
+  workOrderId String?
+  workOrder   WorkOrder? @relation(fields: [workOrderId], references: [id], onDelete: SetNull)
+
+  @@index([organizationId, createdAt])
+  @@index([workOrderId, createdAt])
+}
+
+enum SuppressionReason {
+  BOUNCED
+  COMPLAINED
+}
+
+// Addresses that hard-bounced or marked our email as spam. Praedium never emails them again, for any organization:
+// a dead mailbox is dead for everyone, and complaints hurt the sending domain for every customer.
+model SuppressedEmail {
+  // Trimmed and lower-cased.
+  email     String            @id
+  reason    SuppressionReason
+  // The bounce message, when there is one.
+  detail    String?
+  createdAt DateTime          @default(now())
 }
 
 model Organization {
-  id            String   @id @default(cuid())
-  clerkOrgId    String   @unique
+  id            String    @id @default(cuid())
+  clerkOrgId    String    @unique
   name          String
   phone         String?
   email         String?
   jobNumberYear Int?
-  lastJobNumber Int      @default(1000)
-  createdAt     DateTime @default(now())
-  updatedAt     DateTime @updatedAt
+  lastJobNumber Int       @default(1000)
+  createdAt     DateTime  @default(now())
+  updatedAt     DateTime  @updatedAt
+  // Set when the organization is deleted in Clerk (webhook). Its API keys are revoked and no one can open it; the
+  // data itself is removed later by the purge job.
+  deletedAt     DateTime?
 
   users       User[]
   properties  Property[]
@@ -102,6 +166,7 @@ model Organization {
   workOrderEvents WorkOrderEvent[]
   apiKeys         ApiKey[]
   memberships     Membership[]
+  emailLogs       EmailLog[]
 }
 
 model User {
@@ -285,6 +350,7 @@ model WorkOrder {
   attachments Attachment[]
   events      WorkOrderEvent[]
   challenges  ContractorChallenge[]
+  emailLogs   EmailLog[]
 
   organizationId String
   organization   Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
@@ -410,6 +476,9 @@ model ApiKey {
   keyHash         String    @unique
   lastUsedAt      DateTime?
   revokedAt       DateTime?
+  // Why Praedium revoked it (its creator left or was deleted, or the organization was deleted). Null when an admin
+  // revoked it in Settings.
+  revokedReason   String?
   createdAt       DateTime  @default(now())
   // Lets the key send, cancel, archive and restore work orders over MCP. Off by default.
   canChangeStatus Boolean   @default(false)

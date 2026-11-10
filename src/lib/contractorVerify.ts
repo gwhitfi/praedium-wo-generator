@@ -3,7 +3,7 @@
 // 10 minutes and allows 5 attempts. Sessions for a verified browser are in src/lib/contractorAccess.ts.
 import { randomInt, randomUUID, scryptSync, timingSafeEqual } from "node:crypto";
 import prisma from "@/lib/prisma";
-import { sendEmail } from "@/lib/email";
+import { EmailNotSent, sendLoggedEmail } from "@/lib/emailLog";
 import { verifyCodeEmail } from "@/lib/emails/verifyCodeEmail";
 import { normalizeEmail } from "@/lib/contractorWorkOrders";
 import { RATE_LIMITS, rateLimit } from "@/lib/rateLimit";
@@ -29,7 +29,7 @@ export function generateCode(): string {
 // sent, the challenge is deleted again.
 export async function startVerification(input: {
     workOrder: { id: string; publicToken: string; jobNumber: string; contractorEmail: string | null };
-    organization: { name: string; email: string | null };
+    organization: { id: string; name: string; email: string | null };
     appUrl: string;
     ip: string;
 }): Promise<{ challengeId: string } | { error: string }> {
@@ -39,6 +39,8 @@ export async function startVerification(input: {
 
     const perToken = await rateLimit(`verify-send:${workOrder.publicToken}`, RATE_LIMITS.verifySend);
     if (!perToken.ok) return { error: TOO_MANY_SENT };
+    const perTokenDay = await rateLimit(`verify-day:${workOrder.publicToken}`, RATE_LIMITS.verifyTokenDay);
+    if (!perTokenDay.ok) return { error: TOO_MANY_SENT };
     const perIp = await rateLimit(`verify-ip:${input.ip}`, RATE_LIMITS.verifyIp);
     if (!perIp.ok) return { error: TOO_MANY_SENT };
     const perEmail = await rateLimit(`verify-email:${email}`, RATE_LIMITS.verifyEmail);
@@ -59,7 +61,10 @@ export async function startVerification(input: {
 
     try {
         const url = `${input.appUrl}/wo/${workOrder.publicToken}/verify?c=${challengeId}.${code}`;
-        await sendEmail({
+        await sendLoggedEmail({
+            organizationId: organization.id,
+            kind: "VERIFY_CODE",
+            workOrderId: workOrder.id,
             to: email,
             ...verifyCodeEmail({ organizationName: organization.name, jobNumber: workOrder.jobNumber, code, url }),
             fromName: organization.name,
@@ -68,6 +73,11 @@ export async function startVerification(input: {
     } catch (error) {
         console.error(`Verification email failed for work order ${workOrder.id}`, error);
         await prisma.contractorChallenge.delete({ where: { id: challengeId } }).catch(() => {});
+        // Refused, not failed (a bounced address or the organization's daily limit): retrying won't help, and the
+        // reason is for the office, not whoever holds the link.
+        if (error instanceof EmailNotSent) {
+            return { error: "Couldn't send a code to the email on file. Ask the office to check it." };
+        }
         return { error: "Couldn't send the email. Try again." };
     }
 

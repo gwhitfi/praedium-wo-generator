@@ -18,9 +18,9 @@ import { deleteWorkOrder } from "../actions";
 import { dateInAppTimeZone, formatDueDate, formatFullDate, formatTimestamp } from "@/lib/dates";
 import { formatPhone } from "@/lib/phone";
 import { getWorkOrderPager, readWorkOrderListView } from "@/lib/workOrderList";
-import { isOverdue, isReopenedDraft, listQuery } from "@/lib/workOrders";
+import { isOverdue, isReopenedDraft, listQuery, OPEN_STATUSES } from "@/lib/workOrders";
 import type { SearchParams } from "@/lib/sorting";
-import { buttonClass, cardClass, cardTitleClass, noticeClass, pageClass } from "@/lib/ui";
+import { buttonClass, cardClass, cardTitleClass, noticeClass, pageClass, textLinkClass } from "@/lib/ui";
 import Link from "next/link";
 import Steps from "@/components/Steps";
 import { MAX_LINE_ITEM_PHOTOS } from "@/lib/photos";
@@ -81,6 +81,18 @@ export default async function WorkOrderDetail({
 
     if (!workOrder) notFound();
 
+    // The latest contractor and tenant emails, for the bounce warning (Resend's webhooks set their status).
+    const recentEmails = await prisma.emailLog.findMany({
+        where: {
+            workOrderId: workOrder.id,
+            organizationId: result.organization.id,
+            kind: { in: ["WORK_ORDER", "TENANT_NOTICE"] },
+        },
+        orderBy: { createdAt: "desc" },
+        take: 10,
+        select: { id: true, kind: true, to: true, status: true, error: true, updatedAt: true },
+    });
+
     const events = await prisma.workOrderEvent.findMany({
         where: { workOrderId: workOrder.id, organizationId: result.organization.id },
         orderBy: { createdAt: "desc" },
@@ -122,6 +134,15 @@ export default async function WorkOrderDetail({
             !Array.isArray(event.detail) &&
             event.detail.tenantNotified === true,
     );
+    // While the work order is open: the latest email of each kind that bounced or was marked as spam.
+    const latestByKind = (["WORK_ORDER", "TENANT_NOTICE"] as const).flatMap((kind) => {
+        const latest = recentEmails.find((email) => email.kind === kind);
+        return latest ? [latest] : [];
+    });
+    const workOrderOpen = OPEN_STATUSES.includes(workOrder.status) && !workOrder.archived;
+    const bounced = workOrderOpen
+        ? latestByKind.filter((email) => email.status === "BOUNCED" || email.status === "COMPLAINED")
+        : [];
     const tenantAgain =
         isReopenedDraft(workOrder) && workOrder.notifyTenant && !!workOrder.tenantEmail?.trim()
             ? { emailedOn: lastTenantNotice ? formatFullDate(dateInAppTimeZone(lastTenantNotice.createdAt)) : null }
@@ -355,6 +376,15 @@ export default async function WorkOrderDetail({
                 </div>
 
                 <div className="min-w-0 lg:col-start-1 lg:row-span-2 lg:row-start-1">
+                    {bounced.map((email) => (
+                        <BounceNotice
+                            key={email.id}
+                            email={email}
+                            contactId={email.kind === "WORK_ORDER" ? workOrder.contractorId : workOrder.tenantId}
+                            contactName={email.kind === "WORK_ORDER" ? assigneeName(workOrder) : "the tenant"}
+                        />
+                    ))}
+
                     {cancelled && (
                         <section aria-label="Cancellation" className={`${cardClass} mb-6 p-4 sm:p-5`}>
                             <p className={cardTitleClass}>Cancelled</p>
@@ -488,5 +518,45 @@ export default async function WorkOrderDetail({
                 </DangerZone>
             </div>
         </main>
+    );
+}
+
+// A warning that this work order's latest contractor or tenant email bounced or was marked as spam, so that
+// address is suppressed: fix the contact's email and send again, or reach them another way.
+function BounceNotice({
+    email,
+    contactId,
+    contactName,
+}: {
+    email: { kind: string; to: string; status: string; error: string | null; updatedAt: Date };
+    contactId: string | null;
+    contactName: string | null;
+}) {
+    const label = email.kind === "WORK_ORDER" ? "work order email" : "tenant notice";
+    const when = formatTimestamp(email.updatedAt);
+    return (
+        <div role="alert" className={`${noticeClass.warning} mb-6`}>
+            <p className="font-medium [overflow-wrap:anywhere]">
+                {email.status === "COMPLAINED"
+                    ? `${email.to} marked the ${label} as spam on ${when}.`
+                    : `The ${label} to ${email.to} bounced on ${when}.`}
+            </p>
+            {email.status === "BOUNCED" && email.error && (
+                <p className="mt-1 text-secondary [overflow-wrap:anywhere]">{email.error}</p>
+            )}
+            <p className="mt-1 text-secondary">
+                Praedium won&apos;t email that address again.{" "}
+                {contactId ? (
+                    <>
+                        <Link href={`/contacts/${contactId}`} className={textLinkClass}>
+                            Update {contactName ?? "the contact"}&apos;s email
+                        </Link>
+                        {email.kind === "WORK_ORDER" ? ", then send it again," : ""} or reach them another way.
+                    </>
+                ) : (
+                    "Reach them another way."
+                )}
+            </p>
+        </div>
     );
 }

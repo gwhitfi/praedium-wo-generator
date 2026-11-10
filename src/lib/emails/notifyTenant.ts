@@ -1,8 +1,8 @@
 import { after } from "next/server";
-import { sendEmail } from "@/lib/email";
+import { sendLoggedEmail } from "@/lib/emailLog";
 import { tenantNotifiedEmail } from "./tenantNotifiedEmail";
 
-type Organization = { name: string; phone: string | null; email: string | null };
+type Organization = { id: string; name: string; phone: string | null; email: string | null };
 type SentWorkOrder = {
     id: string;
     title: string | null;
@@ -31,7 +31,15 @@ export function notifyTenant(organization: Organization, workOrder: SentWorkOrde
                     company: workOrder.contractor.company,
                 },
             });
-            await sendEmail({ to, ...email, replyTo: organization.email, fromName: organization.name });
+            await sendLoggedEmail({
+                organizationId: organization.id,
+                kind: "TENANT_NOTICE",
+                workOrderId: workOrder.id,
+                to,
+                ...email,
+                replyTo: organization.email,
+                fromName: organization.name,
+            });
         } catch (error) {
             console.error(`Tenant notice failed for work order ${workOrder.id}`, error);
         }

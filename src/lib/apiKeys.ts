@@ -25,7 +25,8 @@ export function generateApiKey(): GeneratedApiKey {
     return { key, prefix: secret.slice(0, 8), keyHash: hashApiKey(key) };
 }
 
-// `user` is the key's creator, or null if that user has since been deleted. `canChangeStatus` lets the key send,
+// `user` is the key's creator. verifyApiKey() no longer accepts a key whose creator was deleted or left, so it's
+// always set; the type stays nullable for the MCP tools' existing checks. `canChangeStatus` lets the key send,
 // cancel, archive and restore work orders.
 export type VerifiedApiKey = { organization: Organization; user: User | null; canChangeStatus: boolean };
 
@@ -36,10 +37,17 @@ export async function verifyApiKey(bearer: string, schedule: ScheduleTask = afte
     if (!looksLikeApiKey(bearer)) return null;
 
     const apiKey = await prisma.apiKey.findFirst({
-        where: { keyHash: hashApiKey(bearer), revokedAt: null },
-        include: { organization: true, createdBy: true },
+        where: { keyHash: hashApiKey(bearer), revokedAt: null, organization: { deletedAt: null } },
+        include: {
+            organization: true,
+            createdBy: { include: { memberships: { select: { organizationId: true } } } },
+        },
     });
     if (!apiKey) return null;
+    // A key works only while its creator still belongs to the organization. The Clerk webhook revokes the keys
+    // when someone leaves (src/lib/clerkWebhook.ts); this holds even if that webhook was missed.
+    const creator = apiKey.createdBy;
+    if (!creator || !creator.memberships.some((m) => m.organizationId === apiKey.organizationId)) return null;
 
     // After the response, so it doesn't slow the request but isn't cut off on Vercel. Failures are only logged.
     const usedAt = new Date();
@@ -51,5 +59,8 @@ export async function verifyApiKey(bearer: string, schedule: ScheduleTask = afte
         }
     });
 
-    return { organization: apiKey.organization, user: apiKey.createdBy, canChangeStatus: apiKey.canChangeStatus };
+    // The creator without the memberships loaded for the check above.
+    const user: User = { ...creator };
+    delete (user as Partial<typeof creator>).memberships;
+    return { organization: apiKey.organization, user, canChangeStatus: apiKey.canChangeStatus };
 }

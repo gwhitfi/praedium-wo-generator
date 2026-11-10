@@ -4,6 +4,7 @@ import { CONTACT_TYPE_LABELS, unitLabel } from "@/lib/defaults";
 import prisma from "@/lib/prisma";
 import { formatPhone } from "@/lib/phone";
 import { OPEN_STATUSES } from "@/lib/workOrders";
+import { suppressionMessage } from "@/lib/emailLog";
 import { notFound, redirect } from "next/navigation";
 import PageHeader from "@/components/list/PageHeader";
 import EmptyState from "@/components/list/EmptyState";
@@ -77,6 +78,9 @@ export default async function ContactDetail({ params }: { params: Promise<{ id: 
         !isTenant &&
         !!contact.email &&
         (await prisma.workOrder.count({ where: { organizationId, contractorId: id, sentAt: { not: null } } })) > 0;
+
+    // Set when this email hard-bounced or marked Praedium's email as spam: it won't be emailed again.
+    const emailSuppressed = contact.email ? await suppressionMessage(contact.email) : null;
 
     const fullName = [contact.firstName, contact.lastName].filter(Boolean).join(" ");
     const property = contact.unit?.property;
@@ -189,6 +193,11 @@ export default async function ContactDetail({ params }: { params: Promise<{ id: 
                     className="flex flex-col gap-4 lg:col-start-2 lg:row-start-1 max-lg:order-1"
                     aria-label="Contact details"
                 >
+                    {emailSuppressed && (
+                        <p role="alert" className={`${noticeClass.warning} [overflow-wrap:anywhere]`}>
+                            {emailSuppressed} Edit the contact to use a different address.
+                        </p>
+                    )}
                     <DetailList title="Details" details={details} />
                     {contact.notes && (
                         <section aria-label="Notes" className={`${cardClass} p-4 sm:p-5`}>

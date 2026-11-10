@@ -60,6 +60,16 @@ describe("checkEnv", () => {
         });
     });
 
+    it("treats the webhook secrets as optional, but checks their shape when set", () => {
+        expect(
+            checkEnv({ ...valid, CLERK_WEBHOOK_SIGNING_SECRET: "whsec_abc", RESEND_WEBHOOK_SECRET: "whsec_def" }),
+        ).toEqual({ ok: true });
+        expect(checkEnv({ ...valid, RESEND_WEBHOOK_SECRET: "re_abc" })).toEqual({
+            ok: false,
+            problems: ["RESEND_WEBHOOK_SECRET isn't a webhook signing secret (whsec_…)"],
+        });
+    });
+
     it("needs somewhere to store photos", () => {
         expect(checkEnv({ ...valid, BLOB_STORE_ID: undefined })).toEqual({
             ok: false,

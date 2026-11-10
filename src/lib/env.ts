@@ -5,6 +5,7 @@
 import { z } from "zod";
 
 const required = z.string().trim().min(1, "is missing");
+const webhookSecret = z.string().trim().startsWith("whsec_", "isn't a webhook signing secret (whsec_…)").optional();
 
 function isTimeZone(value: string): boolean {
     try {
@@ -33,6 +34,10 @@ const envSchema = z
         // Error monitoring (src/lib/sentry.ts). Optional: without them nothing is reported and source maps aren't
         // uploaded, but nothing breaks. SENTRY_AUTH_TOKEN, SENTRY_ORG and SENTRY_PROJECT are only read by the build.
         NEXT_PUBLIC_SENTRY_DSN: z.url({ protocol: /^https$/, error: "isn't a Sentry DSN (https://…)" }).optional(),
+        // Webhook signing secrets (src/app/api/webhooks/). Optional: without one, that webhook answers 503 and
+        // nothing else changes.
+        CLERK_WEBHOOK_SIGNING_SECRET: webhookSecret,
+        RESEND_WEBHOOK_SECRET: webhookSecret,
     })
     .refine((env) => env.BLOB_STORE_ID || env.BLOB_READ_WRITE_TOKEN, {
         path: ["BLOB_STORE_ID"],

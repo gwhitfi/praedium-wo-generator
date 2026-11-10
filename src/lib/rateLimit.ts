@@ -24,6 +24,12 @@ export const RATE_LIMITS = {
     bot: { limit: 30, windowSeconds: 3600 },
     // Per organization, work order emails from the office button and the MCP send tool.
     email: { limit: 60, windowSeconds: 3600 },
+    // Per organization, every email Praedium sends for it (src/lib/emailLog.ts), so an abusive sign-up can't use
+    // Praedium to mail arbitrary addresses. A new organization (first 24 hours) gets the smaller allowance.
+    emailDay: { limit: 200, windowSeconds: 86400 },
+    emailNewOrganization: { limit: 25, windowSeconds: 86400 },
+    // Per public token, verification codes per day: one leaked link can't use up the organization's daily email.
+    verifyTokenDay: { limit: 20, windowSeconds: 86400 },
 } as const satisfies Record<string, RateLimitRule>;
 
 export type RateLimitResult = { ok: boolean; remaining: number; retryAfterSeconds: number };

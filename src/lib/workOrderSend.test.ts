@@ -6,7 +6,8 @@ vi.mock("@/lib/prisma", () => ({
         lineItem: { count: vi.fn() },
     },
 }));
-vi.mock("@/lib/email", () => ({ getAppUrl: vi.fn(() => "https://example.com"), sendEmail: vi.fn() }));
+vi.mock("@/lib/email", () => ({ getAppUrl: vi.fn(() => "https://example.com") }));
+vi.mock("@/lib/emailLog", () => ({ sendLoggedEmail: vi.fn() }));
 vi.mock("@/lib/emails/workOrderEmail", () => ({ workOrderEmail: vi.fn(() => ({ subject: "", html: "", text: "" })) }));
 vi.mock("@/lib/emails/notifyTenant", () => ({ notifyTenant: vi.fn(() => false) }));
 vi.mock("@/lib/workOrderEvents", () => ({ logEvent: vi.fn() }));
@@ -15,7 +16,7 @@ vi.mock("@/lib/rateLimit", async (importOriginal) => ({
     rateLimit: vi.fn(),
 }));
 
-import { sendEmail } from "@/lib/email";
+import { sendLoggedEmail as sendEmail } from "@/lib/emailLog";
 import { notifyTenant } from "@/lib/emails/notifyTenant";
 import { workOrderEmail } from "@/lib/emails/workOrderEmail";
 import prisma from "@/lib/prisma";
@@ -91,7 +92,14 @@ describe("emailWorkOrderToContractor", () => {
             expect.objectContaining({ organization, url: "https://example.com/wo/token1", isResend: false }),
         );
         expect(sendEmail).toHaveBeenCalledWith(
-            expect.objectContaining({ to: "joe@example.com", replyTo: "office@acme.test", fromName: "Acme Property" }),
+            expect.objectContaining({
+                organizationId: "org1",
+                kind: "WORK_ORDER",
+                workOrderId: "wo1",
+                to: "joe@example.com",
+                replyTo: "office@acme.test",
+                fromName: "Acme Property",
+            }),
         );
         expect(vi.mocked(prisma.workOrder.update).mock.calls[0][0].data).toMatchObject({
             deliveryMethod: "EMAIL",

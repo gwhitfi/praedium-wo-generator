@@ -80,7 +80,7 @@ describe("startInHouseWorkOrder", () => {
 
         expect(result).toMatchObject({ ok: true, tenantNotified: true });
         expect(notifyTenant).toHaveBeenCalledWith(
-            organization,
+            { ...organization, id: "org1" },
             expect.objectContaining({ contractor: null, address: "12 Oak St, Greenville, SC 29601" }),
         );
         expect(logEvent).toHaveBeenCalledWith(expect.objectContaining({ detail: { tenantNotified: true } }));

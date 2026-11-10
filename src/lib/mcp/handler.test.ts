@@ -53,11 +53,15 @@ import { assistantGuide } from "./guide";
 import { authFailureReason, bearerToken, handleMcpRequest } from "./handler";
 import { createContact, createProperty, getProperty, searchContacts, updateContact } from "./records";
 import { cancelWorkOrder, sendWorkOrder } from "./status";
-import { MISSING_CREATOR_ERROR } from "./tools";
 import { addLineItem, moveLineItem, removeArea, updateWorkOrder } from "./workOrderEdit";
 import { getWorkOrder, listActivity, listWorkOrders } from "./workOrders";
 
 const { key } = generateApiKey();
+
+// A key's creator as verifyApiKey loads them: still a member of the key's organization.
+function member<T extends object>(user: T): T & { memberships: { organizationId: string }[] } {
+    return { ...user, memberships: [{ organizationId: "org1" }] };
+}
 
 function mcpRequest(body: unknown, headers: Record<string, string> = { authorization: `Bearer ${key}` }): Request {
     return new Request("http://localhost/api/mcp", {
@@ -91,7 +95,8 @@ beforeEach(() => {
     vi.mocked(prisma.apiKey.findFirst).mockResolvedValue({
         id: "key1",
         organization: { id: "org1" },
-        createdBy: { id: "user1" },
+        organizationId: "org1",
+        createdBy: member({ id: "user1" }),
         canChangeStatus: false,
     } as never);
     vi.mocked(prisma.apiKey.update).mockResolvedValue({} as never);
@@ -202,11 +207,12 @@ describe("handleMcpRequest rate limits", () => {
 });
 
 // The key verifyApiKey finds, with the status permission on.
-function withStatusKey(createdBy: unknown = { id: "user1" }) {
+function withStatusKey(createdBy: object | null = { id: "user1" }) {
     vi.mocked(prisma.apiKey.findFirst).mockResolvedValue({
         id: "key1",
         organization: { id: "org1", name: "Acme Property", phone: null, email: null },
-        createdBy,
+        organizationId: "org1",
+        createdBy: createdBy && member(createdBy),
         canChangeStatus: true,
     } as never);
 }
@@ -332,7 +338,8 @@ describe("create_draft_work_order over MCP", () => {
         vi.mocked(prisma.apiKey.findFirst).mockResolvedValue({
             id: "key1",
             organization: { id: "org1" },
-            createdBy: creator,
+            organizationId: "org1",
+            createdBy: member(creator),
         } as never);
         vi.mocked(createDraftWorkOrder).mockResolvedValue({
             ok: true,
@@ -387,20 +394,21 @@ describe("create_draft_work_order over MCP", () => {
         vi.unstubAllEnvs();
     });
 
-    it("refuses with a tool error when the key's creator was deleted, while reads still work", async () => {
-        vi.mocked(prisma.apiKey.findFirst).mockResolvedValue({
-            id: "key1",
-            organization: { id: "org1" },
-            createdBy: null,
-        } as never);
+    it("refuses the key entirely once its creator was deleted or left the organization", async () => {
+        const warn = vi.spyOn(console, "warn").mockImplementation(() => {});
+        for (const createdBy of [null, { id: "user1", memberships: [{ organizationId: "org2" }] }]) {
+            vi.mocked(prisma.apiKey.findFirst).mockResolvedValue({
+                id: "key1",
+                organization: { id: "org1" },
+                organizationId: "org1",
+                createdBy,
+            } as never);
 
-        const result = await toolResult(await handleMcpRequest(callTool("create_draft_work_order", draft)));
-        expect(result).toEqual({ content: [{ type: "text", text: MISSING_CREATOR_ERROR }], isError: true });
+            expect((await handleMcpRequest(callTool("create_draft_work_order", draft))).status).toBe(401);
+            expect((await handleMcpRequest(callTool("list_work_orders", {}))).status).toBe(401);
+        }
         expect(createDraftWorkOrder).not.toHaveBeenCalled();
-
-        vi.mocked(listWorkOrders).mockResolvedValue([]);
-        const list = await toolResult(await handleMcpRequest(callTool("list_work_orders", {})));
-        expect(list.isError).toBeFalsy();
+        warn.mockRestore();
     });
 
     it("passes on createDraftWorkOrder's error as a tool error", async () => {
@@ -475,7 +483,8 @@ describe("write tools over MCP", () => {
         vi.mocked(prisma.apiKey.findFirst).mockResolvedValue({
             id: "key1",
             organization: { id: "org1" },
-            createdBy: creator,
+            organizationId: "org1",
+            createdBy: member(creator),
         } as never);
         return () => vi.unstubAllEnvs();
     });
@@ -577,9 +586,11 @@ describe("write tools over MCP", () => {
     });
 
     it("refuses every write when the key's creator was deleted", async () => {
+        const warn = vi.spyOn(console, "warn").mockImplementation(() => {});
         vi.mocked(prisma.apiKey.findFirst).mockResolvedValue({
             id: "key1",
             organization: { id: "org1" },
+            organizationId: "org1",
             createdBy: null,
         } as never);
 
@@ -588,9 +599,9 @@ describe("write tools over MCP", () => {
             ["remove_area", { areaId: "area1" }],
             ["create_contact", { contactType: "OTHER", displayName: "Someone" }],
         ] as const) {
-            const result = await toolResult(await handleMcpRequest(callTool(name, args)));
-            expect(result, name).toEqual({ content: [{ type: "text", text: MISSING_CREATOR_ERROR }], isError: true });
+            expect((await handleMcpRequest(callTool(name, args))).status, name).toBe(401);
         }
+        warn.mockRestore();
         expect(updateWorkOrder).not.toHaveBeenCalled();
         expect(removeArea).not.toHaveBeenCalled();
         expect(createContact).not.toHaveBeenCalled();
@@ -785,10 +796,11 @@ describe("status tools over MCP", () => {
         expect(cancelWorkOrder).toHaveBeenCalledWith(organization, creator, { id: "wo1", reason: "Duplicate" });
 
         withStatusKey(null);
+        const warn = vi.spyOn(console, "warn").mockImplementation(() => {});
         for (const name of STATUS_TOOLS) {
-            const result = await toolResult(await handleMcpRequest(callTool(name, { id: "wo1" })));
-            expect(result, name).toEqual({ content: [{ type: "text", text: MISSING_CREATOR_ERROR }], isError: true });
+            expect((await handleMcpRequest(callTool(name, { id: "wo1" }))).status, name).toBe(401);
         }
+        warn.mockRestore();
         expect(sendWorkOrder).not.toHaveBeenCalled();
     });
 });
