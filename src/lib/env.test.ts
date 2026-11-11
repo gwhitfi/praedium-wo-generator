@@ -50,7 +50,7 @@ describe("checkEnv", () => {
         expect(JSON.stringify(result)).not.toContain("pk_live_swapped");
     });
 
-    it("treats the Sentry DSN as optional, but checks it when set", () => {
+    it("treats the Sentry DSN as optional outside production, but checks it when set", () => {
         expect(checkEnv({ ...valid, NEXT_PUBLIC_SENTRY_DSN: "https://key@o1.ingest.sentry.io/2" })).toEqual({
             ok: true,
         });
@@ -60,7 +60,7 @@ describe("checkEnv", () => {
         });
     });
 
-    it("treats the webhook secrets as optional, but checks their shape when set", () => {
+    it("treats the webhook secrets as optional outside production, but checks their shape when set", () => {
         expect(
             checkEnv({ ...valid, CLERK_WEBHOOK_SIGNING_SECRET: "whsec_abc", RESEND_WEBHOOK_SECRET: "whsec_def" }),
         ).toEqual({ ok: true });
@@ -70,7 +70,7 @@ describe("checkEnv", () => {
         });
     });
 
-    it("treats the cron secret as optional, but refuses a short one", () => {
+    it("treats the cron secret as optional outside production, but refuses a short one", () => {
         expect(checkEnv({ ...valid, CRON_SECRET: "a".repeat(32) })).toEqual({ ok: true });
         expect(checkEnv({ ...valid, CRON_SECRET: "short" })).toEqual({
             ok: false,
@@ -83,5 +83,52 @@ describe("checkEnv", () => {
             ok: false,
             problems: ["BLOB_STORE_ID is missing (or set BLOB_READ_WRITE_TOKEN), so photos can't be stored"],
         });
+    });
+
+    describe("on Vercel production", () => {
+        const production = {
+            ...valid,
+            VERCEL_ENV: "production",
+            NEXT_PUBLIC_SENTRY_DSN: "https://key@o1.ingest.sentry.io/2",
+            CLERK_WEBHOOK_SIGNING_SECRET: "whsec_abc",
+            RESEND_WEBHOOK_SECRET: "whsec_def",
+            CRON_SECRET: "c".repeat(32),
+        };
+
+        it("accepts a complete environment", () => {
+            expect(checkEnv(production)).toEqual({ ok: true });
+        });
+
+        it("requires the Sentry DSN, the webhook secrets and the cron secret", () => {
+            expect(checkEnv({ ...valid, VERCEL_ENV: "production" })).toEqual({
+                ok: false,
+                problems: [
+                    "NEXT_PUBLIC_SENTRY_DSN is missing",
+                    "CLERK_WEBHOOK_SIGNING_SECRET is missing",
+                    "RESEND_WEBHOOK_SECRET is missing",
+                    "CRON_SECRET is missing",
+                ],
+            });
+        });
+
+        it("counts an empty string as missing", () => {
+            expect(checkEnv({ ...production, CRON_SECRET: "" })).toEqual({
+                ok: false,
+                problems: ["CRON_SECRET is missing"],
+            });
+        });
+
+        it("still checks their shape", () => {
+            const result = checkEnv({ ...production, RESEND_WEBHOOK_SECRET: "re_abc" });
+            expect(result).toEqual({
+                ok: false,
+                problems: ["RESEND_WEBHOOK_SECRET isn't a webhook signing secret (whsec_…)"],
+            });
+            expect(JSON.stringify(result)).not.toContain("re_abc");
+        });
+    });
+
+    it("doesn't require them on a preview deployment", () => {
+        expect(checkEnv({ ...valid, VERCEL_ENV: "preview" })).toEqual({ ok: true });
     });
 });
