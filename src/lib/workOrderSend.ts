@@ -1,6 +1,6 @@
 // Server-only. Emails a work order's link to its contractor, shared by the office's "Email" button
-// (emailWorkOrder in src/app/(app)/work-orders/actions.ts) and the MCP send_work_order tool. The caller checks auth
-// and passes the organization it resolved; every query here is scoped to that organization.
+// (emailWorkOrder in src/app/(app)/work-orders/statusActions.ts) and the MCP send_work_order tool. The caller checks
+// auth and passes the organization it resolved; every query here is scoped to that organization.
 import { randomBytes } from "node:crypto";
 import type { User } from "@/generated/prisma/client";
 import { normalizeEmail } from "@/lib/contractorWorkOrders";

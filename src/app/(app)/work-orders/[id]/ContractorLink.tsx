@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useSyncExternalStore } from "react";
-import { regeneratePublicToken } from "../actions";
+import { regeneratePublicToken } from "../statusActions";
 import { Button } from "@/components/Button";
 import { useToast } from "@/components/Toaster";
 import { CopyIcon, ExternalIcon, LinkIcon, RotateIcon } from "@/components/Icons";

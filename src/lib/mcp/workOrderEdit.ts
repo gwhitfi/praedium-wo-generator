@@ -1,5 +1,5 @@
-// Server-only. Work order edits for the MCP tools, following the office actions in
-// src/app/(app)/work-orders/actions.ts: the same editability rule, id checks, contact snapshots and Activity events.
+// Server-only. Work order edits for the MCP tools, following the office actions in src/app/(app)/work-orders/
+// (actions.ts and itemActions.ts): the same editability rule, id checks, contact snapshots and Activity events.
 // Every lookup is scoped to the API key's organization, and changes are attributed to the key's creator. Expected
 // failures come back as { ok: false, error } instead of throwing.
 import { randomBytes } from "node:crypto";

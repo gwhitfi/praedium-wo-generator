@@ -1,7 +1,8 @@
 // Server-only. Status changes for the MCP tools, registered only for API keys with canChangeStatus. They follow the
-// office actions in src/app/(app)/work-orders/actions.ts (emailWorkOrder, cancelWorkOrder, archiveWorkOrder,
-// restoreWorkOrder): the same rules, emails and Activity events, attributed to the key's creator. Every lookup is
-// scoped to the API key's organization. Expected failures come back as { ok: false, error }.
+// office actions in src/app/(app)/work-orders/ (emailWorkOrder and cancelWorkOrder in statusActions.ts,
+// archiveWorkOrder and restoreWorkOrder in actions.ts): the same rules, emails and Activity events, attributed to the
+// key's creator. Every lookup is scoped to the API key's organization. Expected failures come back as
+// { ok: false, error }.
 import { z } from "zod";
 import type { Organization, WorkOrderStatus } from "@/generated/prisma/client";
 import { notifyContractorsCancelled } from "@/lib/emails/notifyCancelled";

@@ -1,7 +1,7 @@
 "use client";
 
 import { useId, useOptimistic, useRef, useState, useTransition } from "react";
-import { setColorSections, setSplitView } from "./actions";
+import { setColorSections, setSplitView } from "./listActions";
 import { buttonClass } from "@/lib/ui";
 import { SettingsIcon } from "@/components/Icons";
 
