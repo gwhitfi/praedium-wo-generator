@@ -250,6 +250,14 @@ describe("sendWorkOrder", () => {
         expect(logEvent).not.toHaveBeenCalled();
     });
 
+    it("counts line items in the organization's work order only", async () => {
+        await sendWorkOrder("wo1", "PRINT");
+
+        expect(prisma.lineItem.count).toHaveBeenCalledWith({
+            where: { area: { workOrderId: "wo1", workOrder: { organizationId: "org1" } } },
+        });
+    });
+
     it("doesn't log when the work order isn't a draft", async () => {
         withWorkOrder({ status: "SENT" });
 
@@ -476,7 +484,7 @@ describe("status changes", () => {
 
             expect(await reopenWorkOrder("wo1")).toEqual({ ok: true, status: "SENT" });
             expect(prisma.lineItem.count).toHaveBeenCalledWith({
-                where: { area: { workOrderId: "wo1" }, completed: true },
+                where: { area: { workOrderId: "wo1", workOrder: { organizationId: "org1" } }, completed: true },
             });
             expect(reopenedTo()).toEqual({
                 status: "SENT",
