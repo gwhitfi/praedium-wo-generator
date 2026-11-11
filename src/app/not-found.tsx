@@ -1,4 +1,5 @@
 import Link from "next/link";
+import { headers } from "next/headers";
 import { getCurrentUser } from "@/lib/auth";
 import Nav from "@/components/Nav";
 import PublicHeader from "@/components/PublicHeader";
@@ -8,13 +9,17 @@ import { buttonClass } from "@/lib/ui";
 
 // Page not found, inside the header the visitor would normally see, with a way back that fits who they are.
 export default async function NotFound() {
-    const result = await getCurrentUser();
-    const signedIn = result.state === "ready";
-    const unreadCount = signedIn ? await navUnreadCount(result.user, result.organization.id) : 0;
+    // The proxy skips Clerk for static-looking paths (/favicon.ico, /_next/...), and Clerk's auth() throws when its
+    // middleware didn't run, so a missing file of that kind gets the signed-out page.
+    const clerkRan = (await headers()).get("x-clerk-auth-status") !== null;
+    const result = clerkRan ? await getCurrentUser() : null;
+    const ready = result?.state === "ready" ? result : null;
+    const signedIn = ready !== null;
+    const unreadCount = ready ? await navUnreadCount(ready.user, ready.organization.id) : 0;
 
     return (
         <div className="min-h-screen text-foreground">
-            {signedIn ? <Nav showAi={result.user.aiEnabled === true} unreadCount={unreadCount} /> : <PublicHeader />}
+            {ready ? <Nav showAi={ready.user.aiEnabled === true} unreadCount={unreadCount} /> : <PublicHeader />}
             <main id="main" className="mx-auto flex max-w-md flex-col items-center px-4 py-24 text-center">
                 <div className="flex h-12 w-12 items-center justify-center rounded-full bg-surface-hover text-muted">
                     <SearchIcon size={22} />
