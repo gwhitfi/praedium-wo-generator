@@ -922,7 +922,9 @@ export async function sendWorkOrder(
     if (workOrder.archived) return { ok: false, error: "Archived work orders can't be sent" };
     if (workOrder.status !== "DRAFT") return { ok: false, error: "Only draft work orders can be marked as sent" };
     // Nothing to send without work in it (the same rule as emailing it, in src/lib/workOrderSend.ts).
-    const itemCount = await prisma.lineItem.count({ where: { area: { workOrderId } } });
+    const itemCount = await prisma.lineItem.count({
+        where: { area: { workOrderId: workOrder.id, workOrder: { organizationId: result.organization.id } } },
+    });
     if (itemCount === 0) return { ok: false, error: "Add at least one line item before sending" };
 
     await prisma.workOrder.update({
@@ -1114,7 +1116,12 @@ export async function reopenWorkOrder(
 
     const checkedCount =
         workOrder.status === "COMPLETED"
-            ? await prisma.lineItem.count({ where: { area: { workOrderId }, completed: true } })
+            ? await prisma.lineItem.count({
+                  where: {
+                      area: { workOrderId: workOrder.id, workOrder: { organizationId: result.organization.id } },
+                      completed: true,
+                  },
+              })
             : 0;
     const target = reopenTarget(workOrder, checkedCount);
     if (!target.ok) return target;
