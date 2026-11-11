@@ -43,6 +43,10 @@ import { getCurrentUser } from "@/lib/auth";
 import * as contactActions from "./contacts/actions";
 import * as propertyActions from "./properties/actions";
 import * as workOrderActions from "./work-orders/actions";
+import * as workOrderItemActions from "./work-orders/itemActions";
+import * as workOrderListActions from "./work-orders/listActions";
+import * as workOrderPhotoActions from "./work-orders/photoActions";
+import * as workOrderStatusActions from "./work-orders/statusActions";
 
 // Each exported action: how to call it with `bad` in each ID position, or null when it takes no ID.
 type Calls = (bad: unknown) => unknown[][];
@@ -52,13 +56,14 @@ const form = () => new FormData();
 const YES = "yes"; // passes isDeleteConfirmed, so a refusal can only come from the ID check
 
 const workOrderTable: ActionTable = {
-    setSplitView: null,
-    setColorSections: null,
     createWorkOrder: null,
     updateWorkOrder: (bad) => [[bad, {}, form()]],
     archiveWorkOrder: (bad) => [[bad]],
     restoreWorkOrder: (bad) => [[bad]],
     deleteWorkOrder: (bad) => [[bad, YES]],
+};
+
+const workOrderItemTable: ActionTable = {
     addArea: (bad) => [[bad, "Kitchen"]],
     removeArea: (bad) => [[bad]],
     renameArea: (bad) => [[bad, "Kitchen"]],
@@ -67,12 +72,23 @@ const workOrderTable: ActionTable = {
     removeLineItem: (bad) => [[bad]],
     moveLineItem: (bad) => [[bad, "up"]],
     updateLineItem: (bad) => [[bad, "Fix the sink", "MEDIUM"]],
+    setLineItemCompleted: (bad) => [[bad, true]],
+};
+
+const workOrderPhotoTable: ActionTable = {
     addLineItemPhoto: (bad) => [[bad, form()]],
     removeLineItemPhoto: (bad) => [[bad]],
+};
+
+const workOrderListTable: ActionTable = {
+    setSplitView: null,
+    setColorSections: null,
+};
+
+const workOrderStatusTable: ActionTable = {
     sendWorkOrder: (bad) => [[bad, "EMAIL"]],
     emailWorkOrder: (bad) => [[bad]],
     startWorkOrder: (bad) => [[bad]],
-    setLineItemCompleted: (bad) => [[bad, true]],
     markWorkOrderCompleted: (bad) => [[bad]],
     reopenWorkOrder: (bad) => [[bad]],
     closeWorkOrder: (bad) => [[bad]],
@@ -106,6 +122,10 @@ const contactTable: ActionTable = {
 
 const modules: { name: string; actions: Record<string, unknown>; table: ActionTable }[] = [
     { name: "work-orders", actions: workOrderActions, table: workOrderTable },
+    { name: "work-orders items", actions: workOrderItemActions, table: workOrderItemTable },
+    { name: "work-orders photos", actions: workOrderPhotoActions, table: workOrderPhotoTable },
+    { name: "work-orders status", actions: workOrderStatusActions, table: workOrderStatusTable },
+    { name: "work-orders list", actions: workOrderListActions, table: workOrderListTable },
     { name: "properties", actions: propertyActions, table: propertyTable },
     { name: "contacts", actions: contactActions, table: contactTable },
 ];

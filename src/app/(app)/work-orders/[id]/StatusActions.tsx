@@ -10,7 +10,7 @@ import {
     closeWorkOrder,
     cancelWorkOrder,
     startWorkOrder,
-} from "../actions";
+} from "../statusActions";
 import { DeliveryMethod } from "@/generated/prisma/enums";
 import { Button, ButtonLink } from "@/components/Button";
 import { useToast } from "@/components/Toaster";

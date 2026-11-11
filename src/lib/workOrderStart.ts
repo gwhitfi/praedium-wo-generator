@@ -1,7 +1,7 @@
 // Server-only. Starts an in-house work order (one the office handles itself): Draft becomes In progress, nothing is
 // sent to a contractor, and the tenant is emailed when the work order asks for it. Shared by the office's "Start work"
-// button (startWorkOrder in src/app/(app)/work-orders/actions.ts) and the MCP start_work_order tool. The caller checks
-// auth and passes the organization it resolved; the lookup here is scoped to it.
+// button (startWorkOrder in src/app/(app)/work-orders/statusActions.ts) and the MCP start_work_order tool. The caller
+// checks auth and passes the organization it resolved; the lookup here is scoped to it.
 import type { User } from "@/generated/prisma/client";
 import { notifyTenant } from "@/lib/emails/notifyTenant";
 import prisma from "@/lib/prisma";

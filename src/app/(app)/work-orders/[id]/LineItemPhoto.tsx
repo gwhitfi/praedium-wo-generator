@@ -1,7 +1,7 @@
 "use client";
 
 import { useImperativeHandle, useRef, useState } from "react";
-import { addLineItemPhoto, removeLineItemPhoto } from "../actions";
+import { addLineItemPhoto, removeLineItemPhoto } from "../photoActions";
 import { resizePhoto, UnreadablePhotoError } from "@/lib/resizePhoto";
 import { MAX_LINE_ITEM_PHOTOS } from "@/lib/photos";
 import { Spinner } from "@/components/Button";

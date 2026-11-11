@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import { addArea, removeArea, moveArea, renameArea, setLineItemCompleted } from "../actions";
+import { addArea, removeArea, moveArea, renameArea, setLineItemCompleted } from "../itemActions";
 import { inputClass } from "@/lib/defaults";
 import { resultError } from "@/lib/actionResult";
 import { Button } from "@/components/Button";
