@@ -89,6 +89,7 @@ enum EmailKind {
   CANCELLED
   COMPLETED // the contractor finished; goes to the office
   VERIFY_CODE // the contractor's 6-digit code
+  ORGANIZATION_DELETED // the organization was scheduled for deletion; goes to its admins
 }
 
 enum EmailStatus {
@@ -151,8 +152,8 @@ model Organization {
   lastJobNumber Int       @default(1000)
   createdAt     DateTime  @default(now())
   updatedAt     DateTime  @updatedAt
-  // Set when the organization is deleted in Clerk (webhook). Its API keys are revoked and no one can open it; the
-  // data itself is removed later by the purge job.
+  // Set when an admin deletes the organization in Settings (restorable for 7 days) or it's deleted in Clerk
+  // (webhook, which also revokes its API keys). No one can open it; the data itself is removed later by the purge job.
   deletedAt     DateTime?
 
   users       User[]

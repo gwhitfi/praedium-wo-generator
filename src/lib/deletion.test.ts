@@ -15,7 +15,7 @@ vi.mock("@clerk/nextjs/errors", () => ({
 import { anonymizeUser } from "@/lib/clerkWebhook";
 import prisma from "@/lib/prisma";
 import { purgeOrganization } from "@/lib/purgeOrganization";
-import { blockedMessage, deleteAccount, deleteOrganizationEverywhere, planAccountDeletion } from "./deletion";
+import { allPages, blockedMessage, deleteAccount, deleteOrganizationEverywhere, planAccountDeletion } from "./deletion";
 
 type Member = { role: string; publicUserData: { userId: string } };
 
@@ -105,6 +105,25 @@ describe("deleteAccount", () => {
 
         expect(await deleteAccount(asClerk(clerk), "me")).toEqual({ ok: true });
         expect(anonymizeUser).not.toHaveBeenCalled();
+    });
+});
+
+describe("allPages", () => {
+    it("fetches page after page until it has everything", async () => {
+        const all = Array.from({ length: 230 }, (_, i) => i);
+        const fetchPage = vi.fn(async ({ limit, offset }: { limit: number; offset: number }) => ({
+            data: all.slice(offset, offset + limit),
+            totalCount: all.length,
+        }));
+
+        expect(await allPages(fetchPage)).toEqual(all);
+        expect(fetchPage.mock.calls.map(([page]) => page.offset)).toEqual([0, 100, 200]);
+    });
+
+    it("stops after one call for a short list", async () => {
+        const fetchPage = vi.fn(async () => ({ data: ["a"], totalCount: 1 }));
+        expect(await allPages(fetchPage)).toEqual(["a"]);
+        expect(fetchPage).toHaveBeenCalledOnce();
     });
 });
 

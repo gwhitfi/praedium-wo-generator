@@ -69,6 +69,7 @@ export const EMAIL_KIND_LABELS: Record<string, string> = {
     CANCELLED: "Cancellation email",
     COMPLETED: "Completion notice",
     VERIFY_CODE: "Verification code",
+    ORGANIZATION_DELETED: "Organization deletion notice",
 };
 
 export const EMAIL_STATUS_LABELS: Record<string, string> = {

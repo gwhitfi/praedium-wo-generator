@@ -133,6 +133,59 @@ describe("sendLoggedEmail", () => {
         expect(sendEmail).not.toHaveBeenCalled();
     });
 
+    it("still refuses other emails for a locked organization, and logs why", async () => {
+        vi.mocked(prisma.organization.findUnique).mockResolvedValue({
+            createdAt: new Date(Date.now() - 30 * DAY_MS),
+            deletedAt: new Date(),
+        } as never);
+
+        for (const kind of ["WORK_ORDER", "TENANT_NOTICE", "CANCELLED", "COMPLETED", "VERIFY_CODE"] as const) {
+            await expect(sendLoggedEmail({ ...email, kind })).rejects.toThrow("This organization was deleted.");
+        }
+        expect(sendEmail).not.toHaveBeenCalled();
+        expect(logged().every((row) => row.status === "SKIPPED")).toBe(true);
+    });
+
+    describe("the deletion notice to admins", () => {
+        const notice = { ...email, kind: "ORGANIZATION_DELETED" as const, workOrderId: null };
+
+        beforeEach(() => {
+            vi.mocked(prisma.organization.findUnique).mockResolvedValue({
+                createdAt: new Date(Date.now() - 30 * DAY_MS),
+                deletedAt: new Date(),
+            } as never);
+        });
+
+        it("is sent for a locked organization without counting against the daily allowance", async () => {
+            vi.mocked(rateLimit).mockResolvedValue({ ok: false, remaining: 0, retryAfterSeconds: 3600 });
+
+            expect(await sendLoggedEmail(notice)).toEqual({ resendId: "re_123" });
+            expect(sendEmail).toHaveBeenCalledOnce();
+            expect(rateLimit).not.toHaveBeenCalled();
+            expect(logged()[0]).toMatchObject({ kind: "ORGANIZATION_DELETED", status: "SENT" });
+        });
+
+        it("is still refused for a suppressed address, and logged", async () => {
+            vi.mocked(prisma.suppressedEmail.findUnique).mockResolvedValue({
+                email: "joe@example.com",
+                reason: "BOUNCED",
+                detail: null,
+                createdAt: new Date("2026-11-03T15:00:00Z"),
+            } as never);
+
+            await expect(sendLoggedEmail(notice)).rejects.toBeInstanceOf(EmailNotSent);
+            expect(sendEmail).not.toHaveBeenCalled();
+            expect(logged()[0]).toMatchObject({ kind: "ORGANIZATION_DELETED", status: "SKIPPED" });
+        });
+
+        it("is refused once the organization is gone", async () => {
+            vi.mocked(prisma.organization.findUnique).mockResolvedValue(null);
+
+            await expect(sendLoggedEmail(notice)).rejects.toThrow("This organization was deleted.");
+            expect(sendEmail).not.toHaveBeenCalled();
+        });
+    });
+
     it("logs a Resend failure and passes the error on", async () => {
         vi.mocked(sendEmail).mockRejectedValue(new Error("Email failed to send: invalid domain"));
 

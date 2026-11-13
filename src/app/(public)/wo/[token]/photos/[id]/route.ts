@@ -1,5 +1,6 @@
 import prisma from "@/lib/prisma";
 import { isVerifiedFor } from "@/lib/contractorAccess";
+import { LIVE_ORGANIZATION } from "@/lib/contractorWorkOrders";
 import { photoNotFound, servePhoto } from "@/lib/servePhoto";
 import { photoInput } from "../../schemas";
 
@@ -20,6 +21,7 @@ export async function GET(
                 area: {
                     workOrder: {
                         publicToken: input.data.token,
+                        ...LIVE_ORGANIZATION,
                         archived: false,
                         inHouse: false,
                         status: { notIn: ["DRAFT", "CANCELLED"] },

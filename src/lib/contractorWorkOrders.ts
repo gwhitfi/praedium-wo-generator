@@ -6,15 +6,19 @@ import type { WorkOrderWithPlace } from "@/components/WorkOrderRow";
 
 export const CONTRACTOR_LIST_STATUSES: WorkOrderStatus[] = ["SENT", "IN_PROGRESS", "COMPLETED"];
 
+// Part of every contractor link lookup: a link stops working while its organization is locked for deletion (and after
+// it's deleted in Clerk), and works again if an admin restores it.
+export const LIVE_ORGANIZATION = { organization: { deletedAt: null } } satisfies Prisma.WorkOrderWhereInput;
+
 export type ContractorWorkOrder = Prisma.WorkOrderGetPayload<{
     include: { organization: { select: { name: true } } };
 }>;
 
 // The work order a contractor link points at, with the organization's name, or null if the link doesn't work
-// (missing, archived, in-house, draft or cancelled). Same rule as the contractor page.
+// (missing, archived, in-house, draft, cancelled, or its organization locked). Same rule as the contractor page.
 export async function getContractorWorkOrder(token: string): Promise<ContractorWorkOrder | null> {
     const workOrder = await prisma.workOrder.findUnique({
-        where: { publicToken: token },
+        where: { publicToken: token, ...LIVE_ORGANIZATION },
         include: { organization: { select: { name: true } } },
     });
     if (
@@ -70,6 +74,7 @@ export async function listContractorWorkOrders(workOrder: ContractorWorkOrder): 
     const rows = await prisma.workOrder.findMany({
         where: {
             organizationId: workOrder.organizationId,
+            ...LIVE_ORGANIZATION,
             archived: false,
             status: { in: CONTRACTOR_LIST_STATUSES },
             contractorEmail: { not: null },
@@ -93,6 +98,7 @@ export async function countContractorWorkOrders(workOrder: {
     const rows = await prisma.workOrder.findMany({
         where: {
             organizationId: workOrder.organizationId,
+            ...LIVE_ORGANIZATION,
             id: { not: workOrder.id },
             archived: false,
             status: { in: CONTRACTOR_LIST_STATUSES },

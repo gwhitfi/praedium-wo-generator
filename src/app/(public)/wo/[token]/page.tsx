@@ -11,7 +11,13 @@ import ContractorSpaceCard from "./ContractorSpaceCard";
 import CompleteWorkOrder from "./CompleteWorkOrder";
 import RecordOpen from "./RecordOpen";
 import VerifyBox from "./VerifyBox";
-import { canLookup, countContractorWorkOrders, maskEmail, summaryAreas } from "@/lib/contractorWorkOrders";
+import {
+    canLookup,
+    countContractorWorkOrders,
+    LIVE_ORGANIZATION,
+    maskEmail,
+    summaryAreas,
+} from "@/lib/contractorWorkOrders";
 import { openInput } from "./schemas";
 import { isVerifiedFor } from "@/lib/contractorAccess";
 import { formatDueDate, formatTimestamp } from "@/lib/dates";
@@ -33,8 +39,9 @@ export default async function PublicWorkOrder({
     const { token } = await params;
     if (!openInput.safeParse({ token }).success) notFound();
 
+    // A locked organization (scheduled for deletion) reads as not found, like a cancelled work order.
     const workOrder = await prisma.workOrder.findUnique({
-        where: { publicToken: token },
+        where: { publicToken: token, ...LIVE_ORGANIZATION },
         include: {
             organization: { select: { name: true, phone: true, email: true } },
             property: true,

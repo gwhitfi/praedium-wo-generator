@@ -21,7 +21,10 @@ import {
 import { storedNotificationTypes } from "@/lib/notificationTypes";
 import type { ActionResult } from "@/lib/actionResult";
 import { DELETE_NOT_CONFIRMED, isDeleteConfirmed } from "@/lib/confirmDelete";
-import { deleteAccount, deleteOrganizationEverywhere, planAccountDeletion } from "@/lib/deletion";
+import { restoreDeadline } from "@/lib/cleanup";
+import { deleteAccount, lockOrganization, notifyOrganizationDeleted, planAccountDeletion } from "@/lib/deletion";
+import { officeActorName } from "@/lib/workOrderEvents";
+import { after } from "next/server";
 
 // Sent back on failure so the form can refill what the user typed.
 function submittedValues(formData: FormData) {
@@ -178,8 +181,9 @@ export async function deleteMyAccount(rawConfirmation: string): Promise<ActionRe
     }
 }
 
-// Deletes the active organization and all of its data, for everyone in it. Admins only; confirmed by typing its
-// name.
+// Schedules the active organization for deletion: it's locked for everyone at once, every admin is emailed, any admin
+// can restore it from /setup until the restore deadline, and the cleanup job deletes it after that. Admins only;
+// confirmed by typing its name.
 export async function deleteOrganization(rawConfirmation: string): Promise<ActionResult> {
     const result = await getCurrentUser();
     if (result.state !== "ready" || result.role !== "ADMIN") {
@@ -191,13 +195,32 @@ export async function deleteOrganization(rawConfirmation: string): Promise<Actio
         return { ok: false, error: `Type "${organization.name}" to confirm.` };
     }
 
+    const deletedAt = new Date();
+    let locked: boolean;
     try {
-        await deleteOrganizationEverywhere(await clerkClient(), organization.clerkOrgId);
+        locked = await lockOrganization(organization.id, deletedAt);
     } catch (error) {
         console.error("deleteOrganization failed", error);
         return { ok: false, error: "Couldn't delete the organization. Try again." };
     }
-    console.info(`Organization ${organization.id} deleted by user ${result.user.id}`);
+    console.info(`Organization ${organization.id} scheduled for deletion by user ${result.user.id}`);
+
+    // Only the call that locked it emails the admins, so a second click doesn't send the notice twice.
+    if (locked) {
+        const deletedBy = officeActorName(result.user);
+        after(async () => {
+            try {
+                await notifyOrganizationDeleted(await clerkClient(), {
+                    organization,
+                    deletedBy,
+                    deletedAt,
+                    restoreDeadline: restoreDeadline(deletedAt),
+                });
+            } catch (error) {
+                console.error(`Deletion notices for organization ${organization.id} failed`, error);
+            }
+        });
+    }
     return { ok: true };
 }
 
