@@ -1,6 +1,7 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
 vi.mock("next/cache", () => ({ revalidatePath: vi.fn() }));
+vi.mock("next/server", () => ({ after: vi.fn() }));
 vi.mock("@clerk/nextjs/server", () => ({ clerkClient: vi.fn() }));
 vi.mock("@/lib/auth", () => ({ getCurrentUser: vi.fn() }));
 vi.mock("@/lib/deletion", async (importOriginal) => ({
@@ -9,18 +10,24 @@ vi.mock("@/lib/deletion", async (importOriginal) => ({
     deleteOrganizationEverywhere: vi.fn(),
     planAccountDeletion: vi.fn(),
 }));
+vi.mock("@/lib/purgeOrganization", () => ({ purgeOrganization: vi.fn() }));
+vi.mock("@/lib/email", () => ({ getAppUrl: () => "https://praedium.test" }));
+vi.mock("@/lib/emailLog", () => ({ sendLoggedEmail: vi.fn() }));
 vi.mock("@/lib/prisma", () => ({
     default: {
         apiKey: { create: vi.fn(), updateMany: vi.fn() },
-        organization: { update: vi.fn() },
+        organization: { update: vi.fn(), updateMany: vi.fn() },
         user: { update: vi.fn() },
     },
 }));
 
 import { clerkClient } from "@clerk/nextjs/server";
+import { after } from "next/server";
 import { getCurrentUser } from "@/lib/auth";
 import prisma from "@/lib/prisma";
 import { deleteAccount, deleteOrganizationEverywhere, planAccountDeletion } from "@/lib/deletion";
+import { sendLoggedEmail } from "@/lib/emailLog";
+import { purgeOrganization } from "@/lib/purgeOrganization";
 import {
     createApiKey,
     deleteMyAccount,
@@ -34,7 +41,7 @@ import {
 function signedInAs(role: "ADMIN" | "USER") {
     vi.mocked(getCurrentUser).mockResolvedValue({
         state: "ready",
-        user: { id: "user1", clerkId: "clerk_user1" },
+        user: { id: "user1", clerkId: "clerk_user1", firstName: "Dana", lastName: "Reyes", email: "dana@acme.test" },
         organization: { id: "org1", clerkOrgId: "clerk_org1", name: "Acme" },
         role,
     } as never);
@@ -193,20 +200,112 @@ describe("setNotificationPreferences", () => {
 });
 
 describe("deleteOrganization", () => {
-    it("deletes the admin's own organization once its name is typed, ignoring case and spaces", async () => {
-        signedInAs("ADMIN");
-        vi.mocked(clerkClient).mockResolvedValue("clerk" as never);
+    const deleteClerkOrganization = vi.fn();
+    const getUser = vi.fn();
+    const getOrganizationMembershipList = vi.fn();
 
-        expect(await deleteOrganization("  acme ")).toEqual({ ok: true });
-        expect(deleteOrganizationEverywhere).toHaveBeenCalledWith("clerk", "clerk_org1");
+    // Runs what the action left for after the response.
+    async function runAfter() {
+        for (const [task] of vi.mocked(after).mock.calls) await (task as () => Promise<void>)();
+    }
+
+    beforeEach(() => {
+        vi.spyOn(console, "info").mockImplementation(() => {});
+        vi.mocked(prisma.organization.updateMany).mockResolvedValue({ count: 1 } as never);
+        getOrganizationMembershipList.mockResolvedValue({
+            data: [
+                { role: "org:admin", publicUserData: { userId: "clerk_user1" } },
+                { role: "org:admin", publicUserData: { userId: "clerk_user2" } },
+            ],
+            totalCount: 2,
+        });
+        getUser.mockImplementation(async (id: string) => ({
+            primaryEmailAddress: { emailAddress: id === "clerk_user1" ? "dana@acme.test" : "sam@acme.test" },
+        }));
+        vi.mocked(clerkClient).mockResolvedValue({
+            organizations: { deleteOrganization: deleteClerkOrganization, getOrganizationMembershipList },
+            users: { getUser },
+        } as never);
     });
 
-    it("refuses a wrong or empty name without deleting anything", async () => {
+    it("locks the admin's own organization once its name is typed, ignoring case and spaces", async () => {
+        signedInAs("ADMIN");
+
+        expect(await deleteOrganization("  acme ")).toEqual({ ok: true });
+        expect(prisma.organization.updateMany).toHaveBeenCalledWith({
+            where: { id: "org1", deletedAt: null },
+            data: { deletedAt: expect.any(Date) },
+        });
+        expect(console.info).toHaveBeenCalledWith(expect.stringMatching(/org1.*user1/));
+    });
+
+    it("deletes nothing: no Clerk delete, no purge, no API key revocation", async () => {
+        signedInAs("ADMIN");
+
+        await deleteOrganization("Acme");
+        await runAfter();
+
+        expect(deleteClerkOrganization).not.toHaveBeenCalled();
+        expect(deleteOrganizationEverywhere).not.toHaveBeenCalled();
+        expect(purgeOrganization).not.toHaveBeenCalled();
+        expect(prisma.apiKey.updateMany).not.toHaveBeenCalled();
+    });
+
+    it("emails every admin from Clerk after the response, including the one who deleted it", async () => {
+        signedInAs("ADMIN");
+
+        await deleteOrganization("Acme");
+        expect(sendLoggedEmail).not.toHaveBeenCalled();
+        await runAfter();
+
+        expect(getOrganizationMembershipList).toHaveBeenCalledWith(
+            expect.objectContaining({ organizationId: "clerk_org1", role: ["org:admin"] }),
+        );
+        expect(vi.mocked(sendLoggedEmail).mock.calls.map(([email]) => email.to)).toEqual([
+            "dana@acme.test",
+            "sam@acme.test",
+        ]);
+        expect(sendLoggedEmail).toHaveBeenCalledWith(
+            expect.objectContaining({
+                organizationId: "org1",
+                kind: "ORGANIZATION_DELETED",
+                subject: expect.stringContaining("Acme will be deleted on"),
+                text: expect.stringContaining("Dana R. deleted Acme"),
+            }),
+        );
+    });
+
+    it("still succeeds when the emails fail", async () => {
+        signedInAs("ADMIN");
+        vi.spyOn(console, "error").mockImplementation(() => {});
+        vi.mocked(sendLoggedEmail).mockRejectedValueOnce(new Error("Resend is down"));
+
+        expect(await deleteOrganization("Acme")).toEqual({ ok: true });
+        await runAfter();
+        // The second admin is still emailed.
+        expect(sendLoggedEmail).toHaveBeenCalledTimes(2);
+
+        vi.mocked(after).mockClear();
+        getOrganizationMembershipList.mockRejectedValue(new Error("Clerk is down"));
+        expect(await deleteOrganization("Acme")).toEqual({ ok: true });
+        await expect(runAfter()).resolves.toBeUndefined();
+    });
+
+    it("doesn't email again when the organization was already locked", async () => {
+        signedInAs("ADMIN");
+        vi.mocked(prisma.organization.updateMany).mockResolvedValue({ count: 0 } as never);
+
+        expect(await deleteOrganization("Acme")).toEqual({ ok: true });
+        expect(after).not.toHaveBeenCalled();
+    });
+
+    it("refuses a wrong or empty name without locking anything", async () => {
         signedInAs("ADMIN");
 
         expect(await deleteOrganization("Acme Rentals")).toEqual({ ok: false, error: 'Type "Acme" to confirm.' });
         expect(await deleteOrganization("   ")).toEqual({ ok: false, error: 'Type "Acme" to confirm.' });
-        expect(deleteOrganizationEverywhere).not.toHaveBeenCalled();
+        expect(prisma.organization.updateMany).not.toHaveBeenCalled();
+        expect(after).not.toHaveBeenCalled();
     });
 
     it("refuses anyone but an admin", async () => {
@@ -216,18 +315,20 @@ describe("deleteOrganization", () => {
             ok: false,
             error: "Only admins can delete the organization.",
         });
-        expect(deleteOrganizationEverywhere).not.toHaveBeenCalled();
+        expect(prisma.organization.updateMany).not.toHaveBeenCalled();
+        expect(after).not.toHaveBeenCalled();
     });
 
     it("explains a failure instead of throwing", async () => {
         signedInAs("ADMIN");
         vi.spyOn(console, "error").mockImplementation(() => {});
-        vi.mocked(deleteOrganizationEverywhere).mockRejectedValue(new Error("Clerk is down"));
+        vi.mocked(prisma.organization.updateMany).mockRejectedValue(new Error("database hiccup"));
 
         expect(await deleteOrganization("Acme")).toEqual({
             ok: false,
             error: "Couldn't delete the organization. Try again.",
         });
+        expect(after).not.toHaveBeenCalled();
     });
 });
 

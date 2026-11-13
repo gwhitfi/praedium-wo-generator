@@ -66,8 +66,11 @@ export async function suppressionMessage(address: string): Promise<string | null
 }
 
 // Sends the email, or throws EmailNotSent (suppressed address, daily limit) or Resend's error. Returns the log
-// row's Resend id.
+// row's Resend id. The deletion notice to admins is sent after the organization is locked, so it skips the
+// locked-organization refusal, and it skips the daily allowance so a deleting admin can't use up the allowance to
+// keep the other admins from hearing about it. Suppressed addresses are still refused and every attempt is logged.
 export async function sendLoggedEmail(email: LoggedEmail): Promise<{ resendId: string | null }> {
+    const deletionNotice = email.kind === "ORGANIZATION_DELETED";
     const to = normalizeEmail(email.to);
 
     const suppressed = await suppressionMessage(to);
@@ -80,20 +83,22 @@ export async function sendLoggedEmail(email: LoggedEmail): Promise<{ resendId: s
         where: { id: email.organizationId },
         select: { createdAt: true, deletedAt: true },
     });
-    if (!organization || organization.deletedAt) {
+    if (!organization || (organization.deletedAt && !deletionNotice)) {
         await record(email, to, { status: "SKIPPED", error: "The organization was deleted." });
         throw new EmailNotSent("This organization was deleted.");
     }
 
-    const isNew = Date.now() - organization.createdAt.getTime() < NEW_ORGANIZATION_MS;
-    const rule = isNew ? RATE_LIMITS.emailNewOrganization : RATE_LIMITS.emailDay;
-    const allowed = await rateLimit(`${isNew ? "email-new" : "email-day"}:${email.organizationId}`, rule);
-    if (!allowed.ok) {
-        const message = isNew
-            ? `New organizations can send ${rule.limit} emails in their first day. Try again tomorrow.`
-            : `This organization has sent its ${rule.limit} emails for today. Try again tomorrow.`;
-        await record(email, to, { status: "SKIPPED", error: "Daily email limit reached." });
-        throw new EmailNotSent(message);
+    if (!deletionNotice) {
+        const isNew = Date.now() - organization.createdAt.getTime() < NEW_ORGANIZATION_MS;
+        const rule = isNew ? RATE_LIMITS.emailNewOrganization : RATE_LIMITS.emailDay;
+        const allowed = await rateLimit(`${isNew ? "email-new" : "email-day"}:${email.organizationId}`, rule);
+        if (!allowed.ok) {
+            const message = isNew
+                ? `New organizations can send ${rule.limit} emails in their first day. Try again tomorrow.`
+                : `This organization has sent its ${rule.limit} emails for today. Try again tomorrow.`;
+            await record(email, to, { status: "SKIPPED", error: "Daily email limit reached." });
+            throw new EmailNotSent(message);
+        }
     }
 
     try {

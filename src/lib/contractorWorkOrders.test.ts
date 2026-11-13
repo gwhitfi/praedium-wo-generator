@@ -39,12 +39,13 @@ describe("getContractorWorkOrder", () => {
         vi.mocked(prisma.workOrder.findUnique).mockResolvedValue(workOrder() as never);
         await getContractorWorkOrder("tok");
         expect(prisma.workOrder.findUnique).toHaveBeenCalledWith({
-            where: { publicToken: "tok" },
+            where: { publicToken: "tok", organization: { deletedAt: null } },
             include: { organization: { select: { name: true } } },
         });
     });
 
-    it("returns null when the work order is missing", async () => {
+    it("returns null when the work order is missing or its organization is locked for deletion", async () => {
+        // The query only matches a live organization, so a locked one comes back as no row.
         vi.mocked(prisma.workOrder.findUnique).mockResolvedValue(null);
         expect(await getContractorWorkOrder("tok")).toBeNull();
     });
@@ -171,7 +172,7 @@ describe("listContractorWorkOrders", () => {
         expect(prisma.workOrder.findMany).not.toHaveBeenCalled();
     });
 
-    it("queries the organization's current work orders", async () => {
+    it("queries the organization's current work orders, only while the organization isn't locked", async () => {
         vi.mocked(prisma.workOrder.findMany).mockResolvedValue([] as never);
 
         await listContractorWorkOrders(workOrder({ contractorEmail: "  Sam@Example.com " }));
@@ -179,6 +180,7 @@ describe("listContractorWorkOrders", () => {
         expect(prisma.workOrder.findMany).toHaveBeenCalledWith({
             where: {
                 organizationId: "org1",
+                organization: { deletedAt: null },
                 archived: false,
                 status: { in: ["SENT", "IN_PROGRESS", "COMPLETED"] },
                 contractorEmail: { not: null },
@@ -222,6 +224,7 @@ describe("countContractorWorkOrders", () => {
         expect(prisma.workOrder.findMany).toHaveBeenCalledWith({
             where: {
                 organizationId: "org1",
+                organization: { deletedAt: null },
                 id: { not: "wo1" },
                 archived: false,
                 status: { in: ["SENT", "IN_PROGRESS", "COMPLETED"] },

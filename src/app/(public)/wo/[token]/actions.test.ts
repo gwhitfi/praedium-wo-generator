@@ -84,8 +84,10 @@ beforeEach(() => {
         Promise.all(queries)) as never);
 });
 
+const liveOrganization = { organization: { deletedAt: null } };
 const openFilter = {
     publicToken: "token1",
+    ...liveOrganization,
     archived: false,
     inHouse: false,
     status: { in: ["SENT", "IN_PROGRESS"] },
@@ -171,9 +173,22 @@ describe("toggleLineItem", () => {
             data: { completed: true, completedAt: expect.any(Date) },
         });
         expect(prisma.workOrder.updateMany).toHaveBeenCalledWith({
-            where: { id: "wo1", publicToken: "token1", status: "SENT", archived: false },
+            where: { id: "wo1", publicToken: "token1", ...liveOrganization, status: "SENT", archived: false },
             data: { status: "IN_PROGRESS" },
         });
+    });
+
+    it("looks the line item up only under a live organization, and treats a locked one as not found", async () => {
+        vi.mocked(prisma.lineItem.findFirst).mockResolvedValue(null);
+
+        await expect(toggleLineItem("token1", "li1")).rejects.toThrow("Invalid line item");
+        expect(prisma.lineItem.findFirst).toHaveBeenCalledWith(
+            expect.objectContaining({
+                where: { id: "li1", area: { workOrder: { publicToken: "token1", ...liveOrganization } } },
+            }),
+        );
+        expect(prisma.$transaction).not.toHaveBeenCalled();
+        expect(logEvent).not.toHaveBeenCalled();
     });
 
     it("throws without logging when the work order changed after the check", async () => {
@@ -277,6 +292,16 @@ describe("completeWorkOrder", () => {
         expect(logEvent).not.toHaveBeenCalled();
         expect(after).not.toHaveBeenCalled();
     });
+
+    it("treats a locked organization's link as not found", async () => {
+        vi.mocked(prisma.workOrder.findUnique).mockResolvedValue(null);
+
+        await expect(completeWorkOrder("token1", "Done")).rejects.toThrow("Invalid work order");
+        expect(prisma.workOrder.findUnique).toHaveBeenCalledWith(
+            expect.objectContaining({ where: { publicToken: "token1", ...liveOrganization } }),
+        );
+        expect(prisma.workOrder.updateMany).not.toHaveBeenCalled();
+    });
 });
 
 describe("verification gate", () => {
@@ -366,6 +391,16 @@ describe("sendCode", () => {
 
         expect(await sendCode("token1")).toEqual({ ok: false, error: "Too many codes sent. Try again later." });
     });
+
+    it("treats a locked organization's link as not available", async () => {
+        vi.mocked(prisma.workOrder.findUnique).mockResolvedValue(null);
+
+        expect(await sendCode("token1")).toEqual({ ok: false, error: "This work order isn't available." });
+        expect(prisma.workOrder.findUnique).toHaveBeenCalledWith(
+            expect.objectContaining({ where: { publicToken: "token1", ...liveOrganization } }),
+        );
+        expect(startVerification).not.toHaveBeenCalled();
+    });
 });
 
 describe("verifyCode", () => {
@@ -438,7 +473,7 @@ describe("recordOpen", () => {
         await recordOpen("token1");
 
         expect(prisma.workOrder.findUnique).toHaveBeenCalledWith(
-            expect.objectContaining({ where: { publicToken: "token1" } }),
+            expect.objectContaining({ where: { publicToken: "token1", ...liveOrganization } }),
         );
         expect(logDailyOpen).toHaveBeenCalledWith({ ...ids, contractorName: "Marcus Hill" });
     });

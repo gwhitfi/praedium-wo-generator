@@ -11,10 +11,15 @@ type Result = { ok: true } | { ok: false; error: string } | void;
 // "yes" before the red button works. The server action gets the typed text too and refuses anything but "yes".
 // `requireTyping={false}` is for things with no history to lose (an empty unit): the dialog alone is the check.
 // `open` lets a menu item open the dialog instead of the built-in trigger (`hideTrigger`). `confirmWord` replaces
-// "yes" for the biggest deletes (an organization asks for its name); the server checks it either way.
+// "yes" for the biggest deletes (an organization asks for its name); the server checks it either way. `title`,
+// `warning` and `confirmLabel` replace the "permanently / can't be undone / Delete forever" wording for a delete that
+// can be undone for a while (an organization).
 export default function DeleteButton({
     itemName,
     label = "Delete permanently",
+    title,
+    warning = "This can't be undone.",
+    confirmLabel = "Delete forever",
     onDelete,
     archiveInstead,
     triggerClassName = buttonClass({ variant: "danger-outline", size: "sm" }),
@@ -26,6 +31,9 @@ export default function DeleteButton({
 }: {
     itemName: string;
     label?: React.ReactNode;
+    title?: React.ReactNode;
+    warning?: React.ReactNode;
+    confirmLabel?: React.ReactNode;
     onDelete: (confirmation: string) => Promise<Result>;
     archiveInstead?: () => void;
     triggerClassName?: string;
@@ -89,10 +97,10 @@ export default function DeleteButton({
             >
                 <div className="p-5 sm:p-6">
                     <h2 id={titleId} className="text-lg font-semibold">
-                        Delete &ldquo;{itemName}&rdquo; permanently?
+                        {title ?? <>Delete &ldquo;{itemName}&rdquo; permanently?</>}
                     </h2>
                     <p id={descriptionId} className="mt-1 mb-4 text-sm font-medium text-danger">
-                        This can&apos;t be undone.
+                        {warning}
                     </p>
 
                     {children && <div className="flex flex-col gap-2 text-sm text-secondary">{children}</div>}
@@ -145,7 +153,7 @@ export default function DeleteButton({
                             pending={pending}
                             pendingLabel="Deleting…"
                         >
-                            Delete forever
+                            {confirmLabel}
                         </Button>
                     </div>
                 </div>

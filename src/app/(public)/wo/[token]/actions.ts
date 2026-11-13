@@ -17,7 +17,7 @@ import {
     isVerifiedFor,
     sessionCookieOptions,
 } from "@/lib/contractorAccess";
-import { maskEmail, normalizeEmail } from "@/lib/contractorWorkOrders";
+import { LIVE_ORGANIZATION, maskEmail, normalizeEmail } from "@/lib/contractorWorkOrders";
 import { checkCode, startVerification } from "@/lib/contractorVerify";
 import { completeInput, noteInput, openInput, sendCodeInput, toggleInput, verifyCodeInput } from "./schemas";
 
@@ -29,9 +29,15 @@ function isOpen(status: string) {
 }
 
 // The same rule as isOpen, as a filter for the writes, so they only apply while it still holds. In-house work orders
-// have no contractor, so their link never works.
+// have no contractor, so their link never works; nor does any link while its organization is locked for deletion.
 function openWorkOrderWhere(token: string) {
-    return { publicToken: token, archived: false, inHouse: false, status: { in: [...OPEN_STATUSES] } };
+    return {
+        publicToken: token,
+        ...LIVE_ORGANIZATION,
+        archived: false,
+        inHouse: false,
+        status: { in: [...OPEN_STATUSES] },
+    };
 }
 
 // The mutations need a verified contractor session. A work order with no contractor email can't be verified, so it
@@ -41,10 +47,10 @@ async function requireVerified(workOrder: { contractorEmail: string | null }): P
 }
 
 // The work order a contractor link shows, with what verification needs. Null when missing, archived, in-house, a
-// draft or cancelled, the same rule as the page.
+// draft, cancelled or its organization is locked, the same rule as the page.
 async function loadContractorWorkOrder(token: string) {
     const workOrder = await prisma.workOrder.findUnique({
-        where: { publicToken: token },
+        where: { publicToken: token, ...LIVE_ORGANIZATION },
         include: { organization: { select: { id: true, name: true, email: true } } },
     });
     if (
@@ -136,7 +142,7 @@ export async function verifyCode(
 
 async function getOpenLineItem(token: string, lineItemId: string) {
     const lineItem = await prisma.lineItem.findFirst({
-        where: { id: lineItemId, area: { workOrder: { publicToken: token } } },
+        where: { id: lineItemId, area: { workOrder: { publicToken: token, ...LIVE_ORGANIZATION } } },
         include: { area: { include: { workOrder: true } } },
     });
 
@@ -178,7 +184,13 @@ export async function toggleLineItem(token: string, lineItemId: string): Promise
         ...(completed && workOrder.status === "SENT"
             ? [
                   prisma.workOrder.updateMany({
-                      where: { id: workOrder.id, publicToken: input.token, status: "SENT", archived: false },
+                      where: {
+                          id: workOrder.id,
+                          publicToken: input.token,
+                          ...LIVE_ORGANIZATION,
+                          status: "SENT",
+                          archived: false,
+                      },
                       data: { status: "IN_PROGRESS" },
                   }),
               ]
@@ -244,7 +256,7 @@ export async function recordOpen(token: string): Promise<void> {
         if (isLikelyBot((await headers()).get("user-agent"))) return;
 
         const workOrder = await prisma.workOrder.findUnique({
-            where: { publicToken: input.data.token },
+            where: { publicToken: input.data.token, ...LIVE_ORGANIZATION },
             select: {
                 id: true,
                 organizationId: true,
@@ -281,7 +293,7 @@ export async function recordOpen(token: string): Promise<void> {
 
 function loadForCompletion(token: string) {
     return prisma.workOrder.findUnique({
-        where: { publicToken: token },
+        where: { publicToken: token, ...LIVE_ORGANIZATION },
         include: {
             organization: { select: { name: true, email: true } },
             property: true,

@@ -12,15 +12,19 @@ function reloadAt(path: string): void {
     window.location.assign(path);
 }
 
-// Settings → Account → "Delete organization" (admins): typing its name confirms. Afterwards the session's active
-// organization is cleared before going to /setup: the browser's session token still names the deleted organization
-// for up to a minute, and pages would otherwise look it up.
+// Settings → Account → "Delete organization" (admins): typing its name confirms. It's locked at once and deleted 7
+// days later unless an admin restores it from /setup. Afterwards the session's active organization is cleared before
+// going to /setup (where the restore button is): the browser's session token still names the locked organization for
+// up to a minute, and pages would otherwise look it up.
 export function DeleteOrganizationButton({ name }: { name: string }): React.ReactElement {
     const clerk = useClerk();
     return (
         <DeleteButton
             itemName={name}
             label="Delete organization"
+            title={<>Delete &ldquo;{name}&rdquo;?</>}
+            warning="It's locked for everyone right away."
+            confirmLabel="Delete organization"
             confirmWord={name}
             onDelete={async (confirmation) => {
                 const result = await deleteOrganization(confirmation);
@@ -36,8 +40,9 @@ export function DeleteOrganizationButton({ name }: { name: string }): React.Reac
             }}
         >
             <p>
-                Every property, contact, work order, photo, activity entry, email record and API key in{" "}
-                <strong>{name}</strong> is deleted, for everyone in it. Contractor links stop working.
+                <strong>{name}</strong> is locked for everyone right away and deleted 7 days later: every property,
+                contact, work order, photo, activity entry, email record and API key in it. Until then, any admin can
+                restore it. API keys and contractor links stop working while it&apos;s locked.
             </p>
             <p className="text-muted">Want a copy first? Use Export your data above.</p>
         </DeleteButton>

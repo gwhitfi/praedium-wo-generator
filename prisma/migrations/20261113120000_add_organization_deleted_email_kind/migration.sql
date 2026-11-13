@@ -1,0 +1,2 @@
+-- AlterEnum
+ALTER TYPE "EmailKind" ADD VALUE 'ORGANIZATION_DELETED';

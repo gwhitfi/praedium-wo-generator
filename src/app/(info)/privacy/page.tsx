@@ -50,7 +50,7 @@ export default function Privacy(): React.ReactElement {
     return (
         <main id="main" className="mx-auto max-w-3xl px-4 pt-10 pb-16 text-foreground">
             <h1 className="text-3xl font-semibold tracking-tight">Privacy Policy</h1>
-            <p className="mt-1 text-sm text-subtle">Effective: November 10, 2026</p>
+            <p className="mt-1 text-sm text-subtle">Effective: November 13, 2026</p>
             <TableOfContents />
 
             <Section title="Who we are">
@@ -207,14 +207,16 @@ export default function Privacy(): React.ReactElement {
                     into the activity log stay in the log so the history still makes sense.
                 </P>
                 <P>
-                    You can delete your account, and an admin can delete the whole organization, in Settings; it happens
-                    right away. You can also email <Email /> and we&apos;ll do it within 30 days. Deleting your account
-                    removes your sign-in; your organizations&apos; records stay for their other members, and your name
-                    stays in the activity log. An organization you&apos;re the only member of is deleted along with your
-                    account. Deleting an organization removes all of its properties, contacts, work orders, photos,
-                    activity log, email records and API keys for everyone, and can&apos;t be undone. If an organization
-                    is deleted another way (for example from the sign-in provider&apos;s account settings), it&apos;s
-                    locked at once and its data is removed within 30 days.
+                    You can delete your account in Settings, and it happens right away. An admin can delete the whole
+                    organization in Settings: it&apos;s locked at once for everyone and its data is removed 7 days later;
+                    until then, any admin can restore it. You can also email <Email /> and we&apos;ll do either within 30
+                    days. Deleting your account removes your sign-in; your organizations&apos; records stay for their
+                    other members, and your name stays in the activity log. An organization you&apos;re the only member
+                    of is deleted along with your account, right away. Deleting an organization removes all of its
+                    properties, contacts, work orders, photos, activity log, email records and API keys for everyone;
+                    once removed, its data can&apos;t be recovered. If an organization is deleted another way (for
+                    example from the sign-in provider&apos;s account settings), it&apos;s locked at once and its data is
+                    removed within 8 days.
                 </P>
                 <P>
                     We keep a record of the emails Praedium sends for your organization (who it went to, what kind of
@@ -230,7 +232,7 @@ export default function Privacy(): React.ReactElement {
                     Every database query is limited to your own organization. API keys are stored only as a hash. Photos
                     live in private storage and are only served to signed-in members of your organization or through an
                     active contractor link. Contractor links stop working when a work order is cancelled, archived or
-                    deleted. No system is perfectly secure, so protect your login, your API keys and your contractor
+                    deleted, or while its organization is locked for deletion. No system is perfectly secure, so protect your login, your API keys and your contractor
                     links, and tell us at <Email /> if you think something has been exposed.
                 </P>
             </Section>

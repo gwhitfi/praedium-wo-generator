@@ -247,7 +247,7 @@ export default async function Settings() {
                             {isAdmin && (
                                 <DangerRow
                                     title={`Delete ${organization.name}`}
-                                    description="Removes the organization and all of its data for everyone in it, right away. This can't be undone."
+                                    description="Locks the organization for everyone right away and deletes it with all of its data 7 days later. Until then, any admin can restore it."
                                 >
                                     <DeleteOrganizationButton name={organization.name} />
                                 </DangerRow>
