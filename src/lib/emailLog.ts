@@ -1,16 +1,49 @@
 // Server-only. Every email Praedium sends for an organization goes through sendLoggedEmail(): it refuses suppressed
 // addresses (hard bounces, spam complaints), holds each organization to a daily allowance so open sign-up can't turn
-// Praedium into a mail relay, sends through Resend and records the outcome in EmailLog. Resend's webhooks then move
-// the row to Delivered, Bounced or Complained (src/lib/resendWebhook.ts).
+// Praedium into a mail relay, caps what one address gets from one organization, keeps the whole account under Resend's
+// daily quota, sends through Resend and records the outcome in EmailLog. Resend's webhooks then move the row to
+// Delivered, Bounced or Complained (src/lib/resendWebhook.ts).
+import * as Sentry from "@sentry/nextjs";
 import { Prisma, type EmailKind } from "@/generated/prisma/client";
 import { normalizeEmail } from "@/lib/contractorWorkOrders";
 import { dateInAppTimeZone, formatFullDate } from "@/lib/dates";
 import { sendEmail } from "@/lib/email";
 import prisma from "@/lib/prisma";
-import { RATE_LIMITS, rateLimit } from "@/lib/rateLimit";
+import { RATE_LIMITS, peekRateLimit, rateLimit } from "@/lib/rateLimit";
+import { SUPPORT_EMAIL } from "@/lib/support";
 
 // An organization this young gets the smaller daily allowance.
 export const NEW_ORGANIZATION_MS = 24 * 60 * 60 * 1000;
+
+// The whole account's count of emails Resend accepted (RATE_LIMITS.emailAccount).
+export const ACCOUNT_KEY = "email-account";
+
+// The account's ceiling for this kind: verification codes and deletion notices may use all of it, everything the
+// office sends stops earlier so there's always room for them.
+function accountCeiling(kind: EmailKind): number {
+    return kind === "VERIFY_CODE" || kind === "ORGANIZATION_DELETED"
+        ? RATE_LIMITS.emailAccount.limit
+        : RATE_LIMITS.emailAccountOffice.limit;
+}
+
+// Tells the owner through Sentry, each alert at most once a day. The fingerprint carries the UTC date, so every day
+// that crosses opens its own issue (and Sentry's new-issue email). Never throws: the email's outcome doesn't depend
+// on it.
+async function alertOwner(alert: "warning" | "ceiling", message: string): Promise<void> {
+    try {
+        const once = await rateLimit(`email-alert-${alert}`, RATE_LIMITS.emailAlert);
+        if (!once.ok) return;
+        const day = new Date().toISOString().slice(0, 10);
+        Sentry.captureMessage(message, {
+            level: alert === "warning" ? "warning" : "error",
+            fingerprint: [`email-account-${alert}`, day],
+        });
+        // Events captured by hand aren't flushed before a serverless function stops.
+        await Sentry.flush(2000);
+    } catch (error) {
+        console.error(`Could not send the email ${alert} alert`, error);
+    }
+}
 
 // An email Praedium chose not to send. The message is written for the person who tried, and safe to show.
 export class EmailNotSent extends Error {}
@@ -60,15 +93,17 @@ export async function suppressionMessage(address: string): Promise<string | null
     const suppressed = await prisma.suppressedEmail.findUnique({ where: { email: normalizeEmail(address) } });
     if (!suppressed) return null;
     const on = formatFullDate(dateInAppTimeZone(suppressed.createdAt));
+    const support = `If this is a mistake, email ${SUPPORT_EMAIL}.`;
     return suppressed.reason === "COMPLAINED"
-        ? `${suppressed.email} marked an earlier email as spam on ${on}, so Praedium won't email it again.`
-        : `Email to ${suppressed.email} bounced on ${on}, so Praedium won't email it again. Check the address.`;
+        ? `${suppressed.email} marked an earlier email as spam on ${on}, so Praedium won't email it again. ${support}`
+        : `Email to ${suppressed.email} bounced on ${on}, so Praedium won't email it again. Check the address. ${support}`;
 }
 
-// Sends the email, or throws EmailNotSent (suppressed address, daily limit) or Resend's error. Returns the log
+// Sends the email, or throws EmailNotSent (suppressed address, a daily limit) or Resend's error. Returns the log
 // row's Resend id. The deletion notice to admins is sent after the organization is locked, so it skips the
-// locked-organization refusal, and it skips the daily allowance so a deleting admin can't use up the allowance to
-// keep the other admins from hearing about it. Suppressed addresses are still refused and every attempt is logged.
+// locked-organization refusal, and it skips the organization's and the recipient's daily allowances so a deleting
+// admin can't use them up to keep the other admins from hearing about it. Suppressed addresses and the account's
+// daily ceiling still apply to it, and every attempt is logged.
 export async function sendLoggedEmail(email: LoggedEmail): Promise<{ resendId: string | null }> {
     const deletionNotice = email.kind === "ORGANIZATION_DELETED";
     const to = normalizeEmail(email.to);
@@ -99,8 +134,33 @@ export async function sendLoggedEmail(email: LoggedEmail): Promise<{ resendId: s
             await record(email, to, { status: "SKIPPED", error: "Daily email limit reached." });
             throw new EmailNotSent(message);
         }
+
+        const perRecipient = RATE_LIMITS.emailRecipient;
+        const recipientAllowed = await rateLimit(`email-to:${email.organizationId}:${to}`, perRecipient);
+        if (!recipientAllowed.ok) {
+            await record(email, to, { status: "SKIPPED", error: "Daily limit for this recipient reached." });
+            throw new EmailNotSent(
+                `${to} has already been sent ${perRecipient.limit} emails from this organization today. Try again tomorrow.`,
+            );
+        }
     }
 
+    // Resend's quota is for the whole account. The total is read here and counted only after Resend accepts the
+    // email, so a refused or failed send doesn't use it up. Sends running at the same moment can each pass this check
+    // before either is counted, so the total can go a little over; the gap to Resend's own limit absorbs that.
+    const accountTotal = await peekRateLimit(ACCOUNT_KEY);
+    if (accountTotal >= accountCeiling(email.kind)) {
+        await record(email, to, { status: "SKIPPED", error: "Praedium's daily email limit reached." });
+        await alertOwner(
+            "ceiling",
+            `Praedium stopped sending email: ${accountTotal} sent today, at the daily ceiling (${RATE_LIMITS.emailAccountOffice.limit} for the office, ${RATE_LIMITS.emailAccount.limit} with verification codes and deletion notices).`,
+        );
+        throw new EmailNotSent(
+            "Praedium can't send more email today. Try again tomorrow, or copy the work order link and send it yourself.",
+        );
+    }
+
+    let resendId: string | null;
     try {
         const sent = await sendEmail({
             to,
@@ -110,11 +170,20 @@ export async function sendLoggedEmail(email: LoggedEmail): Promise<{ resendId: s
             replyTo: email.replyTo,
             fromName: email.fromName,
         });
-        const resendId = sent?.id ?? null;
-        await record(email, to, { status: "SENT", resendId });
-        return { resendId };
+        resendId = sent?.id ?? null;
     } catch (error) {
         await record(email, to, { status: "FAILED", error: error instanceof Error ? error.message : String(error) });
         throw error;
     }
+    await record(email, to, { status: "SENT", resendId });
+
+    const counted = await rateLimit(ACCOUNT_KEY, RATE_LIMITS.emailAccount);
+    const sentToday = RATE_LIMITS.emailAccount.limit - counted.remaining;
+    if (sentToday >= RATE_LIMITS.emailAccountWarning.limit) {
+        await alertOwner(
+            "warning",
+            `Praedium has sent ${sentToday} emails today; the office stops at ${RATE_LIMITS.emailAccountOffice.limit} and everything at ${RATE_LIMITS.emailAccount.limit}.`,
+        );
+    }
+    return { resendId };
 }

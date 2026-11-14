@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import Link from "next/link";
 import TableOfContents from "@/components/TableOfContents";
+import { SUPPORT_EMAIL } from "@/lib/support";
 import { headingId } from "@/lib/ui";
 
 export const metadata: Metadata = { title: "Privacy Policy" };
@@ -40,8 +41,8 @@ function B({ children }: { children: React.ReactNode }): React.ReactElement {
 
 function Email(): React.ReactElement {
     return (
-        <a href="mailto:justinwclemson@gmail.com" className={LINK}>
-            justinwclemson@gmail.com
+        <a href={`mailto:${SUPPORT_EMAIL}`} className={LINK}>
+            {SUPPORT_EMAIL}
         </a>
     );
 }
@@ -50,7 +51,7 @@ export default function Privacy(): React.ReactElement {
     return (
         <main id="main" className="mx-auto max-w-3xl px-4 pt-10 pb-16 text-foreground">
             <h1 className="text-3xl font-semibold tracking-tight">Privacy Policy</h1>
-            <p className="mt-1 text-sm text-subtle">Effective: November 13, 2026</p>
+            <p className="mt-1 text-sm text-subtle">Effective: November 14, 2026</p>
             <TableOfContents />
 
             <Section title="Who we are">

@@ -9,7 +9,7 @@ vi.mock("@/lib/prisma", () => ({
     },
 }));
 vi.mock("@/lib/email", () => ({ getAppUrl: vi.fn(() => "https://example.com") }));
-vi.mock("@/lib/emailLog", () => ({ sendLoggedEmail: vi.fn() }));
+vi.mock("@/lib/emailLog", () => ({ sendLoggedEmail: vi.fn(), EmailNotSent: class EmailNotSent extends Error {} }));
 vi.mock("@/lib/emails/workOrderEmail", () => ({ workOrderEmail: vi.fn(() => ({ subject: "", html: "", text: "" })) }));
 vi.mock("@/lib/emails/notifyCancelled", () => ({ notifyContractorsCancelled: vi.fn() }));
 vi.mock("@/lib/emails/notifyTenant", () => ({ notifyTenant: vi.fn(() => false) }));
@@ -193,11 +193,11 @@ describe("emailWorkOrder", () => {
         });
     });
 
-    it("doesn't log when the email fails", async () => {
+    it("doesn't log when the email fails, and doesn't show the office the provider's error", async () => {
         vi.mocked(sendEmail).mockRejectedValueOnce(new Error("Resend is down"));
         vi.spyOn(console, "error").mockImplementation(() => {});
 
-        expect((await emailWorkOrder("wo1")).ok).toBe(false);
+        expect(await emailWorkOrder("wo1")).toEqual({ ok: false, error: "The email couldn't be sent. Try again." });
         expect(logEvent).not.toHaveBeenCalled();
     });
 
