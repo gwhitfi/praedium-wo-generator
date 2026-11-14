@@ -150,7 +150,7 @@ describe("startVerification", () => {
     it("doesn't show the contractor Praedium's daily limit either", async () => {
         sendEmail.mockRejectedValue(
             new EmailNotSent(
-                "Praedium can't send more email today. Try again tomorrow, or copy the work order link and send it yourself.",
+                "Praedium can't send more email today. Try again tomorrow, or share the link yourself (Mark as sent first if it's a draft).",
             ),
         );
         vi.mocked(prisma.contractorChallenge.delete).mockResolvedValue({} as never);

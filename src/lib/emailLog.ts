@@ -156,7 +156,7 @@ export async function sendLoggedEmail(email: LoggedEmail): Promise<{ resendId: s
             `Praedium stopped sending email: ${accountTotal} sent today, at the daily ceiling (${RATE_LIMITS.emailAccountOffice.limit} for the office, ${RATE_LIMITS.emailAccount.limit} with verification codes and deletion notices).`,
         );
         throw new EmailNotSent(
-            "Praedium can't send more email today. Try again tomorrow, or copy the work order link and send it yourself.",
+            "Praedium can't send more email today. Try again tomorrow, or share the link yourself (Mark as sent first if it's a draft).",
         );
     }
 

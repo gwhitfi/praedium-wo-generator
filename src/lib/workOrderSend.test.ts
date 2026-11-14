@@ -227,7 +227,7 @@ describe("emailWorkOrderToContractor", () => {
     it("passes Praedium's own refusal on to the office as written", async () => {
         vi.spyOn(console, "error").mockImplementation(() => {});
         const refusal =
-            "Praedium can't send more email today. Try again tomorrow, or copy the work order link and send it yourself.";
+            "Praedium can't send more email today. Try again tomorrow, or share the link yourself (Mark as sent first if it's a draft).";
         vi.mocked(sendEmail).mockRejectedValueOnce(new EmailNotSent(refusal));
 
         expect(await emailWorkOrderToContractor(send)).toEqual({ ok: false, error: refusal });

@@ -23,7 +23,7 @@ import { type RateLimitResult, type RateLimitRule, peekRateLimit, rateLimit } fr
 import { EmailNotSent, sendLoggedEmail } from "./emailLog";
 
 const ACCOUNT_LIMIT =
-    "Praedium can't send more email today. Try again tomorrow, or copy the work order link and send it yourself.";
+    "Praedium can't send more email today. Try again tomorrow, or share the link yourself (Mark as sent first if it's a draft).";
 const OFFICE_KINDS = ["WORK_ORDER", "TENANT_NOTICE", "CANCELLED", "COMPLETED"] as const;
 
 // rateLimit() as if each bucket had just counted `counts[key]` (1 when not given), refusing over the rule's limit.
