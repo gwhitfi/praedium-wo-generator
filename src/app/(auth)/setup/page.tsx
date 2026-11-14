@@ -52,7 +52,7 @@ export default async function Page(): Promise<React.ReactElement> {
     return (
         <main id="main" className="flex min-h-screen flex-col items-center px-4 py-10 text-foreground">
             <Logo className="h-7 w-auto" />
-            <div className="flex w-full flex-1 flex-col items-center justify-center gap-4 py-10 text-center">
+            <div className="flex w-full flex-col items-center gap-4 pt-10 pb-10 text-center sm:pt-16">
                 <div className="max-w-md">
                     <h1 className="text-2xl font-semibold tracking-tight">Set up your organization</h1>
                     <p className="mt-2 text-sm text-muted">
@@ -67,7 +67,10 @@ export default async function Page(): Promise<React.ReactElement> {
                     >
                         <div>
                             <p className="font-semibold">{organization.name}</p>
-                            <p className="text-secondary">Scheduled for deletion on {organization.deletesOn}.</p>
+                            <p className="text-secondary">
+                                Scheduled for deletion on {organization.deletesOn}.
+                                {organization.isAdmin && " Restore it to open it again."}
+                            </p>
                         </div>
                         {organization.isAdmin ? (
                             <RestoreOrganizationButton clerkOrgId={organization.clerkOrgId} name={organization.name} />

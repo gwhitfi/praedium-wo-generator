@@ -5,7 +5,7 @@ import { randomBytes } from "node:crypto";
 import type { User } from "@/generated/prisma/client";
 import { normalizeEmail } from "@/lib/contractorWorkOrders";
 import { getAppUrl } from "@/lib/email";
-import { sendLoggedEmail } from "@/lib/emailLog";
+import { EmailNotSent, sendLoggedEmail } from "@/lib/emailLog";
 import { notifyTenant } from "@/lib/emails/notifyTenant";
 import { workOrderEmail } from "@/lib/emails/workOrderEmail";
 import prisma from "@/lib/prisma";
@@ -106,7 +106,9 @@ export async function emailWorkOrderToContractor({
         });
     } catch (error) {
         console.error("emailWorkOrder failed", error);
-        return { ok: false, error: error instanceof Error ? error.message : "Email failed to send" };
+        // Only Praedium's own refusals are written for the office; a provider error stays in the log.
+        if (error instanceof EmailNotSent) return { ok: false, error: error.message };
+        return { ok: false, error: "The email couldn't be sent. Try again." };
     }
 
     await prisma.workOrder.update({

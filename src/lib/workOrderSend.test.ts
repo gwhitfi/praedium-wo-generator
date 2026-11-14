@@ -7,7 +7,7 @@ vi.mock("@/lib/prisma", () => ({
     },
 }));
 vi.mock("@/lib/email", () => ({ getAppUrl: vi.fn(() => "https://example.com") }));
-vi.mock("@/lib/emailLog", () => ({ sendLoggedEmail: vi.fn() }));
+vi.mock("@/lib/emailLog", () => ({ sendLoggedEmail: vi.fn(), EmailNotSent: class EmailNotSent extends Error {} }));
 vi.mock("@/lib/emails/workOrderEmail", () => ({ workOrderEmail: vi.fn(() => ({ subject: "", html: "", text: "" })) }));
 vi.mock("@/lib/emails/notifyTenant", () => ({ notifyTenant: vi.fn(() => false) }));
 vi.mock("@/lib/workOrderEvents", () => ({ logEvent: vi.fn() }));
@@ -16,7 +16,7 @@ vi.mock("@/lib/rateLimit", async (importOriginal) => ({
     rateLimit: vi.fn(),
 }));
 
-import { sendLoggedEmail as sendEmail } from "@/lib/emailLog";
+import { EmailNotSent, sendLoggedEmail as sendEmail } from "@/lib/emailLog";
 import { notifyTenant } from "@/lib/emails/notifyTenant";
 import { workOrderEmail } from "@/lib/emails/workOrderEmail";
 import prisma from "@/lib/prisma";
@@ -204,8 +204,33 @@ describe("emailWorkOrderToContractor", () => {
         withWorkOrder({ contractorEmail: "old@example.com" });
         vi.mocked(sendEmail).mockRejectedValueOnce(new Error("Resend is down"));
 
-        expect(await emailWorkOrderToContractor(send)).toEqual({ ok: false, error: "Resend is down" });
+        expect(await emailWorkOrderToContractor(send)).toEqual({
+            ok: false,
+            error: "The email couldn't be sent. Try again.",
+        });
         expect(prisma.workOrder.update).toHaveBeenCalledTimes(1);
+        expect(logEvent).not.toHaveBeenCalled();
+    });
+
+    it("keeps the provider's error out of the office's message, but logs it", async () => {
+        const consoleError = vi.spyOn(console, "error").mockImplementation(() => {});
+        const providerError = new Error("Email failed to send: API key re_secret is invalid");
+        vi.mocked(sendEmail).mockRejectedValueOnce(providerError);
+
+        const result = await emailWorkOrderToContractor(send);
+
+        expect(result).toEqual({ ok: false, error: "The email couldn't be sent. Try again." });
+        expect(JSON.stringify(result)).not.toContain("re_secret");
+        expect(consoleError).toHaveBeenCalledWith("emailWorkOrder failed", providerError);
+    });
+
+    it("passes Praedium's own refusal on to the office as written", async () => {
+        vi.spyOn(console, "error").mockImplementation(() => {});
+        const refusal =
+            "Praedium can't send more email today. Try again tomorrow, or share the link yourself (Mark as sent first if it's a draft).";
+        vi.mocked(sendEmail).mockRejectedValueOnce(new EmailNotSent(refusal));
+
+        expect(await emailWorkOrderToContractor(send)).toEqual({ ok: false, error: refusal });
         expect(logEvent).not.toHaveBeenCalled();
     });
 
