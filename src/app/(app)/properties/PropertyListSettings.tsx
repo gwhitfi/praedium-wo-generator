@@ -73,8 +73,8 @@ export default function PropertyListSettings({ groupByType }: { groupByType: boo
                         >
                             <span
                                 aria-hidden
-                                className={`absolute left-0.5 top-0.5 h-5 w-5 rounded-full bg-white shadow transition-transform ${
-                                    shown ? "translate-x-5" : ""
+                                className={`absolute left-0.5 top-0.5 h-5 w-5 rounded-full shadow transition-transform ${
+                                    shown ? "translate-x-5 bg-on-accent" : "bg-white"
                                 }`}
                             />
                         </button>

@@ -1,69 +1,61 @@
 import { useSyncExternalStore } from "react";
-import { PALETTE_STORAGE_KEYS, THEME_STORAGE_KEY, type Theme } from "./theme";
+import { isDarkPaletteId, PALETTE_STORAGE_KEYS, THEME_STORAGE_KEY, type DarkPaletteId } from "./theme";
 
-// Color palettes for each theme, picked in Settings. Each non-default one is a
-// [data-theme][data-palette-light|dark] block in globals.css; "default" is the plain theme.
-// The light/dark toggle switches between the user's light pick and dark pick.
-export const PALETTES = {
-    light: [
-        { id: "default", name: "Light" },
-        { id: "pine-den", name: "Pine Den" },
-        { id: "porchlight", name: "Porchlight" },
-    ],
-    dark: [
-        { id: "default", name: "Dark" },
-        { id: "pine-den", name: "Pine Den" },
-        { id: "porchlight", name: "Porchlight" },
-    ],
-} as const;
+// The dark themes, picked in Settings (_docs/THEME.md). "default" is Hearth, the plain dark block in globals.css;
+// each other one is a [data-theme="dark"][data-palette-dark] block there. Light mode has a single theme, Daybreak.
+export const DARK_PALETTES: readonly { id: "default" | DarkPaletteId; name: string }[] = [
+    { id: "default", name: "Hearth" },
+    { id: "flint", name: "Flint" },
+    { id: "woodsmoke", name: "Woodsmoke" },
+    { id: "cinder", name: "Cinder" },
+];
 
-export const PALETTE_ATTRS = { light: "data-palette-light", dark: "data-palette-dark" } as const;
+export const DARK_PALETTE_ATTR = "data-palette-dark";
 
-export type PaletteState = { theme: Theme; light: string; dark: string };
+export type PaletteState = { theme: "light" | "dark"; dark: string };
 
 function save(key: string, value: string | null) {
     try {
         if (value === null) localStorage.removeItem(key);
         else localStorage.setItem(key, value);
     } catch {
-        // Storage can be blocked (e.g. private browsing); the palette still applies to this page.
+        // Storage can be blocked (e.g. private browsing); the theme still applies to this page.
     }
 }
 
-// Sets the palette for one theme and switches to that theme so the change is visible.
-export function applyPalette(mode: Theme, id: string): void {
+// Sets the dark theme and switches to dark mode so the change is visible. An unknown id falls back to Hearth.
+export function applyDarkPalette(id: string): void {
     const root = document.documentElement;
-    root.dataset.theme = mode;
-    save(THEME_STORAGE_KEY, mode);
-    if (id === "default") root.removeAttribute(PALETTE_ATTRS[mode]);
-    else root.setAttribute(PALETTE_ATTRS[mode], id);
-    save(PALETTE_STORAGE_KEYS[mode], id === "default" ? null : id);
+    root.dataset.theme = "dark";
+    save(THEME_STORAGE_KEY, "dark");
+    const palette = isDarkPaletteId(id) ? id : null;
+    if (palette) root.setAttribute(DARK_PALETTE_ATTR, palette);
+    else root.removeAttribute(DARK_PALETTE_ATTR);
+    save(PALETTE_STORAGE_KEYS.dark, palette);
 }
 
 function subscribe(onChange: () => void) {
     const observer = new MutationObserver(onChange);
     observer.observe(document.documentElement, {
         attributes: true,
-        attributeFilter: ["data-theme", PALETTE_ATTRS.light, PALETTE_ATTRS.dark],
+        attributeFilter: ["data-theme", DARK_PALETTE_ATTR],
     });
     return () => observer.disconnect();
 }
-// A string snapshot ("theme|light|dark") so React compares it by value.
+// A string snapshot ("theme|dark") so React compares it by value.
 function getSnapshot() {
     const root = document.documentElement;
-    return [
-        root.dataset.theme === "light" ? "light" : "dark",
-        root.getAttribute(PALETTE_ATTRS.light) ?? "default",
-        root.getAttribute(PALETTE_ATTRS.dark) ?? "default",
-    ].join("|");
+    return [root.dataset.theme === "light" ? "light" : "dark", root.getAttribute(DARK_PALETTE_ATTR) ?? "default"].join(
+        "|",
+    );
 }
 // The server doesn't know the saved choices, so it renders null until the browser takes over.
 const getServerSnapshot = () => null;
 
-// The current theme and each theme's palette, kept in sync with <html>. Null during server rendering.
+// The current theme and the dark theme, kept in sync with <html>. Null during server rendering.
 export function usePalettes(): PaletteState | null {
     const snapshot = useSyncExternalStore(subscribe, getSnapshot, getServerSnapshot);
     if (!snapshot) return null;
-    const [theme, light, dark] = snapshot.split("|");
-    return { theme: theme as Theme, light, dark };
+    const [theme, dark] = snapshot.split("|");
+    return { theme: theme === "light" ? "light" : "dark", dark };
 }

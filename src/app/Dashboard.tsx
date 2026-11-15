@@ -189,7 +189,7 @@ function SectionHeading({
             {href && (
                 <Link
                     href={href}
-                    className="inline-flex items-center gap-0.5 text-sm font-medium text-accent hover:text-accent-hover"
+                    className="inline-flex items-center gap-0.5 text-sm font-medium text-accent-ink hover:text-accent-ink-hover"
                 >
                     All work orders
                     <ChevronRightIcon size={14} />
@@ -258,7 +258,7 @@ function GetStarted({ steps }: { steps: { label: string; href: string; done: boo
                 aria-valuenow={doneCount}
                 className="mb-4 h-1.5 overflow-hidden rounded-full bg-line"
             >
-                <div className="h-full rounded-full bg-accent" style={{ width: `${(doneCount / steps.length) * 100}%` }} />
+                <div className="h-full rounded-full bg-accent-ink" style={{ width: `${(doneCount / steps.length) * 100}%` }} />
             </div>
             <ol className="grid gap-1 sm:grid-cols-2">
                 {steps.map((step) => (
@@ -276,7 +276,7 @@ function GetStarted({ steps }: { steps: { label: string; href: string; done: boo
                                 href={step.href}
                                 className="group flex items-center gap-3 rounded-md px-2 py-2 text-sm font-medium text-foreground hover:bg-surface-hover"
                             >
-                                <span className="h-5 w-5 shrink-0 rounded-full border-2 border-line-strong" />
+                                <span className="h-5 w-5 shrink-0 rounded-full border-2 border-line-strong group-hover:border-line-hover" />
                                 {step.label}
                                 <ChevronRightIcon size={14} className="ml-auto text-subtle group-hover:text-foreground" />
                             </Link>

@@ -105,7 +105,7 @@ export default async function PublicWorkOrder({
                     href={mapsHref}
                     target="_blank"
                     rel="noopener noreferrer"
-                    className="underline decoration-line-strong underline-offset-4 hover:text-accent hover:decoration-current"
+                    className="underline decoration-line-strong underline-offset-4 hover:text-accent-ink hover:decoration-current"
                 >
                     {address}
                     <span className="sr-only"> (opens a map)</span>

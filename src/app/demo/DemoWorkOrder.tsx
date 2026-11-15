@@ -6,6 +6,7 @@ import {
     createContext,
     useContext,
     useEffect,
+    useLayoutEffect,
     useState,
     useSyncExternalStore,
     type Dispatch,
@@ -20,6 +21,8 @@ import { Button } from "@/components/Button";
 import { StatusBadge } from "@/components/StatusBadge";
 import { ExternalIcon, InfoIcon, PlusIcon, RotateIcon } from "@/components/Icons";
 import { inputClass } from "@/lib/defaults";
+import { DARK_PALETTE_ATTR } from "@/lib/palettes";
+import { isDarkPaletteId, PALETTE_STORAGE_KEYS } from "@/lib/theme";
 import { buttonClass, cardClass, cardTitleClass, noticeClass } from "@/lib/ui";
 
 type Item = { id: string; description: string; priority: string; completed: boolean; note: string };
@@ -126,6 +129,22 @@ export default function DemoWorkOrder({ contractor = false }: { contractor?: boo
     const { demo, setDemo } = context;
     const [areaName, setAreaName] = useState("");
     const [confirming, setConfirming] = useState(false);
+    // The contractor view shows the plain theme, like the real contractor pages: themeScript skips the dark theme
+    // choice on a full load, and this drops it when the view is reached from the office demo. Leaving puts the saved
+    // one back (read from storage, so the saved choice itself is never changed; an unknown id is ignored).
+    useLayoutEffect(() => {
+        if (!contractor) return;
+        const root = document.documentElement;
+        root.removeAttribute(DARK_PALETTE_ATTR);
+        return () => {
+            try {
+                const saved = localStorage.getItem(PALETTE_STORAGE_KEYS.dark);
+                if (isDarkPaletteId(saved)) root.setAttribute(DARK_PALETTE_ATTR, saved);
+            } catch {
+                /* Storage is unavailable, so there is no saved theme to restore. */
+            }
+        };
+    }, [contractor]);
     const items = demo.areas.flatMap((area) => area.items);
     const done = items.filter((item) => item.completed).length;
     const tutorialStep = demo.completed
@@ -238,7 +257,7 @@ export default function DemoWorkOrder({ contractor = false }: { contractor?: boo
             >
                 <div className={`${noticeClass.info} mb-8 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between`}>
                     <p className="flex gap-2">
-                        <InfoIcon size={16} className="mt-0.5 shrink-0 text-accent" />
+                        <InfoIcon size={16} className="mt-0.5 shrink-0 text-accent-ink" />
                         <span>
                             <span className="font-medium text-foreground">
                                 {contractor

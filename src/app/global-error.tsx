@@ -21,7 +21,7 @@ export default function GlobalError({ error }: { error: Error & { digest?: strin
                     <p className="mt-3 text-muted">Work Order Fox couldn&apos;t load. Reload the page to try again.</p>
                     {/* A plain link, not next/link: the root layout failed, so a full reload is what's needed. */}
                     {/* eslint-disable-next-line @next/next/no-html-link-for-pages */}
-                    <a href="/" className="mt-8 text-sm font-medium text-accent hover:underline">
+                    <a href="/" className="mt-8 text-sm font-medium text-accent-ink hover:underline">
                         Go to the dashboard
                     </a>
                     {error.digest && <p className="mt-8 text-xs text-subtle">Error ID: {error.digest}</p>}

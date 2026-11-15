@@ -11,7 +11,7 @@ export default function AiPrompt(): React.ReactElement {
             className={`${cardClass} mt-10 flex flex-col gap-4 border-accent/30 p-4 sm:flex-row sm:items-center sm:p-5`}
         >
             <div className="flex min-w-0 flex-1 gap-3">
-                <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-accent/15 text-accent">
+                <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-accent/15 text-accent-ink">
                     <SparklesIcon size={18} />
                 </span>
                 <div className="min-w-0">

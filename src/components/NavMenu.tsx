@@ -117,7 +117,7 @@ export default function NavMenu({ infoLinks }: { infoLinks: NavLink[] }): React.
                     <div className="fixed inset-x-3 top-[4.25rem] z-30 md:absolute md:inset-x-auto md:right-0 md:top-full md:pt-2">
                         <div
                             id={menuId}
-                            className="max-h-[calc(100dvh-5.5rem)] overflow-y-auto rounded-xl border border-line bg-surface p-1.5 shadow-xl md:w-72"
+                            className="max-h-[calc(100dvh-5.5rem)] overflow-y-auto rounded-xl border border-line-strong/70 bg-surface p-1.5 shadow-xl md:w-72"
                         >
                             <div className="mb-1 flex flex-col gap-2 border-b border-line px-2.5 pt-2 pb-3">
                                 <UserButton showName />

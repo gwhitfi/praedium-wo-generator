@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { themeScript } from "./theme";
+import { DARK_PALETTE_IDS, themeScript } from "./theme";
 
 // Runs the inline <head> script against fake browser globals and returns the <html> dataset it produced.
 function run(path: string, stored: Record<string, string>, prefersLight = false) {
@@ -33,17 +33,28 @@ describe("themeScript", () => {
         expect(run("/wo/abc123", { theme: "light" }, false).theme).toBe("light");
     });
 
-    it("applies the saved palettes in the app", () => {
-        expect(run("/settings", { theme: "dark", "palette-light": "pine-den", "palette-dark": "porchlight" })).toEqual({
-            theme: "dark",
-            paletteLight: "pine-den",
-            paletteDark: "porchlight",
-        });
+    it("applies each saved dark theme in the app", () => {
+        for (const id of DARK_PALETTE_IDS) {
+            expect(run("/settings", { theme: "dark", "palette-dark": id })).toEqual({ theme: "dark", paletteDark: id });
+        }
     });
 
-    it("never applies palettes on contractor pages", () => {
-        expect(run("/wo/abc123", { theme: "light", "palette-light": "pine-den", "palette-dark": "porchlight" })).toEqual({
-            theme: "light",
-        });
+    it("ignores removed or unknown saved themes and any saved light palette", () => {
+        expect(run("/settings", { theme: "dark", "palette-dark": "pine-den" })).toEqual({ theme: "dark" });
+        expect(run("/settings", { theme: "dark", "palette-dark": "porchlight" })).toEqual({ theme: "dark" });
+        expect(run("/settings", { theme: "dark", "palette-dark": "toString" })).toEqual({ theme: "dark" });
+        expect(run("/settings", { theme: "light", "palette-light": "porchlight" })).toEqual({ theme: "light" });
+    });
+
+    it("never applies the dark theme choice on contractor pages", () => {
+        expect(run("/wo/abc123", { theme: "dark", "palette-dark": "flint" })).toEqual({ theme: "dark" });
+    });
+
+    it("never applies the dark theme choice on the demo's contractor view, but does on the rest of the demo", () => {
+        const saved = { theme: "dark", "palette-dark": "cinder" };
+        expect(run("/demo/contractor", saved)).toEqual({ theme: "dark" });
+        expect(run("/demo/contractor/x", saved)).toEqual({ theme: "dark" });
+        expect(run("/demo", saved)).toEqual({ theme: "dark", paletteDark: "cinder" });
+        expect(run("/demo/contractors", saved)).toEqual({ theme: "dark", paletteDark: "cinder" });
     });
 });

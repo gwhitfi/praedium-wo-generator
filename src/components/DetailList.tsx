@@ -42,7 +42,7 @@ export default function DetailList({
                                     // A light underline marks the record link before it's hovered (touch has no hover).
                                     <Link
                                         href={detail.href}
-                                        className="underline decoration-line-strong underline-offset-4 hover:text-accent hover:decoration-current"
+                                        className="underline decoration-line-strong underline-offset-4 hover:text-accent-ink hover:decoration-current"
                                     >
                                         {detail.value}
                                     </Link>

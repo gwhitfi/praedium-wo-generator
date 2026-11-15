@@ -9,7 +9,7 @@ export default function AiPreferenceForm({ aiEnabled }: { aiEnabled: boolean }):
         <section aria-labelledby="ai-settings-title" className={`${cardClass} overflow-hidden`}>
             <div className="p-5 sm:p-6">
                 <h3 id="ai-settings-title" className="flex items-center gap-2 text-base font-semibold text-foreground">
-                    <SparklesIcon size={16} className="text-accent" />
+                    <SparklesIcon size={16} className="text-accent-ink" />
                     Fox Bot
                 </h3>
                 <p className="mt-1 text-sm text-muted">
@@ -48,7 +48,7 @@ export default function AiPreferenceForm({ aiEnabled }: { aiEnabled: boolean }):
                         className={`flex h-6 w-11 shrink-0 items-center rounded-full p-0.5 transition-colors ${aiEnabled ? "bg-accent" : "bg-line-strong"}`}
                     >
                         <span
-                            className={`h-5 w-5 rounded-full bg-white shadow transition-transform ${aiEnabled ? "translate-x-5" : ""}`}
+                            className={`h-5 w-5 rounded-full shadow transition-transform ${aiEnabled ? "translate-x-5 bg-on-accent" : "bg-white"}`}
                         />
                     </span>
                 </button>

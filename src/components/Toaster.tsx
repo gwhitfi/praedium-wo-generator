@@ -113,7 +113,7 @@ function ToastItem({ toast, dismiss }: { toast: Toast; dismiss: (id: number) => 
                         onDismiss();
                         void toast.action?.onClick();
                     }}
-                    className="h-9 shrink-0 rounded-md px-2.5 text-sm font-semibold text-accent hover:cursor-pointer hover:bg-accent/10"
+                    className="h-9 shrink-0 rounded-md px-2.5 text-sm font-semibold text-accent-ink hover:cursor-pointer hover:bg-accent/10"
                 >
                     {toast.action.label}
                 </button>

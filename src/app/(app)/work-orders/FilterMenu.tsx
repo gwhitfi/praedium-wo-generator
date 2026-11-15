@@ -83,7 +83,7 @@ export default function FilterMenu({ options, prefix = "Show" }: { options: Filt
 
             {open && (
                 <div className="absolute left-0 top-full z-20 pt-1">
-                    <ul id={menuId} className="min-w-44 rounded-lg border border-line bg-surface py-1 shadow-lg">
+                    <ul id={menuId} className="min-w-44 rounded-lg border border-line-strong/70 bg-surface py-1 shadow-lg">
                         {options.map((option) => (
                             <li key={option.label}>
                                 <Link
@@ -94,7 +94,7 @@ export default function FilterMenu({ options, prefix = "Show" }: { options: Filt
                                         option.active ? "text-foreground" : "text-muted"
                                     }`}
                                 >
-                                    <span aria-hidden className="w-3 text-accent">
+                                    <span aria-hidden className="w-3 text-accent-ink">
                                         {option.active && "✓"}
                                     </span>
                                     {option.label}

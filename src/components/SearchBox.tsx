@@ -101,7 +101,7 @@ export default function SearchBox({
                 autoFocus={autoFocus}
                 autoComplete="off"
                 aria-busy={pending || undefined}
-                className="h-10 w-full rounded-md border border-line-strong bg-surface pr-10 pl-9 text-base text-foreground placeholder:text-subtle focus:border-accent focus:outline-none focus:ring-2 focus:ring-accent/40 sm:text-sm [&::-webkit-search-cancel-button]:hidden"
+                className="h-10 w-full rounded-md border border-line-strong bg-surface pr-10 pl-9 text-base text-foreground placeholder:text-subtle focus:border-accent-ink focus:outline-none focus:ring-2 focus:ring-accent-ink sm:text-sm [&::-webkit-search-cancel-button]:hidden"
             />
             {value ? (
                 <button

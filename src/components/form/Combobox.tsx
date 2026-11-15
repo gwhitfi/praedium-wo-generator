@@ -139,7 +139,7 @@ export default function Combobox({
                         openWith(event.key);
                     }
                 }}
-                className="flex h-10 w-full items-center gap-2 rounded-md border border-line-strong bg-surface px-3 text-left text-base text-foreground hover:cursor-pointer focus:border-accent focus:outline-none focus:ring-2 focus:ring-accent/40 disabled:cursor-not-allowed disabled:opacity-60 aria-[invalid=true]:border-danger sm:text-sm"
+                className="flex h-10 w-full items-center gap-2 rounded-md border border-line-strong bg-surface px-3 text-left text-base text-foreground hover:cursor-pointer focus:border-accent-ink focus:outline-none focus:ring-2 focus:ring-accent-ink disabled:cursor-not-allowed disabled:opacity-60 aria-[invalid=true]:border-danger aria-[invalid=true]:focus:border-danger aria-[invalid=true]:focus:ring-danger sm:text-sm"
             >
                 {selected?.starred && (
                     <span aria-hidden className="text-secondary">
@@ -154,7 +154,7 @@ export default function Combobox({
             </button>
 
             {open && (
-                <div className="absolute inset-x-0 top-full z-30 mt-1 overflow-hidden rounded-lg border border-line bg-surface shadow-xl sm:min-w-72">
+                <div className="absolute inset-x-0 top-full z-30 mt-1 overflow-hidden rounded-lg border border-line-strong/70 bg-surface shadow-xl sm:min-w-72">
                     <div className="relative border-b border-line">
                         <span className="pointer-events-none absolute inset-y-0 left-3 flex items-center text-subtle">
                             <SearchIcon size={15} />
@@ -176,7 +176,7 @@ export default function Combobox({
                             onKeyDown={onSearchKeyDown}
                             placeholder={searchPlaceholder}
                             autoComplete="off"
-                            className="h-11 w-full bg-transparent pr-3 pl-9 text-base text-foreground placeholder:text-subtle focus:outline-none sm:text-sm"
+                            className="h-11 w-full bg-transparent pr-3 pl-9 text-base text-foreground placeholder:text-subtle focus:outline-none focus-visible:outline-2 focus-visible:-outline-offset-2 focus-visible:outline-accent-ink sm:text-sm"
                         />
                     </div>
                     <ul
@@ -213,7 +213,7 @@ export default function Combobox({
                                     onPointerMove={() => setActiveIndex(index)}
                                     onClick={() => choose(index)}
                                     className={`flex cursor-pointer items-center gap-2 px-3 py-2.5 text-sm sm:py-2 ${
-                                        isActive ? "bg-surface-hover" : ""
+                                        isActive ? "bg-surface-hover shadow-[inset_3px_0_0_var(--accent-ink)]" : ""
                                     }`}
                                 >
                                     <span aria-hidden className="w-3.5 shrink-0 text-secondary">
@@ -230,7 +230,7 @@ export default function Combobox({
                                             </span>
                                         )}
                                     </span>
-                                    {isSelected && <CheckIcon size={14} className="shrink-0 text-accent" />}
+                                    {isSelected && <CheckIcon size={14} className="shrink-0 text-accent-ink" />}
                                 </li>,
                             ];
                         })}
@@ -241,8 +241,10 @@ export default function Combobox({
                                 aria-selected={false}
                                 onPointerMove={() => setActiveIndex(matches.length)}
                                 onClick={() => choose(matches.length)}
-                                className={`mt-1 flex cursor-pointer items-center gap-2 border-t border-line px-3 py-2.5 text-sm font-medium text-accent ${
-                                    activeIndex === matches.length ? "bg-surface-hover" : ""
+                                className={`mt-1 flex cursor-pointer items-center gap-2 border-t border-line px-3 py-2.5 text-sm font-medium text-accent-ink ${
+                                    activeIndex === matches.length
+                                        ? "bg-surface-hover shadow-[inset_3px_0_0_var(--accent-ink)]"
+                                        : ""
                                 }`}
                             >
                                 <PlusIcon size={14} />

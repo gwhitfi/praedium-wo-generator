@@ -66,7 +66,7 @@ export default function DemoTutorial({ mode, step }: { mode: "office" | "contrac
             anchor = next;
             originalOutline = anchor.style.outline;
             originalOffset = anchor.style.outlineOffset;
-            anchor.style.outline = "2px solid var(--accent)";
+            anchor.style.outline = "2px solid var(--accent-ink)";
             anchor.style.outlineOffset = "4px";
             const reduced = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
             anchor.scrollIntoView({ block: "center", behavior: reduced ? "auto" : "smooth" });
@@ -122,7 +122,7 @@ export default function DemoTutorial({ mode, step }: { mode: "office" | "contrac
                 aria-label={`Show the tutorial, step ${step.number} of 3: ${step.title}`}
                 className="fixed right-3 bottom-3 z-50 inline-flex h-10 max-w-[calc(100vw-1.5rem)] items-center gap-2 rounded-full border border-accent/50 bg-surface px-4 text-sm font-medium text-foreground shadow-lg hover:cursor-pointer sm:right-[max(1.25rem,calc((100vw_-_64rem)/2_+_1rem))] sm:bottom-5"
             >
-                <span className="shrink-0 text-accent">
+                <span className="shrink-0 text-accent-ink">
                     Step {step.number}/3
                 </span>
                 <span className="truncate">{step.title}</span>
@@ -162,7 +162,7 @@ export default function DemoTutorial({ mode, step }: { mode: "office" | "contrac
                 <XIcon size={16} />
             </button>
             <div role="status" aria-live="polite">
-                <p className="pr-16 text-xs font-medium text-accent">
+                <p className="pr-16 text-xs font-medium text-accent-ink">
                     {mode === "office" ? "Office" : "Contractor"} tutorial · Step {step.number} of 3
                 </p>
                 <p className="mt-1 pr-16 text-sm font-semibold">{step.title}</p>
@@ -172,7 +172,7 @@ export default function DemoTutorial({ mode, step }: { mode: "office" | "contrac
             </div>
             <div className="mt-2.5 flex gap-1.5 max-sm:hidden sm:mt-3" aria-hidden>
                 {[1, 2, 3].map((n) => (
-                    <span key={n} className={`h-1 flex-1 rounded-full ${n <= step.number ? "bg-accent" : "bg-line"}`} />
+                    <span key={n} className={`h-1 flex-1 rounded-full ${n <= step.number ? "bg-accent-ink" : "bg-line"}`} />
                 ))}
             </div>
         </aside>

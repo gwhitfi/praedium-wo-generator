@@ -288,11 +288,10 @@ export default function SpaceCard({
             {!readOnly && !adding && !folded && (
                 <div className="border-t border-line px-2 py-1.5">
                     <Button
-                        variant="ghost"
+                        variant="accent-ghost"
                         size="sm"
                         data-demo-guide="add-item"
                         onClick={() => setAdding(true)}
-                        className="text-accent hover:text-accent-hover"
                     >
                         <PlusIcon />
                         Add item

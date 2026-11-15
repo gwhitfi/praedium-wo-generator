@@ -1,22 +1,33 @@
 // Shared class names for the UI building blocks, so buttons, cards and badges look the same on every page.
 // Safe to import from server and client components.
 
-export type ButtonVariant = "primary" | "secondary" | "ghost" | "danger" | "danger-outline" | "danger-ghost";
+export type ButtonVariant =
+    | "primary"
+    | "secondary"
+    | "ghost"
+    | "accent-ghost"
+    | "danger"
+    | "danger-outline"
+    | "danger-ghost";
 export type ButtonSize = "sm" | "md" | "lg";
 
 const BUTTON_BASE =
     "inline-flex shrink-0 items-center justify-center gap-2 whitespace-nowrap rounded-md font-medium transition-colors " +
     "hover:cursor-pointer disabled:cursor-not-allowed disabled:opacity-50 aria-disabled:cursor-not-allowed aria-disabled:opacity-50 " +
-    "focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent";
+    "focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent-ink";
 
-// A disabled primary button turns grey rather than dimming the green, so it never looks like a pressable one.
+// A disabled primary or secondary button turns grey rather than dimming the accent, so it never looks like a pressable
+// one.
 const BUTTON_VARIANTS: Record<ButtonVariant, string> = {
     primary:
         "bg-accent text-on-accent hover:bg-accent-hover disabled:bg-surface-hover disabled:text-subtle disabled:opacity-100",
-    secondary: "border border-line-strong bg-surface text-foreground hover:border-line-hover hover:bg-surface-hover",
+    secondary:
+        "border border-line-strong bg-surface text-foreground hover:border-line-hover hover:bg-surface-hover " +
+        "disabled:border-line disabled:bg-surface-hover disabled:text-subtle disabled:opacity-100",
     ghost: "text-muted hover:bg-surface-hover hover:text-foreground",
-    danger: "bg-danger-strong text-white hover:bg-danger-strong/85",
-    "danger-outline": "border border-danger/50 bg-surface text-danger hover:border-danger hover:bg-danger/10",
+    "accent-ghost": "text-accent-ink hover:bg-surface-hover hover:text-accent-ink-hover",
+    danger: "bg-danger-strong text-white hover:bg-danger-strong-hover",
+    "danger-outline": "border border-danger/60 bg-surface text-danger hover:border-danger hover:bg-danger/10",
     "danger-ghost": "text-danger hover:bg-danger/10",
 };
 
@@ -43,13 +54,14 @@ export function iconButtonClass({ size = "md", className = "" }: { size?: "sm" |
     return (
         `inline-flex ${box} shrink-0 items-center justify-center rounded-md text-muted transition-colors ` +
         "hover:cursor-pointer hover:bg-surface-hover hover:text-foreground disabled:cursor-not-allowed disabled:opacity-40 " +
-        `focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent ${className}`
+        `focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent-ink ${className}`
     ).trim();
 }
 
 // A text link inside running text or under a heading.
 export const textLinkClass =
-    "font-medium text-accent underline-offset-4 hover:text-accent-hover hover:underline hover:cursor-pointer";
+    "font-medium text-accent-ink underline decoration-accent-ink/40 underline-offset-4 hover:text-accent-ink-hover " +
+    "hover:decoration-current hover:cursor-pointer";
 
 // Cards: a bordered surface. `cardPadding` is the usual inside spacing.
 export const cardClass = "rounded-xl border border-line bg-surface shadow-[0_1px_2px_rgb(0_0_0/0.05)]";

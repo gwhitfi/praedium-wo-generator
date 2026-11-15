@@ -52,7 +52,7 @@ export function ListHeader({
     return (
         <div
             role="row"
-            className={`sr-only gap-4 text-xs font-medium uppercase tracking-wide text-subtle list-wide:not-sr-only list-wide:grid list-wide:px-4! list-wide:py-2.5! ${tint ?? "bg-surface-hover/50"} ${cols}`}
+            className={`sr-only gap-4 text-xs font-medium uppercase tracking-wide list-wide:not-sr-only list-wide:grid list-wide:px-4! list-wide:py-2.5! ${tint ? "text-muted" : "text-subtle"} ${tint ?? "bg-surface-hover/50"} ${cols}`}
         >
             {labels.map((label, i) =>
                 typeof label === "string" ? (
@@ -81,7 +81,7 @@ export function ListHeader({
                                 // Shows the column sorts, always there (in the header's quieter color), full on hover.
                                 <span
                                     aria-hidden
-                                    className="text-subtle group-hover/sort:text-foreground group-focus-visible/sort:text-foreground"
+                                    className="text-current group-hover/sort:text-foreground group-focus-visible/sort:text-foreground"
                                 >
                                     ↕
                                 </span>
@@ -120,7 +120,7 @@ export function RowLink({
     return (
         <Link
             href={href}
-            className={`after:absolute after:inset-0 after:content-[''] focus-visible:outline-none focus-visible:after:outline-2 focus-visible:after:-outline-offset-2 focus-visible:after:outline-accent ${className}`}
+            className={`after:absolute after:inset-0 after:content-[''] focus-visible:outline-none focus-visible:after:outline-2 focus-visible:after:-outline-offset-2 focus-visible:after:outline-accent-ink ${className}`}
         >
             {children}
         </Link>
@@ -172,7 +172,7 @@ export function MobileSort({ labels }: { labels: (string | SortLabel)[] }): Reac
                     {current ? `${current.label} ${current.sorted === "asc" ? "↑" : "↓"}` : "Default"}
                 </span>
             </summary>
-            <ul className="absolute right-0 top-full z-20 mt-1 min-w-44 rounded-lg border border-line bg-surface py-1 shadow-lg">
+            <ul className="absolute right-0 top-full z-20 mt-1 min-w-44 rounded-lg border border-line-strong/70 bg-surface py-1 shadow-lg">
                 {options.map((option) => (
                     <li key={option.label}>
                         <Link

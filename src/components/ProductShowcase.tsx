@@ -1,5 +1,5 @@
-import { StatusBadge } from "./StatusBadge";
-import { AlertIcon, ArrowUpIcon, CheckIcon } from "./Icons";
+import { PriorityBadge, StatusBadge } from "./StatusBadge";
+import { AlertIcon, CheckIcon } from "./Icons";
 
 // The landing page's feature section: three large pictures of the real app (dashboard, a work order, notifications),
 // each beside what it does. Drawn with the app's own styles, so they follow light and dark mode and stay sharp.
@@ -35,7 +35,7 @@ export default function ProductShowcase(): React.ReactElement {
     return (
         <section aria-labelledby="features-title" className="border-t border-line">
             <div className="mx-auto max-w-5xl px-4 py-20 sm:py-24">
-                <p className="text-sm font-semibold text-accent">Features</p>
+                <p className="text-sm font-semibold text-accent-ink">Features</p>
                 <h2 id="features-title" className="mt-2 max-w-xl text-3xl font-semibold tracking-tight sm:text-4xl">
                     Everything a work order needs, nothing it doesn&apos;t
                 </h2>
@@ -57,7 +57,7 @@ export default function ProductShowcase(): React.ReactElement {
                                 <ul className="mt-5 flex flex-col gap-2 text-sm text-secondary">
                                     {row.points.map((point) => (
                                         <li key={point} className="flex items-start gap-2">
-                                            <CheckIcon size={15} className="mt-0.5 shrink-0 text-accent" />
+                                            <CheckIcon size={15} className="mt-0.5 shrink-0 text-accent-ink" />
                                             {point}
                                         </li>
                                     ))}
@@ -176,9 +176,8 @@ function WorkOrderPicture() {
                                 <span className="min-w-0">
                                     <span className={item.done ? "text-muted" : "text-foreground"}>{item.text}</span>
                                     {item.high && (
-                                        <span className="mt-1 flex w-fit items-center gap-1 rounded-full border border-priority-high/60 px-1.5 text-[11px] font-medium text-priority-high">
-                                            <ArrowUpIcon size={10} strokeWidth={2.5} />
-                                            High
+                                        <span className="mt-1 flex">
+                                            <PriorityBadge priority="HIGH" />
                                         </span>
                                     )}
                                 </span>

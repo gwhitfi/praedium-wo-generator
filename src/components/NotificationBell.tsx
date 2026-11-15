@@ -102,7 +102,7 @@ export default function NotificationBell({ unreadCount }: { unreadCount: number 
                 <div className="fixed inset-x-3 top-[4.25rem] z-30 sm:absolute sm:inset-x-auto sm:right-0 sm:top-full sm:pt-2">
                     <div
                         id={panelId}
-                        className="flex max-h-[calc(100dvh-5.5rem)] flex-col overflow-hidden rounded-xl border border-line bg-surface shadow-xl sm:w-[26rem]"
+                        className="flex max-h-[calc(100dvh-5.5rem)] flex-col overflow-hidden rounded-xl border border-line-strong/70 bg-surface shadow-xl sm:w-[26rem]"
                     >
                         <p className="border-b border-line px-4 py-3 text-sm font-semibold text-foreground">
                             Notifications
@@ -121,7 +121,7 @@ export default function NotificationBell({ unreadCount }: { unreadCount: number 
                             <Link
                                 href="/inbox"
                                 onClick={close}
-                                className="font-medium text-accent hover:text-accent-hover"
+                                className="font-medium text-accent-ink hover:text-accent-ink-hover"
                             >
                                 Open inbox
                             </Link>

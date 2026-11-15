@@ -245,7 +245,7 @@ export default function ContactForm({
                         {Object.entries(CONTACT_TYPE_LABELS).map(([type, label]) => (
                             <label
                                 key={type}
-                                className={`flex cursor-pointer flex-col rounded-lg border px-3 py-2.5 text-sm has-[:focus-visible]:outline-2 has-[:focus-visible]:outline-offset-2 has-[:focus-visible]:outline-accent ${
+                                className={`flex cursor-pointer flex-col rounded-lg border px-3 py-2.5 text-sm has-[:focus-visible]:outline-2 has-[:focus-visible]:outline-offset-2 has-[:focus-visible]:outline-accent-ink ${
                                     contactType === type
                                         ? "border-accent bg-accent/10"
                                         : "border-line-strong hover:border-line-hover"
@@ -357,7 +357,7 @@ export default function ContactForm({
                             <button
                                 type="button"
                                 onClick={() => setShowDisplayName(true)}
-                                className="inline-flex min-h-8 items-center font-medium text-accent hover:cursor-pointer hover:underline"
+                                className="inline-flex min-h-8 items-center font-medium text-accent-ink hover:cursor-pointer hover:underline"
                             >
                                 Use a different name
                             </button>
