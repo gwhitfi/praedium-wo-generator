@@ -112,7 +112,7 @@ describe("buildExport", () => {
             "emails.csv",
             "data.json",
         ]);
-        expect(out["README.txt"]).toContain("Praedium data export for Acme Property");
+        expect(out["README.txt"]).toContain("Work Order Fox data export for Acme Property");
         expect(out["properties.csv"]).toContain("'=cmd()");
         expect(out["work_orders.csv"]).toContain("2026-1001,Fix sink,SENT,Maple Duplex");
         expect(out["work_orders.csv"]).toContain("2026-11-20");
@@ -129,8 +129,8 @@ describe("buildExport", () => {
 
 describe("exportFileName", () => {
     it("makes a safe, dated file name from the organization's name", () => {
-        expect(exportFileName('Acme "Rentals" & Co.', created)).toBe("praedium-export-acme-rentals-co-2026-11-01.zip");
-        expect(exportFileName("Résidences Côté", created)).toBe("praedium-export-residences-cote-2026-11-01.zip");
-        expect(exportFileName("!!!", created)).toBe("praedium-export-organization-2026-11-01.zip");
+        expect(exportFileName('Acme "Rentals" & Co.', created)).toBe("work-order-fox-export-acme-rentals-co-2026-11-01.zip");
+        expect(exportFileName("Résidences Côté", created)).toBe("work-order-fox-export-residences-cote-2026-11-01.zip");
+        expect(exportFileName("!!!", created)).toBe("work-order-fox-export-organization-2026-11-01.zip");
     });
 });

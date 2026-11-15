@@ -28,33 +28,33 @@ describe("getAppUrl", () => {
 describe("formatFrom", () => {
     const from = "notifications@workorder.dev";
 
-    it("uses Praedium as the default sender name", () => {
-        expect(formatFrom(from)).toBe(`"Praedium" <${from}>`);
-        expect(formatFrom(from, null)).toBe(`"Praedium" <${from}>`);
-        expect(formatFrom(from, "")).toBe(`"Praedium" <${from}>`);
+    it("uses Work Order Fox as the default sender name", () => {
+        expect(formatFrom(from)).toBe(`"Work Order Fox" <${from}>`);
+        expect(formatFrom(from, null)).toBe(`"Work Order Fox" <${from}>`);
+        expect(formatFrom(from, "")).toBe(`"Work Order Fox" <${from}>`);
     });
 
     it("adds the name as the display name", () => {
         expect(formatFrom(from, "Acme Property")).toBe(
-            '"Acme Property via Praedium" <notifications@workorder.dev>',
+            '"Acme Property via Work Order Fox" <notifications@workorder.dev>',
         );
     });
 
     it("keeps only the address when EMAIL_FROM already has a display name", () => {
         expect(formatFrom("Onboarding <onboarding@resend.dev>", "Acme")).toBe(
-            '"Acme via Praedium" <onboarding@resend.dev>',
+            '"Acme via Work Order Fox" <onboarding@resend.dev>',
         );
     });
 
     it("removes quotes, backslashes and angle brackets from the name", () => {
         expect(formatFrom(from, 'Bob "The Plumber" <evil@x.com> \\')).toBe(
-            '"Bob The Plumber evil@x.com  via Praedium" <notifications@workorder.dev>',
+            '"Bob The Plumber evil@x.com  via Work Order Fox" <notifications@workorder.dev>',
         );
     });
 
     it("removes line breaks, so the name can't add email headers", () => {
         expect(formatFrom(from, "Acme\r\nBcc: victim@example.com")).toBe(
-            '"AcmeBcc: victim@example.com via Praedium" <notifications@workorder.dev>',
+            '"AcmeBcc: victim@example.com via Work Order Fox" <notifications@workorder.dev>',
         );
     });
 });

@@ -7,7 +7,7 @@ import { normalizeEmail } from "@/lib/contractorWorkOrders";
 import prisma from "@/lib/prisma";
 import { logEventOnce } from "@/lib/workOrderEvents";
 
-// The parts of Resend's webhook payload Praedium reads.
+// The parts of Resend's webhook payload Work Order Fox reads.
 export type ResendReport = {
     type: string;
     data: { email_id?: string; to?: string[]; bounce?: { type?: string; message?: string } };
@@ -40,7 +40,7 @@ export async function handleResendReport(report: ResendReport): Promise<void> {
     const permanentBounce = type === "email.bounced" && data.bounce?.type === "Permanent";
     const bounceMessage = data.bounce?.message?.trim() || null;
 
-    // Suppress first, even for emails sent before Praedium kept a log (no matching row).
+    // Suppress first, even for emails sent before Work Order Fox kept a log (no matching row).
     if (permanentBounce) await suppress(data.to ?? [], "BOUNCED", bounceMessage);
     if (type === "email.complained") await suppress(data.to ?? [], "COMPLAINED", null);
 

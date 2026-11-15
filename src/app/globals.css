@@ -16,254 +16,208 @@
 }
 
 /* Theme colors: each is set once per theme here and used through the named classes in @theme below
-   (bg-surface, text-muted, border-line, ...). Dark is the default; light applies with data-theme="light" on <html>,
-   which the script in layout.tsx sets from the saved choice or the device setting (src/lib/theme.ts). */
+   (bg-surface, text-muted, border-line, ...). The plain themes are Campfire, from the Work Order Fox design sheet.
+   Dark is the default; light applies with data-theme="light" on <html>, which the script in layout.tsx sets from the
+   saved choice (src/lib/theme.ts). */
 :root,
 [data-theme="dark"] {
     color-scheme: dark;
 
     /* Page and text, brightest to dimmest */
-    --background: #0a0a0a;
-    --foreground: var(--color-neutral-100);
+    --background: #1a130e;
+    --foreground: #f6ede3;
     /* Text on cards (--surface) stays at least 4.5:1 down to --subtle; --faint is for decoration only. */
-    --secondary: var(--color-neutral-200);
-    --muted: #b5b5b5;
-    --subtle: #959595;
-    --faint: #737373;
+    --secondary: #dfd4c8;
+    --muted: #b5a596;
+    --subtle: #9f9183;
+    --faint: #74685d;
 
     /* Cards, inputs and borders. --line-strong outlines controls (inputs, checkboxes) at about 3:1. */
-    --surface: var(--color-neutral-900);
-    --surface-hover: var(--color-neutral-800);
-    --line: #2e2e2e;
-    --line-strong: #666666;
-    --line-hover: #7a7a7a;
+    --surface: #241b14;
+    --surface-hover: #33281e;
+    --line: #3a2d22;
+    --line-strong: #72675c;
+    --line-hover: #8b8075;
 
     /* Primary buttons, links, focus rings and selected states */
-    --accent: var(--color-emerald-400);
-    --accent-hover: var(--color-emerald-300);
-    --on-accent: var(--color-neutral-950);
+    --accent: #f6933a;
+    --accent-hover: #ffa858;
+    --on-accent: #2a1608;
 
     /* Messages. Tinted boxes use opacity, e.g. bg-danger/10 border-danger/40 */
-    --danger: var(--color-red-400);
+    --danger: #f2776b;
     --danger-strong: var(--color-red-700);
-    --warning: var(--color-amber-400);
-    --success: var(--color-green-400);
+    --warning: #edb458;
+    --success: #6fcf8a;
 
     /* Work order statuses */
-    --status-draft: var(--color-neutral-400);
-    --status-sent: var(--color-blue-400);
-    --status-in-progress: var(--color-amber-400);
-    --status-completed: var(--color-green-400);
-    --status-closed: var(--color-violet-400);
+    --status-draft: #b8aa9c;
+    --status-sent: #7fb0f5;
+    --status-in-progress: #edb458;
+    --status-completed: #6fcf8a;
+    --status-closed: #c3a0f5;
     /* Cancelled is neutral: red is kept for overdue, emergency and deleting */
-    --status-cancelled: #959595;
+    --status-cancelled: #9f9183;
 
-    /* High priority: orange, so it isn't confused with the amber "In progress" status */
-    --priority-high: var(--color-orange-400);
+    /* High priority: pink, so it isn't confused with the orange buttons or the amber "In progress" status */
+    --priority-high: #f472b6;
+
+    /* "Fox" in the wordmark (src/components/Logo.tsx). The brand's own orange, so palettes don't change it. */
+    --brand-fox: #f6933a;
 }
 
 [data-theme="light"] {
     color-scheme: light;
 
-    --background: var(--color-neutral-50);
-    --foreground: var(--color-neutral-900);
-    --secondary: var(--color-neutral-800);
-    --muted: var(--color-neutral-700);
-    --subtle: var(--color-neutral-600);
-    --faint: var(--color-neutral-500);
+    --background: #fbf6ef;
+    --foreground: #2a1d14;
+    --secondary: #413228;
+    --muted: #6b5a4c;
+    --subtle: #726254;
+    --faint: #a79c90;
 
     --surface: #ffffff;
-    --surface-hover: var(--color-neutral-200);
-    --line: var(--color-neutral-300);
-    --line-strong: #8f8f8f;
-    --line-hover: var(--color-neutral-600);
+    --surface-hover: #ede5da;
+    --line: #e7dccd;
+    --line-strong: #988c7f;
+    --line-hover: #7d7165;
 
-    --accent: var(--color-emerald-700);
-    --accent-hover: var(--color-emerald-800);
-    --on-accent: #ffffff;
+    --accent: #de6f1c;
+    --accent-hover: #ea7f22;
+    --on-accent: #2a1608;
 
-    --danger: var(--color-red-700);
+    --danger: #b3261e;
     --danger-strong: var(--color-red-600);
-    --warning: var(--color-amber-700);
-    --success: var(--color-green-700);
+    --warning: #8a5a00;
+    --success: #1f7038;
 
-    --status-draft: var(--color-neutral-700);
-    --status-sent: var(--color-blue-700);
-    --status-in-progress: var(--color-amber-700);
-    --status-completed: var(--color-green-700);
-    --status-closed: var(--color-violet-700);
-    --status-cancelled: var(--color-neutral-500);
+    --status-draft: #6b6157;
+    --status-sent: #1d5fbf;
+    --status-in-progress: #8a5a00;
+    --status-completed: #1f7038;
+    --status-closed: #6d3fc0;
+    --status-cancelled: #726254;
 
-    --priority-high: var(--color-orange-700);
-}
-
-/* Palettes the user can pick in Settings, one for each theme (src/lib/palettes.ts). Each overrides the light or
-   dark theme above when data-palette-light or data-palette-dark is set on <html>. Contractor pages never set them. */
-[data-theme="light"][data-palette-light="sage"] {
-    --background: #e1ebe4;
-    --foreground: #16231b;
-    --secondary: #24342a;
-    --muted: #43554a;
-    --subtle: #506257;
-    --faint: #6c7e73;
-    --surface: #eff6f1;
-    --surface-hover: #d4e2d8;
-    --line: #c6d8cb;
-    --line-strong: #7d9585;
-    --line-hover: #5f7366;
-    --accent: #046c4e;
-    --accent-hover: #065442;
-    --on-accent: #ffffff;
-    --danger: #b91c1c;
-    --danger-strong: #dc2626;
-    --warning: #c2410c;
-    --success: #047857;
-    --status-draft: #5b6b61;
-    --status-sent: #0369a1;
-    --status-in-progress: #c2410c;
-    --status-completed: #15803d;
-    --status-closed: #6d28d9;
-    --status-cancelled: #6c7e73;
-    /* In progress is orange in this palette, so High priority is pink */
     --priority-high: #be185d;
+
+    --brand-fox: #d4621a;
 }
 
-[data-theme="light"][data-palette-light="lavender"] {
-    --background: #e9e1fb;
-    --foreground: #1e1238;
-    --secondary: #2e1d52;
-    --muted: #4c3a78;
-    --subtle: #5f4d8c;
-    --faint: #7a6aa6;
-    --surface: #f5f0ff;
-    --surface-hover: #dccff8;
-    --line: #d3c4f3;
-    --line-strong: #9580cf;
-    --line-hover: #6f5fa0;
-    --accent: #7c3aed;
-    --accent-hover: #6d28d9;
+/* Palettes the user can pick in Settings, one for each theme (src/lib/palettes.ts): Pine Den and Porchlight, the
+   design sheet's approved alternates. Each overrides the light or dark theme above when data-palette-light or
+   data-palette-dark is set on <html>. Contractor pages never set them. */
+[data-theme="light"][data-palette-light="pine-den"] {
+    --background: #f6f7f2;
+    --foreground: #1c2620;
+    --secondary: #323d36;
+    --muted: #5b685f;
+    --subtle: #5d6960;
+    --faint: #9ca49d;
+    --surface: #ffffff;
+    --surface-hover: #e6eae2;
+    --line: #dee3d8;
+    --line-strong: #878e85;
+    --line-hover: #6d756d;
+    --accent: #1f6b4f;
+    --accent-hover: #18563f;
     --on-accent: #ffffff;
-    --danger: #be123c;
-    --danger-strong: #e11d48;
-    --warning: #b45309;
-    --success: #047857;
-    --status-draft: #5f4d8c;
-    --status-sent: #1d4ed8;
-    --status-in-progress: #c2410c;
-    --status-completed: #047857;
-    --status-closed: #a21caf;
-    --status-cancelled: #7a6aa6;
-    --priority-high: #be185d;
-}
-
-[data-theme="light"][data-palette-light="blue"] {
-    --background: #d8e6f8;
-    --foreground: #0b1f44;
-    --secondary: #13295a;
-    --muted: #2c4677;
-    --subtle: #3f5a8c;
-    --faint: #5f78a3;
-    --surface: #eef4fc;
-    --surface-hover: #c6d9f2;
-    --line: #bcd2ef;
-    --line-strong: #6f8fbf;
-    --line-hover: #4f6894;
-    --accent: #c2410c;
-    --accent-hover: #9a3412;
-    --on-accent: #ffffff;
-    --danger: #b91c1c;
+    --danger: #b42318;
     --danger-strong: #dc2626;
-    --warning: #b45309;
-    --success: #15803d;
-    --status-draft: #3f5a8c;
-    --status-sent: #1d4ed8;
-    --status-in-progress: #b45309;
-    --status-completed: #15803d;
-    --status-closed: #7e22ce;
-    --status-cancelled: #5f78a3;
+    --warning: #8f5600;
+    --success: #3f6b0e;
+    --status-draft: #5c665f;
+    --status-sent: #2360b8;
+    --status-in-progress: #8f5600;
+    --status-completed: #3f6b0e;
+    --status-closed: #6d3fc0;
+    --status-cancelled: #5d6960;
+    --priority-high: #c2410c;
+}
+
+[data-theme="light"][data-palette-light="porchlight"] {
+    --background: #faf8f4;
+    --foreground: #252923;
+    --secondary: #3a3e38;
+    --muted: #61665e;
+    --subtle: #61665e;
+    --faint: #a1a39d;
+    --surface: #ffffff;
+    --surface-hover: #e6e2db;
+    --line: #ded8cf;
+    --line-strong: #908e87;
+    --line-hover: #76766f;
+    --accent: #b84618;
+    --accent-hover: #96370f;
+    --on-accent: #ffffff;
+    --danger: #b42318;
+    --danger-strong: #dc2626;
+    --warning: #925900;
+    --success: #2f6a46;
+    --status-draft: #62685e;
+    --status-sent: #1d5e9d;
+    --status-in-progress: #925900;
+    --status-completed: #2f6a46;
+    --status-closed: #65576b;
+    --status-cancelled: #61665e;
     /* The buttons are orange in this palette, so High priority is pink */
     --priority-high: #be185d;
 }
 
-[data-theme="dark"][data-palette-dark="navy"] {
-    --background: #0b1220;
-    --foreground: #e6ebf5;
-    --secondary: #c6cfdf;
-    --muted: #9aa6bd;
-    --subtle: #8692aa;
-    --faint: #66718b;
-    --surface: #121b2e;
-    --surface-hover: #1b2740;
-    --line: #253250;
-    --line-strong: #5a6a8c;
-    --line-hover: #7383a6;
-    --accent: #34d399;
-    --accent-hover: #6ee7b7;
-    --on-accent: #06281d;
-    --danger: #f87171;
+[data-theme="dark"][data-palette-dark="pine-den"] {
+    --background: #111714;
+    --foreground: #ecf1ec;
+    --secondary: #d2dad4;
+    --muted: #a3b0a6;
+    --subtle: #8f9b92;
+    --faint: #667069;
+    --surface: #1a221d;
+    --surface-hover: #27312a;
+    --line: #2c3830;
+    --line-strong: #646e67;
+    --line-hover: #7d867f;
+    --accent: #5cc79a;
+    --accent-hover: #7ad6ae;
+    --on-accent: #0c1f17;
+    --danger: #f47c70;
     --danger-strong: #b91c1c;
-    --warning: #fbbf24;
-    --success: #4ade80;
-    --status-draft: #9aa6bd;
-    --status-sent: #60a5fa;
-    --status-in-progress: #fbbf24;
-    --status-completed: #4ade80;
-    --status-closed: #a78bfa;
-    --status-cancelled: #8692aa;
+    --warning: #edb458;
+    --success: #a3d65c;
+    --status-draft: #aab4ac;
+    --status-sent: #82b1f2;
+    --status-in-progress: #edb458;
+    --status-completed: #a3d65c;
+    --status-closed: #c3a0f5;
+    --status-cancelled: #8f9b92;
+    --priority-high: #fb923c;
 }
 
-[data-theme="dark"][data-palette-dark="forest"] {
-    --background: #08110d;
-    --foreground: #e3efe7;
-    --secondary: #c3d6ca;
-    --muted: #94ab9c;
-    --subtle: #7f9a89;
-    --faint: #5f7a69;
-    --surface: #0f1c16;
-    --surface-hover: #172a20;
-    --line: #20362a;
-    --line-strong: #4f6e5a;
-    --line-hover: #6a8b76;
-    --accent: #34d399;
-    --accent-hover: #6ee7b7;
-    --on-accent: #052e1c;
-    --danger: #f87171;
+[data-theme="dark"][data-palette-dark="porchlight"] {
+    --background: #171c19;
+    --foreground: #f4f4eb;
+    --secondary: #dde1d7;
+    --muted: #b2bdb2;
+    --subtle: #9faaa0;
+    --faint: #717972;
+    --surface: #212923;
+    --surface-hover: #333e37;
+    --line: #3b473f;
+    --line-strong: #6b746c;
+    --line-hover: #858c84;
+    --accent: #f4a16a;
+    --accent-hover: #ffb582;
+    --on-accent: #251a12;
+    --danger: #ff9b92;
     --danger-strong: #b91c1c;
-    --warning: #fbbf24;
-    --success: #4ade80;
-    --status-draft: #94ab9c;
-    --status-sent: #60a5fa;
-    --status-in-progress: #fbbf24;
-    --status-completed: #4ade80;
-    --status-closed: #a78bfa;
-    --status-cancelled: #7f9a89;
-}
-
-[data-theme="dark"][data-palette-dark="espresso"] {
-    --background: #12100d;
-    --foreground: #f1ebe3;
-    --secondary: #d9cfc2;
-    --muted: #ab9f90;
-    --subtle: #9a8e80;
-    --faint: #766b5e;
-    --surface: #1c1915;
-    --surface-hover: #27221c;
-    --line: #332d25;
-    --line-strong: #6b604f;
-    --line-hover: #8a7d6a;
-    --accent: #2dd4bf;
-    --accent-hover: #5eead4;
-    --on-accent: #042f2a;
-    --danger: #f87171;
-    --danger-strong: #b91c1c;
-    --warning: #fbbf24;
-    --success: #4ade80;
-    --status-draft: #ab9f90;
-    --status-sent: #60a5fa;
-    --status-in-progress: #fbbf24;
-    --status-completed: #4ade80;
-    --status-closed: #a78bfa;
-    --status-cancelled: #9a8e80;
+    --warning: #f2cb7b;
+    --success: #91d6a3;
+    --status-draft: #b5bdb4;
+    --status-sent: #9ac8ff;
+    --status-in-progress: #f2cb7b;
+    --status-completed: #91d6a3;
+    --status-closed: #c9bbd2;
+    --status-cancelled: #9faaa0;
+    /* The buttons are orange in this palette, so High priority is pink */
+    --priority-high: #f472b6;
 }
 
 @media print {
@@ -298,8 +252,10 @@
     --color-status-closed: var(--status-closed);
     --color-status-cancelled: var(--status-cancelled);
     --color-priority-high: var(--priority-high);
-    --font-sans: var(--font-geist-sans);
+    --color-brand-fox: var(--brand-fox);
+    --font-sans: var(--font-figtree);
     --font-mono: var(--font-geist-mono);
+    --font-brand: var(--font-bricolage);
 }
 
 /* The theme colors under names only Clerk's widgets use (see clerkAppearance in layout.tsx). Clerk defines its own

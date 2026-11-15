@@ -11,7 +11,7 @@ const base = {
 
 describe("verifyCodeEmail", () => {
     it("puts the code in the subject as one string", () => {
-        expect(verifyCodeEmail(base).subject).toBe("Your Praedium code: 042917");
+        expect(verifyCodeEmail(base).subject).toBe("Your Work Order Fox code: 042917");
     });
 
     it("includes the code, the link and the job in both versions", () => {

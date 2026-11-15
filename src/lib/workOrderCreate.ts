@@ -1,4 +1,4 @@
-// Server-only. Helpers shared by the work order form's actions, the Praedium Bot and the MCP route for creating
+// Server-only. Helpers shared by the work order form's actions, the Fox Bot and the MCP route for creating
 // and updating work orders.
 import { randomBytes } from "node:crypto";
 import type { Contact, WorkOrder } from "@/generated/prisma/client";
@@ -53,7 +53,7 @@ export type CreateDraftWorkOrderResult =
     | { ok: true; workOrder: { id: string; jobNumber: string } }
     | { ok: false; error: string };
 
-// Creates a DRAFT work order from a confirmed draft (Praedium Bot or an outside assistant over MCP). The caller
+// Creates a DRAFT work order from a confirmed draft (Fox Bot or an outside assistant over MCP). The caller
 // validates the draft with confirmedDraft and takes organizationId and actor from its own auth, never from the
 // input. Every referenced ID is checked against the organization here. Returns an error instead of throwing.
 export async function createDraftWorkOrder(args: {

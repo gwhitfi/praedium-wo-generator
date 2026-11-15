@@ -29,7 +29,7 @@ describe("organizationDeletedEmail", () => {
     it("says who deleted it and when, that it's locked, and until when it can be restored", () => {
         const { text, html } = organizationDeletedEmail(base);
 
-        expect(text).toContain("Dana Reyes deleted Acme Property in Praedium on November 13, 2026 10:30 AM EST.");
+        expect(text).toContain("Dana Reyes deleted Acme Property in Work Order Fox on November 13, 2026 10:30 AM EST.");
         expect(text).toContain("It's locked for everyone now");
         expect(text).toContain("After November 20, 2026 10:30 AM EST, every property");
         expect(text).toContain("sign in at https://praedium.test/setup and choose Restore.");
@@ -42,7 +42,7 @@ describe("organizationDeletedEmail", () => {
         const deletedAt = new Date("2026-11-14T05:02:00Z");
         const { text } = organizationDeletedEmail({ ...base, deletedAt });
 
-        expect(text).toContain("in Praedium on November 13, 2026 9:02 PM PST.");
+        expect(text).toContain("in Work Order Fox on November 13, 2026 9:02 PM PST.");
         // Summer times get the daylight abbreviation.
         const summer = organizationDeletedEmail({ ...base, deletedAt: new Date("2026-07-01T19:00:00Z") });
         expect(summer.text).toContain("on July 1, 2026 12:00 PM PDT.");

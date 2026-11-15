@@ -18,7 +18,7 @@ afterEach(() => {
 describe("describeEvent: office", () => {
     it.each<[WorkOrderEventType, Detail, string]>([
         ["CREATED", { source: "form" }, "Justin W. created the work order"],
-        ["CREATED", { source: "bot" }, "Justin W. created the work order with Praedium Bot"],
+        ["CREATED", { source: "bot" }, "Justin W. created the work order with Fox Bot"],
         ["CREATED", { source: "mcp" }, "Justin W. created the work order through the API"],
         ["STARTED", {}, "Justin W. started the work in-house"],
         ["STARTED", { tenantNotified: true }, "Justin W. started the work in-house and emailed the tenant"],

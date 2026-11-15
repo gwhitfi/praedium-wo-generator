@@ -49,7 +49,7 @@ describe("handleClerkEvent", () => {
         expect(prisma.$transaction).toHaveBeenCalledOnce();
     });
 
-    it("ignores a membership change for an organization or user Praedium never saw", async () => {
+    it("ignores a membership change for an organization or user Work Order Fox never saw", async () => {
         vi.mocked(prisma.user.findUnique).mockResolvedValue(null);
 
         await handleClerkEvent(event("organizationMembership.deleted", membership()));

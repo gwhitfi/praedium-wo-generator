@@ -58,7 +58,7 @@ type DetailsByType = {
 type CoversEveryType<T extends Record<WorkOrderEventType, unknown>> = T;
 export type EventDetails = CoversEveryType<DetailsByType>;
 
-// Who did it: a signed-in office user, the contractor on the public page (named as on the work order), or Praedium
+// Who did it: a signed-in office user, the contractor on the public page (named as on the work order), or Work Order Fox
 // itself (email delivery reports).
 export type Actor =
     | { kind: "office"; user: Pick<User, "id" | "firstName" | "lastName" | "email"> }

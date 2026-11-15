@@ -79,7 +79,7 @@ export default async function ContactDetail({ params }: { params: Promise<{ id: 
         !!contact.email &&
         (await prisma.workOrder.count({ where: { organizationId, contractorId: id, sentAt: { not: null } } })) > 0;
 
-    // Set when this email hard-bounced or marked Praedium's email as spam: it won't be emailed again.
+    // Set when this email hard-bounced or marked Work Order Fox's email as spam: it won't be emailed again.
     const emailSuppressed = contact.email ? await suppressionMessage(contact.email) : null;
 
     const fullName = [contact.firstName, contact.lastName].filter(Boolean).join(" ");

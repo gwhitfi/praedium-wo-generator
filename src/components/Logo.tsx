@@ -1,31 +1,26 @@
-// Praedium in Geist SemiBold (600), with the green check replacing the "u".
-// Use the app's loaded Geist font and theme colors for both light and dark modes.
-// Size it with a height class, e.g. "h-6 w-auto".
+import { FoxFrontPaths } from "./FoxMarks";
+
+// Work Order Fox's horizontal lockup from the design sheet: the front-facing fox, then "Work Order Fox" in
+// Bricolage Grotesque Bold with "Fox" in the brand orange (--brand-fox: #F6933A on dark, #D4621A on light).
+// The fox keeps its own colors on both themes. Size it with a height class, e.g. "h-9 w-auto".
+// textLength pins the wordmark's width, so it fits the viewBox even before the font has loaded.
 export default function Logo({ className }: { className?: string }): React.ReactElement {
     return (
-        <svg viewBox="0 0 440 110" role="img" aria-label="Praedium" className={className}>
-            <g
-                fill="currentColor"
-                style={{ fontFamily: "var(--font-geist-sans), sans-serif" }}
-                fontSize={100}
-                fontWeight={600}
-                letterSpacing={-3.5}
+        <svg viewBox="0 0 296 64" role="img" aria-label="Work Order Fox" className={className}>
+            <FoxFrontPaths />
+            <text
+                x={77}
+                y={42}
+                textLength={218}
+                lengthAdjust="spacingAndGlyphs"
+                fontSize={30.5}
+                fontWeight={700}
+                letterSpacing="-0.02em"
+                style={{ fontFamily: "var(--font-bricolage), var(--font-figtree), sans-serif" }}
+                className="fill-current"
             >
-                <text x={0} y={90}>
-                    Praedi
-                </text>
-                <text x={346} y={90}>
-                    m
-                </text>
-            </g>
-            <path
-                d="M 298 45 L 308 86 L 340 25"
-                fill="none"
-                strokeWidth={8.5}
-                strokeLinecap="round"
-                strokeLinejoin="round"
-                className="stroke-accent"
-            />
+                Work Order <tspan className="fill-brand-fox">Fox</tspan>
+            </text>
         </svg>
     );
 }

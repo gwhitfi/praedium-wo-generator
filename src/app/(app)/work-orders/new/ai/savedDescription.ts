@@ -1,4 +1,4 @@
-// The Praedium Bot description saved in the browser as the user types, so a refresh or a closed tab doesn't lose it.
+// The Fox Bot description saved in the browser as the user types, so a refresh or a closed tab doesn't lose it.
 // Stored as JSON with the time it was saved; older versions stored the plain text.
 
 export const SAVED_DESCRIPTION_KEY = "praedium-bot-description";

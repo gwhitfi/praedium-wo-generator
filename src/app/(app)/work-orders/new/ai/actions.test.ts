@@ -83,7 +83,7 @@ describe("parseWorkOrderDescription", () => {
         } as never);
 
         expect(await parseWorkOrderDescription({}, form("Fix the sink"))).toEqual({
-            error: "Praedium Bot is off. Turn it on in Settings to use it.",
+            error: "Fox Bot is off. Turn it on in Settings to use it.",
         });
         expect(parseDescription).not.toHaveBeenCalled();
     });
@@ -96,7 +96,7 @@ describe("parseWorkOrderDescription", () => {
         } as never);
 
         expect(await parseWorkOrderDescription({}, form("Fix the sink"))).toEqual({
-            error: "Praedium Bot is off. Turn it on in Settings to use it.",
+            error: "Fox Bot is off. Turn it on in Settings to use it.",
         });
         expect(parseDescription).not.toHaveBeenCalled();
     });
@@ -105,7 +105,7 @@ describe("parseWorkOrderDescription", () => {
         vi.mocked(rateLimit).mockResolvedValue({ ok: false, remaining: 0, retryAfterSeconds: 600 });
 
         expect(await parseWorkOrderDescription({}, form("Fix the sink"))).toEqual({
-            error: "You've used Praedium Bot a lot in the last hour. Try again in a few minutes, or use the regular form.",
+            error: "You've used Fox Bot a lot in the last hour. Try again in a few minutes, or use the regular form.",
         });
         expect(rateLimit).toHaveBeenCalledWith("bot:user1", expect.any(Object));
         expect(parseDescription).not.toHaveBeenCalled();

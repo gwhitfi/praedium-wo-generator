@@ -5,6 +5,7 @@ import { inputClass } from "@/lib/defaults";
 import { cardClass } from "@/lib/ui";
 import { Button } from "@/components/Button";
 import { SparklesIcon } from "@/components/Icons";
+import FoxAnimation from "@/components/FoxAnimation";
 import RestoredNotice from "@/components/form/RestoredNotice";
 import type { ContractorOption, PropertyOption } from "@/lib/workOrderLookup";
 import { parseWorkOrderDescription } from "./actions";
@@ -40,6 +41,8 @@ export default function BotForm({
     const textarea = useRef<HTMLTextAreaElement>(null);
     // Set when an unsent description from an earlier visit was put back, to say so and offer to start fresh.
     const [restored, setRestored] = useState<{ savedAt: Date | null } | null>(null);
+    // The fox beside the box looks at it while it has focus.
+    const [boxFocused, setBoxFocused] = useState(false);
 
     useEffect(() => {
         let raw: string | null = null;
@@ -91,17 +94,24 @@ export default function BotForm({
                         <RestoredNotice what="the description" savedAt={restored.savedAt} onStartFresh={startFresh} />
                     </div>
                 )}
-                <textarea
-                    id="bot-description"
-                    ref={textarea}
-                    name="description"
-                    rows={10}
-                    required
-                    aria-describedby="bot-description-hint bot-dictation-hint"
-                    onChange={(e) => saveDescription(e.target.value)}
-                    placeholder="Example: 123 Maple St, unit 4B, for Joe's Plumbing by Friday. Kitchen: the sink is leaking under the cabinet and the disposal is jammed. Bathroom: recaulk the tub."
-                    className={inputClass}
-                />
+                {/* Fox Bot itself beside the box, looking over at it while you write. Left out on phones, where the
+                    box needs the width. */}
+                <div className="flex items-center gap-5">
+                    <textarea
+                        id="bot-description"
+                        ref={textarea}
+                        name="description"
+                        rows={10}
+                        required
+                        aria-describedby="bot-description-hint bot-dictation-hint"
+                        onChange={(e) => saveDescription(e.target.value)}
+                        onFocus={() => setBoxFocused(true)}
+                        onBlur={() => setBoxFocused(false)}
+                        placeholder="Example: 123 Maple St, unit 4B, for Joe's Plumbing by Friday. Kitchen: the sink is leaking under the cabinet and the disposal is jammed. Bathroom: recaulk the tub."
+                        className={`${inputClass} min-w-0 flex-1`}
+                    />
+                    <FoxAnimation facing={boxFocused ? "left" : "front"} className="hidden w-24 shrink-0 sm:block" />
+                </div>
                 <p id="bot-dictation-hint" className="mt-2 text-[0.8125rem] text-muted">
                     To talk instead of typing, tap the microphone on your phone&apos;s keyboard. On Windows press Win+H;
                     on a Mac press the Fn key twice.

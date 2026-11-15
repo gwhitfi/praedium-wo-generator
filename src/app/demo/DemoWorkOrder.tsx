@@ -217,8 +217,8 @@ export default function DemoWorkOrder({ contractor = false }: { contractor?: boo
         <div className="text-foreground">
             <header className="sticky top-0 z-40 border-b border-line bg-background/90 backdrop-blur supports-[backdrop-filter]:bg-background/80">
                 <nav aria-label="Demo" className="mx-auto flex h-16 max-w-5xl items-center gap-2 px-4">
-                    <Link href="/" aria-label="Praedium home" className="mr-auto shrink-0 rounded">
-                        <Logo className="h-6 w-auto" />
+                    <Link href="/" aria-label="Work Order Fox home" className="mr-auto shrink-0 rounded">
+                        <Logo className="h-9 w-auto" />
                     </Link>
                     <ThemeToggle />
                     <Link

@@ -106,7 +106,7 @@ export async function emailWorkOrderToContractor({
         });
     } catch (error) {
         console.error("emailWorkOrder failed", error);
-        // Only Praedium's own refusals are written for the office; a provider error stays in the log.
+        // Only Work Order Fox's own refusals are written for the office; a provider error stays in the log.
         if (error instanceof EmailNotSent) return { ok: false, error: error.message };
         return { ok: false, error: "The email couldn't be sent. Try again." };
     }

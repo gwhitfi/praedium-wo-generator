@@ -16,7 +16,7 @@ const PROVIDERS: { name: string; role: string }[] = [
     { name: "Neon", role: "The database" },
     { name: "Clerk", role: "Sign-in, accounts and organization membership" },
     { name: "Resend", role: "Sends email" },
-    { name: "Anthropic", role: "Drafts work orders, only when you use Praedium Bot" },
+    { name: "Anthropic", role: "Drafts work orders, only when you use Fox Bot" },
     { name: "Sentry", role: "Error reports, with personal details removed" },
 ];
 
@@ -56,11 +56,11 @@ export default function Privacy(): React.ReactElement {
 
             <Section title="Who we are">
                 <P>
-                    Praedium is run by Justin Whitfield. You can reach us at <Email />. Our servers and service
+                    Work Order Fox is run by Justin Whitfield. You can reach us at <Email />. Our servers and service
                     providers are in the United States, so data you enter is stored and processed there.
                 </P>
                 <P>
-                    This policy explains what we collect, why, and who sees it. It covers people who use Praedium
+                    This policy explains what we collect, why, and who sees it. It covers people who use Work Order Fox
                     (property managers and their staff) and people whose details are entered into it (tenants,
                     contractors and other contacts).
                 </P>
@@ -100,7 +100,7 @@ export default function Privacy(): React.ReactElement {
                     Sentry with the page and the technical details; cookies, what was typed into forms, contractor links
                     and IP addresses are removed first. We count page views with Vercel Web Analytics, which uses no
                     cookies, doesn&apos;t identify you and doesn&apos;t follow you to other sites. We don&apos;t use any
-                    of this to track or profile anyone. Praedium has no advertising.
+                    of this to track or profile anyone. Work Order Fox has no advertising.
                 </P>
             </Section>
 
@@ -121,13 +121,13 @@ export default function Privacy(): React.ReactElement {
 
             <Section title="AI processing">
                 <P>
-                    <B>Praedium Bot.</B> When you use it, we send your written description and today&apos;s date to
+                    <B>Fox Bot.</B> When you use it, we send your written description and today&apos;s date to
                     Anthropic&apos;s API, which returns a draft work order. Nothing else from your account is sent, but
                     anything you type in the description is. The instructions we give the model tell it to leave phone
                     numbers, emails, access codes and tenant names out of the draft, but that doesn&apos;t stop them
                     being sent if you include them, so don&apos;t. We don&apos;t log the description or the reply.
                     Anthropic&apos;s API terms state that API inputs and outputs are not used to train their models. You
-                    can turn Praedium Bot off in Settings; it is then hidden and refused on the server.
+                    can turn Fox Bot off in Settings; it is then hidden and refused on the server.
                 </P>
                 <P>
                     <B>AI assistant access (MCP).</B> If an admin connects an outside AI assistant with an API key,
@@ -150,7 +150,7 @@ export default function Privacy(): React.ReactElement {
                     &quot;Notify tenant&quot; and the tenant has an email address.
                 </P>
                 <P>
-                    <B>Service providers</B> that run parts of Praedium for us:
+                    <B>Service providers</B> that run parts of Work Order Fox for us:
                 </P>
                 <table className="mt-3 w-full text-sm text-secondary">
                     <thead>
@@ -188,7 +188,7 @@ export default function Privacy(): React.ReactElement {
 
             <Section title="If you're a tenant, contractor or other contact">
                 <P>
-                    Your details were entered by the property manager or company that uses Praedium to manage the
+                    Your details were entered by the property manager or company that uses Work Order Fox to manage the
                     property you live in or work on. That company decides what to collect and is responsible for it; we
                     store and process it on their behalf. If you want your details corrected or removed, contact that
                     company first. If you can&apos;t reach them, email us at <Email /> and we&apos;ll help route your
@@ -202,7 +202,7 @@ export default function Privacy(): React.ReactElement {
 
             <Section title="How long we keep it">
                 <P>
-                    We keep your organization&apos;s data for as long as the organization uses Praedium. Deleting a work
+                    We keep your organization&apos;s data for as long as the organization uses Work Order Fox. Deleting a work
                     order, contact, property or unit in the app removes it immediately, along with any photos attached
                     to a deleted work order. Archiving is not deletion; archived records are still stored. Names copied
                     into the activity log stay in the log so the history still makes sense.
@@ -220,7 +220,7 @@ export default function Privacy(): React.ReactElement {
                     removed within 8 days.
                 </P>
                 <P>
-                    We keep a record of the emails Praedium sends for your organization (who it went to, what kind of
+                    We keep a record of the emails Work Order Fox sends for your organization (who it went to, what kind of
                     email, and whether it arrived) for 90 days. An address that bounced or reported our email as spam is
                     remembered so we don&apos;t email it again. Copies already sent by email or read by an AI assistant
                     you connected are outside our control. Our hosting provider keeps server logs for a short time,
@@ -240,7 +240,7 @@ export default function Privacy(): React.ReactElement {
 
             <Section title="Your choices and rights">
                 <P>
-                    You can view and edit your organization&apos;s data in the app, turn Praedium Bot off in Settings,
+                    You can view and edit your organization&apos;s data in the app, turn Fox Bot off in Settings,
                     and (as an admin) revoke API keys, download a copy of all of your organization&apos;s data, and
                     delete the organization. Anyone can delete their own account in Settings. You can also ask for any
                     of this by emailing <Email />. We may ask you to confirm who you are. Depending on where you live,
@@ -251,7 +251,7 @@ export default function Privacy(): React.ReactElement {
 
             <Section title="Children">
                 <P>
-                    Praedium is a business tool for people 18 and over. It isn&apos;t directed at children, and you
+                    Work Order Fox is a business tool for people 18 and over. It isn&apos;t directed at children, and you
                     shouldn&apos;t enter children&apos;s personal details into it. Tell us if you believe that has
                     happened and we&apos;ll help remove them.
                 </P>

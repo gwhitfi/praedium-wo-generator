@@ -294,7 +294,7 @@ export default async function PublicWorkOrder({
             <footer className="mt-12 border-t border-line pt-6 text-center text-xs text-subtle print:hidden">
                 <p>{workOrder.organization.name} can see when this page is opened and what&apos;s been checked off.</p>
                 <p className="mt-2">
-                    Sent with Praedium ·{" "}
+                    Sent with Work Order Fox ·{" "}
                     <Link href="/privacy" className="underline hover:text-foreground">
                         Privacy Policy
                     </Link>

@@ -37,7 +37,7 @@ export function organizationDeletedEmail(input: OrganizationDeletedEmailInput): 
     const deadline = formatTimestampWithZone(input.restoreDeadline);
 
     const subject = `${name} will be deleted on ${deadlineDay}`;
-    const what = `${input.deletedBy} deleted ${name} in Praedium on ${formatTimestampWithZone(input.deletedAt)}.`;
+    const what = `${input.deletedBy} deleted ${name} in Work Order Fox on ${formatTimestampWithZone(input.deletedAt)}.`;
     const locked =
         "It's locked for everyone now: no one can open it, and its API keys and contractor links don't work.";
     const removed = `After ${deadline}, every property, contact, work order, photo, activity entry, email record and API key in it is deleted for good.`;

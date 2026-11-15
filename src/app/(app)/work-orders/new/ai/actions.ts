@@ -16,7 +16,7 @@ export async function parseWorkOrderDescription(_prev: ParseState, formData: For
     const result = await getCurrentUser();
     if (result.state !== "ready") return { error: "Not authorized" };
     // Off until the user turns it on (null means they haven't chosen yet).
-    if (result.user.aiEnabled !== true) return { error: "Praedium Bot is off. Turn it on in Settings to use it." };
+    if (result.user.aiEnabled !== true) return { error: "Fox Bot is off. Turn it on in Settings to use it." };
 
     const description = z.string().safeParse(formData.get("description"));
     if (!description.success) return { error: "Describe the work first." };
@@ -24,7 +24,7 @@ export async function parseWorkOrderDescription(_prev: ParseState, formData: For
     const limited = await rateLimit(`bot:${result.user.id}`, RATE_LIMITS.bot);
     if (!limited.ok) {
         return {
-            error: "You've used Praedium Bot a lot in the last hour. Try again in a few minutes, or use the regular form.",
+            error: "You've used Fox Bot a lot in the last hour. Try again in a few minutes, or use the regular form.",
         };
     }
 

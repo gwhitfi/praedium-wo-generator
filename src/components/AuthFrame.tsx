@@ -2,7 +2,7 @@ import Link from "next/link";
 import Logo from "./Logo";
 import { ArrowLeftIcon } from "./Icons";
 
-// The page around Clerk's sign-in and sign-up widgets: the Praedium logo (back to the home page) above it, and the
+// The page around Clerk's sign-in and sign-up widgets: the Work Order Fox logo (back to the home page) above it, and the
 // terms line below.
 export default function AuthFrame({
     agreement,
@@ -14,8 +14,8 @@ export default function AuthFrame({
     return (
         <main id="main" className="flex min-h-screen flex-col items-center px-4 py-10 text-foreground">
             <div className="flex w-full max-w-md items-center justify-between">
-                <Link href="/" aria-label="Praedium home" className="rounded text-foreground">
-                    <Logo className="h-7 w-auto" />
+                <Link href="/" aria-label="Work Order Fox home" className="rounded text-foreground">
+                    <Logo className="h-10 w-auto" />
                 </Link>
                 <Link href="/" className="inline-flex items-center gap-1.5 text-sm text-muted hover:text-foreground">
                     <ArrowLeftIcon size={14} />

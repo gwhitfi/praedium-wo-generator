@@ -1,6 +1,6 @@
 // CSV for the data export, written for spreadsheets: a UTF-8 byte order mark so Excel reads accents, CRLF line
 // endings, quoting as RFC 4180 describes, and text that would start a formula (=, +, -, @, tab, return) prefixed
-// with an apostrophe so opening the file can't run anything typed into Praedium.
+// with an apostrophe so opening the file can't run anything typed into Work Order Fox.
 export type CsvValue = string | number | boolean | Date | null | undefined;
 
 const FORMULA_START = /^[=+\-@\t\r]/;

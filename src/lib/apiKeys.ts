@@ -9,7 +9,7 @@ const KEY_PATTERN = /^pr_[A-Za-z0-9_-]{43}$/;
 
 export type GeneratedApiKey = { key: string; prefix: string; keyHash: string };
 
-// True when a token has the shape of a Praedium key. The handler uses it only to say why a request was refused.
+// True when a token has the shape of a Work Order Fox key. The handler uses it only to say why a request was refused.
 export function looksLikeApiKey(token: string): boolean {
     return KEY_PATTERN.test(token);
 }

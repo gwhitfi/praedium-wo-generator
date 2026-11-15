@@ -4,7 +4,7 @@
 //   (KEEP_DAYS.deletedOrganization in cleanup.ts); after that the daily cleanup job deletes it in Clerk, then purges
 //   its data.
 // - "Delete my account" is immediate, including organizations the user is the only member of: Clerk is changed
-//   first, then Praedium's data. If the data step fails after Clerk's, the organization is locked and dated in the
+//   first, then Work Order Fox's data. If the data step fails after Clerk's, the organization is locked and dated in the
 //   past, so the cleanup job finishes it and a half-done delete never leaves data reachable.
 import type { clerkClient } from "@clerk/nextjs/server";
 import { isClerkAPIResponseError } from "@clerk/nextjs/errors";
@@ -41,7 +41,7 @@ export async function deleteClerkOrganization(clerk: Clerk, clerkOrgId: string):
     }
 }
 
-// Deletes the organization in Clerk, then its data in Praedium. Used by "Delete my account".
+// Deletes the organization in Clerk, then its data in Work Order Fox. Used by "Delete my account".
 export async function deleteOrganizationEverywhere(clerk: Clerk, clerkOrgId: string): Promise<void> {
     await deleteClerkOrganization(clerk, clerkOrgId);
 
@@ -136,7 +136,7 @@ export function blockedMessage(names: string[]): string {
 }
 
 // Deletes the organizations only this user belongs to, then the user in Clerk, then clears their name and email
-// in Praedium (the user.deleted webhook does the same when it arrives).
+// in Work Order Fox (the user.deleted webhook does the same when it arrives).
 export async function deleteAccount(clerk: Clerk, clerkUserId: string): Promise<ActionResult> {
     const plan = await planAccountDeletion(clerk, clerkUserId);
     if (plan.blockedBy.length > 0) return { ok: false, error: blockedMessage(plan.blockedBy) };

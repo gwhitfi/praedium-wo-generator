@@ -224,10 +224,10 @@ describe("emailWorkOrderToContractor", () => {
         expect(consoleError).toHaveBeenCalledWith("emailWorkOrder failed", providerError);
     });
 
-    it("passes Praedium's own refusal on to the office as written", async () => {
+    it("passes Work Order Fox's own refusal on to the office as written", async () => {
         vi.spyOn(console, "error").mockImplementation(() => {});
         const refusal =
-            "Praedium can't send more email today. Try again tomorrow, or share the link yourself (Mark as sent first if it's a draft).";
+            "Work Order Fox can't send more email today. Try again tomorrow, or share the link yourself (Mark as sent first if it's a draft).";
         vi.mocked(sendEmail).mockRejectedValueOnce(new EmailNotSent(refusal));
 
         expect(await emailWorkOrderToContractor(send)).toEqual({ ok: false, error: refusal });

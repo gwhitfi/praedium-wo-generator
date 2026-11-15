@@ -7,15 +7,13 @@ import { PALETTE_STORAGE_KEYS, THEME_STORAGE_KEY, type Theme } from "./theme";
 export const PALETTES = {
     light: [
         { id: "default", name: "Light" },
-        { id: "sage", name: "Sage" },
-        { id: "lavender", name: "Lavender" },
-        { id: "blue", name: "Blue" },
+        { id: "pine-den", name: "Pine Den" },
+        { id: "porchlight", name: "Porchlight" },
     ],
     dark: [
         { id: "default", name: "Dark" },
-        { id: "navy", name: "Navy" },
-        { id: "forest", name: "Forest" },
-        { id: "espresso", name: "Espresso" },
+        { id: "pine-den", name: "Pine Den" },
+        { id: "porchlight", name: "Porchlight" },
     ],
 } as const;
 

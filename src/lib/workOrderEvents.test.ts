@@ -106,7 +106,7 @@ describe("eventData", () => {
         });
     });
 
-    it("records Praedium's own reports with no actor", () => {
+    it("records Work Order Fox's own reports with no actor", () => {
         const detail = { to: "joe@example.com", kind: "WORK_ORDER" as const };
         expect(eventData({ ...ids, type: "EMAIL_DELIVERED", actor: { kind: "system" }, detail })).toEqual({
             ...ids,

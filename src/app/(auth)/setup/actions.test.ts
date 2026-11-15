@@ -62,7 +62,7 @@ describe("restoreOrganization", () => {
         });
     });
 
-    it("answers not found when the organization doesn't exist in Praedium or Clerk", async () => {
+    it("answers not found when the organization doesn't exist in Work Order Fox or Clerk", async () => {
         vi.mocked(prisma.organization.updateMany).mockResolvedValue({ count: 0 } as never);
         vi.mocked(prisma.organization.findUnique).mockResolvedValue(null);
         expect(await restoreOrganization(ORG)).toEqual({ ok: false, error: "This organization wasn't found." });

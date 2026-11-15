@@ -32,7 +32,7 @@ export default function AppearanceSettings(): React.ReactElement {
                         <div
                             role="radiogroup"
                             aria-label={mode === "light" ? "Light mode palette" : "Dark mode palette"}
-                            className="grid grid-cols-2 gap-3 sm:grid-cols-4"
+                            className="grid grid-cols-2 gap-3 sm:grid-cols-3"
                         >
                             {/* Native radio buttons (visually hidden) inside the cards, so the arrow keys move between
                                 palettes and the group is one tab stop, as with any radio group. */}

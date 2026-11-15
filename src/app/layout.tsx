@@ -1,14 +1,22 @@
 import type { Metadata } from "next";
-import { Geist, Geist_Mono } from "next/font/google";
+import { Bricolage_Grotesque, Figtree, Geist_Mono } from "next/font/google";
 import "./globals.css";
 import { ClerkProvider } from "@clerk/nextjs";
 import { themeScript } from "@/lib/theme";
 import { ToastProvider } from "@/components/Toaster";
 import SiteAnalytics from "@/components/SiteAnalytics";
 
-const geistSans = Geist({
-    variable: "--font-geist-sans",
+// The interface font.
+const figtree = Figtree({
+    variable: "--font-figtree",
     subsets: ["latin"],
+});
+
+// The wordmark's font (src/components/Logo.tsx). Variable, with the optical size axis the design sheet uses.
+const bricolage = Bricolage_Grotesque({
+    variable: "--font-bricolage",
+    subsets: ["latin"],
+    axes: ["opsz"],
 });
 
 const geistMono = Geist_Mono({
@@ -17,11 +25,11 @@ const geistMono = Geist_Mono({
 });
 
 export const metadata: Metadata = {
-    title: { default: "Praedium", template: "%s · Praedium" },
+    title: { default: "Work Order Fox", template: "%s · Work Order Fox" },
     description: "Work orders for every property you manage: build them room by room, send contractors a link, and track the work.",
 };
 
-// Clerk's sign-in, sign-up, user menu and organization widgets in Praedium's colors and font. The values are the
+// Clerk's sign-in, sign-up, user menu and organization widgets in Work Order Fox's colors and font. The values are the
 // --ck-* aliases of the theme colors (globals.css), so the widgets follow light and dark mode and the chosen palette
 // along with the app. (Clerk uses names like --accent internally, so the theme's own names can't be passed.)
 const clerkAppearance = {
@@ -41,7 +49,7 @@ const clerkAppearance = {
         colorSuccess: "var(--ck-success)",
         colorWarning: "var(--ck-warning)",
         colorModalBackdrop: "rgb(0 0 0 / 0.6)",
-        fontFamily: "var(--font-geist-sans), system-ui, sans-serif",
+        fontFamily: "var(--font-figtree), system-ui, sans-serif",
         borderRadius: "0.5rem",
     },
     // The main button in the app's plain button style, without Clerk's gradient. Clerk draws control outlines as a
@@ -58,14 +66,17 @@ const clerkAppearance = {
     },
 };
 
-// Praedium's own headings on Clerk's sign-in and sign-up cards, in place of Clerk's generic ones.
+// Work Order Fox's own headings on Clerk's sign-in and sign-up cards, in place of Clerk's generic ones.
 const clerkLocalization = {
     signIn: {
-        start: { title: "Sign in to Praedium", subtitle: "Welcome back. Your work orders are where you left them." },
+        start: {
+            title: "Sign in to Work Order Fox",
+            subtitle: "Welcome back. Your work orders are where you left them.",
+        },
     },
     signUp: {
         start: {
-            title: "Create your Praedium account",
+            title: "Create your Work Order Fox account",
             subtitle: "Start sending work orders in minutes. Free while in early access.",
         },
     },
@@ -77,7 +88,7 @@ export default function RootLayout({ children }: LayoutProps<"/">) {
             {/* The theme script sets data-theme on <html> before React loads, so React must not flag the mismatch. */}
             <html
                 lang="en"
-                className={`${geistSans.variable} ${geistMono.variable} h-full antialiased`}
+                className={`${figtree.variable} ${bricolage.variable} ${geistMono.variable} h-full antialiased`}
                 suppressHydrationWarning
             >
                 <head>

@@ -9,7 +9,7 @@ import type { ZipEntry } from "@/lib/zip";
 
 const encoder = new TextEncoder();
 
-// "praedium-export-acme-property-2026-11-10.zip": safe for a Content-Disposition header.
+// "work-order-fox-export-acme-property-2026-11-10.zip": safe for a Content-Disposition header.
 export function exportFileName(organizationName: string, date: Date): string {
     const slug = organizationName
         .toLowerCase()
@@ -19,7 +19,7 @@ export function exportFileName(organizationName: string, date: Date): string {
         .replace(/[^a-z0-9]+/g, "-")
         .replace(/^-+|-+$/g, "")
         .slice(0, 40);
-    return `praedium-export-${slug || "organization"}-${date.toISOString().slice(0, 10)}.zip`;
+    return `work-order-fox-export-${slug || "organization"}-${date.toISOString().slice(0, 10)}.zip`;
 }
 
 // A copy without the given fields (the joined names the CSV files use, kept out of data.json).
@@ -35,7 +35,7 @@ function csvFile(name: string, headers: string[], rows: CsvValue[][]): ZipEntry 
 
 function readme(organizationName: string, exportedAt: Date): string {
     return [
-        `Praedium data export for ${organizationName}`,
+        `Work Order Fox data export for ${organizationName}`,
         `Exported ${exportedAt.toISOString()} (UTC).`,
         "",
         "properties.csv   Properties",
@@ -44,7 +44,7 @@ function readme(organizationName: string, exportedAt: Date): string {
         "work_orders.csv  Work orders, with the contractor and tenant details as they were on the work order",
         "line_items.csv   Line items, with their work order, area, priority, completion and photo file names",
         "activity.csv     The history of every work order",
-        "emails.csv       Emails Praedium sent for the organization, and what became of them",
+        "emails.csv       Emails Work Order Fox sent for the organization, and what became of them",
         "data.json        All of the above in one structured file",
         "",
         "Dates and times are in UTC (ISO 8601). Photos are not included in this export.",

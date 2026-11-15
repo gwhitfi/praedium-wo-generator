@@ -163,7 +163,7 @@ describe("handleMcpRequest auth gate", () => {
         const response = await handleMcpRequest(mcpRequest(initialize));
         expect(response.status).toBe(200);
         const { result } = await rpcResult(response);
-        expect(result?.serverInfo).toMatchObject({ name: "praedium" });
+        expect(result?.serverInfo).toMatchObject({ name: "work-order-fox" });
         expect(result?.instructions).toEqual(expect.stringContaining("search_contacts"));
         expect(result?.instructions).toEqual(expect.stringContaining("can't send"));
 
@@ -737,18 +737,18 @@ describe("new reads over MCP", () => {
     });
 });
 
-describe("the praedium-guide prompt", () => {
+describe("the work-order-fox-guide prompt", () => {
     it("is listed and returns the guide for the key's permission", async () => {
         const list = await rpcResult(
             await handleMcpRequest(mcpRequest({ jsonrpc: "2.0", id: 5, method: "prompts/list" })),
         );
         expect(list.result?.prompts).toEqual([
-            expect.objectContaining({ name: "praedium-guide", title: "Using Praedium" }),
+            expect.objectContaining({ name: "work-order-fox-guide", title: "Using Work Order Fox" }),
         ]);
 
         const get = await rpcResult(
             await handleMcpRequest(
-                mcpRequest({ jsonrpc: "2.0", id: 6, method: "prompts/get", params: { name: "praedium-guide" } }),
+                mcpRequest({ jsonrpc: "2.0", id: 6, method: "prompts/get", params: { name: "work-order-fox-guide" } }),
             ),
         );
         expect(get.result?.messages).toEqual([
