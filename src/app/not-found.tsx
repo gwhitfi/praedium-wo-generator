@@ -24,7 +24,7 @@ export default async function NotFound() {
                 <div className="flex h-12 w-12 items-center justify-center rounded-full bg-surface-hover text-muted">
                     <SearchIcon size={22} />
                 </div>
-                <p className="mt-6 text-sm font-semibold text-accent">404</p>
+                <p className="mt-6 text-sm font-semibold text-accent-ink">404</p>
                 <h1 className="mt-1 text-2xl font-semibold tracking-tight">We couldn&apos;t find that page</h1>
                 <p className="mt-3 text-muted">
                     The link may be mistyped, or what it pointed to was deleted.

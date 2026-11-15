@@ -19,8 +19,9 @@ export const CONTACT_TYPE_LABELS: Record<string, string> = {
 // 16px text on phones so iOS doesn't zoom into a field on focus; 14px from the sm breakpoint.
 export const inputClass =
     "w-full rounded-md border border-line-strong bg-surface px-3 py-2 text-base text-foreground sm:text-sm " +
-    "placeholder:text-subtle focus:border-accent focus:outline-none focus:ring-2 focus:ring-accent/40 " +
-    "disabled:cursor-not-allowed disabled:opacity-60 aria-[invalid=true]:border-danger aria-[invalid=true]:focus:ring-danger/40";
+    "placeholder:text-subtle focus:border-accent-ink focus:outline-none focus:ring-2 focus:ring-accent-ink " +
+    "disabled:cursor-not-allowed disabled:opacity-60 aria-[invalid=true]:border-danger " +
+    "aria-[invalid=true]:focus:border-danger aria-[invalid=true]:focus:ring-danger";
 
 export const labelClass = "block text-sm font-medium text-secondary mb-1";
 
@@ -34,7 +35,7 @@ export const WORK_ORDER_STATUS_LABELS: Record<string, string> = {
 };
 
 // Status pills: a light wash of the status color behind neutral text, with a colored dot (STATUS_DOTS; Completed
-// gets a check instead). Enough color to scan a long list, too little to compete with the solid green action
+// gets a check instead). Enough color to scan a long list, too little to compete with the solid accent action
 // buttons or the priority pills. Draft keeps a dashed outline: it hasn't gone anywhere yet.
 export const STATUS_COLORS: Record<keyof typeof WORK_ORDER_STATUS_LABELS, string> = {
     DRAFT: "border-dashed border-line-strong bg-status-draft/8 text-secondary",
@@ -45,14 +46,15 @@ export const STATUS_COLORS: Record<keyof typeof WORK_ORDER_STATUS_LABELS, string
     CANCELLED: "border-status-cancelled/30 bg-status-cancelled/8 text-muted",
 };
 
-// A small colored dot per status, for section headings and legends.
+// A small colored dot per status, for section headings and legends. Cancelled is a hollow ring, so it differs from
+// Draft by shape as well as color.
 export const STATUS_DOTS: Record<keyof typeof WORK_ORDER_STATUS_LABELS, string> = {
     DRAFT: "bg-status-draft",
     SENT: "bg-status-sent",
     IN_PROGRESS: "bg-status-in-progress",
     COMPLETED: "bg-status-completed",
     CLOSED: "bg-status-closed",
-    CANCELLED: "bg-status-cancelled",
+    CANCELLED: "bg-transparent ring-1 ring-inset ring-status-cancelled",
 };
 
 export const PRIORITY_LABELS: Record<string, string> = {
@@ -81,8 +83,8 @@ export const EMAIL_STATUS_LABELS: Record<string, string> = {
     SKIPPED: "Not sent",
 };
 
-// Only the urgent priorities are marked. Emergency is a solid red pill; High is orange, kept apart from the amber
-// "In progress" status.
+// Only the urgent priorities are marked. Emergency is a solid red pill; High is pink in every palette, kept apart from
+// the orange buttons and the amber "In progress" status.
 export const PRIORITY_STYLES: Record<string, string> = {
     EMERGENCY: "border-danger-strong bg-danger-strong text-white",
     HIGH: "border-priority-high/60 text-priority-high",

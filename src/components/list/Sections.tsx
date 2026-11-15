@@ -15,7 +15,7 @@ export function SectionMenu({ sections }: { sections: SectionLink[] }): React.Re
                 Jump to section
                 <ChevronDownIcon size={14} className="transition-transform group-open:rotate-180" />
             </summary>
-            <ul className="absolute left-0 top-full z-20 mt-1 min-w-52 rounded-lg border border-line bg-surface py-1 shadow-lg">
+            <ul className="absolute left-0 top-full z-20 mt-1 min-w-52 rounded-lg border border-line-strong/70 bg-surface py-1 shadow-lg">
                 {sections.map((section) => (
                     <li key={section.id}>
                         <a

@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import { CheckIcon, LinkIcon, SendIcon } from "./Icons";
+import { PriorityBadge } from "./StatusBadge";
 
 const STEPS = [
     {
@@ -29,7 +30,7 @@ export default function HowItWorks(): React.ReactElement {
 
     return (
         <section aria-labelledby="how-it-works-title" className="mx-auto max-w-5xl px-4 py-20 sm:py-24">
-            <p className="text-sm font-semibold text-accent">How it works</p>
+            <p className="text-sm font-semibold text-accent-ink">How it works</p>
             <h2 id="how-it-works-title" className="mt-2 max-w-xl text-3xl font-semibold tracking-tight sm:text-4xl">
                 From a leaky faucet to a closed job in four steps
             </h2>
@@ -193,11 +194,7 @@ function WorkOrderStep() {
                     ].map((item) => (
                         <div key={item.text} className="flex items-center gap-3 border-b border-line px-4 py-2.5 last:border-b-0">
                             <span className="min-w-0 flex-1 text-sm text-foreground">{item.text}</span>
-                            {item.badge && (
-                                <span className="rounded-full border border-priority-high/60 px-2 py-0.5 text-[11px] font-medium text-priority-high">
-                                    {item.badge}
-                                </span>
-                            )}
+                            {item.badge && <PriorityBadge priority="HIGH" />}
                         </div>
                     ))}
                 </div>

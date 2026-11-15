@@ -76,7 +76,7 @@ export default async function WorkOrderPrint({ params }: { params: Promise<{ id:
                                 {workOrder.contractorEmail && <p>{workOrder.contractorEmail}</p>}
                             </>
                         ) : (
-                            <p className="text-neutral-400">Not assigned</p>
+                            <p className="text-neutral-600">Not assigned</p>
                         )}
                     </div>
 
@@ -89,7 +89,7 @@ export default async function WorkOrderPrint({ params }: { params: Promise<{ id:
                                 {workOrder.tenantEmail && <p>{workOrder.tenantEmail}</p>}
                             </>
                         ) : (
-                            <p className="text-neutral-400">No tenant on file</p>
+                            <p className="text-neutral-600">No tenant on file</p>
                         )}
                     </div>
                 </div>
@@ -124,7 +124,7 @@ export default async function WorkOrderPrint({ params }: { params: Promise<{ id:
                             </h2>
 
                             {area.lineItems.length === 0 ? (
-                                <p className="text-sm text-neutral-400">No items.</p>
+                                <p className="text-sm text-neutral-600">No items.</p>
                             ) : (
                                 <ul>
                                     {area.lineItems.map((item) => (
@@ -132,7 +132,7 @@ export default async function WorkOrderPrint({ params }: { params: Promise<{ id:
                                             key={item.id}
                                             className="flex items-baseline gap-3 border-b border-neutral-200 py-2 last:border-0"
                                         >
-                                            <span className="text-lg leading-none text-neutral-400">
+                                            <span className="text-lg leading-none text-neutral-600">
                                                 {item.completed ? "☑" : "☐"}
                                             </span>
 

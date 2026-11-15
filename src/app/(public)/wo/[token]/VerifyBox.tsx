@@ -120,7 +120,7 @@ export default function VerifyBox({
             ) : (
                 <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
                     <div className="flex gap-3">
-                        <ShieldIcon size={20} className="mt-0.5 shrink-0 text-accent" />
+                        <ShieldIcon size={20} className="mt-0.5 shrink-0 text-accent-ink" />
                         <p className="text-sm text-foreground">
                             <span className="block font-semibold">Confirm it&apos;s you to start</span>
                             <span className="text-secondary">

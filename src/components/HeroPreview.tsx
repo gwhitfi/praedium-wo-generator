@@ -1,4 +1,5 @@
 import { CheckIcon } from "./Icons";
+import { StatusBadge } from "./StatusBadge";
 
 const ITEMS = [
     { text: "Shut off water and gas, confirm the leak", done: true },
@@ -31,9 +32,7 @@ export default function HeroPreview(): React.ReactElement {
                             Oakridge Property Mgmt · #2026-1028
                         </p>
                         <div className="mt-2 flex items-center gap-2">
-                            <span className="rounded-full border border-status-in-progress/50 px-2 py-0.5 text-[10px] font-medium text-status-in-progress">
-                                In progress
-                            </span>
+                            <StatusBadge status="IN_PROGRESS" />
                             <span className="text-[11px] text-subtle">Due Friday</span>
                         </div>
                         <p className="mt-1.5 text-base font-semibold leading-snug text-foreground">

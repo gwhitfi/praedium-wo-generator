@@ -116,7 +116,7 @@ export default function ActionMenu({
                             close(false);
                         }
                     }}
-                    className="absolute right-0 top-full z-30 mt-1 min-w-48 rounded-lg border border-line bg-surface py-1 shadow-xl"
+                    className="absolute right-0 top-full z-30 mt-1 min-w-48 rounded-lg border border-line-strong/70 bg-surface py-1 shadow-xl"
                 >
                     {actions.map((action, index) => (
                         <li key={action.label} role="none">
@@ -132,7 +132,7 @@ export default function ActionMenu({
                                     close();
                                     action.onSelect();
                                 }}
-                                className={`flex w-full items-center gap-2.5 px-3 py-2.5 text-left text-sm hover:cursor-pointer hover:bg-surface-hover focus:bg-surface-hover focus:outline-none disabled:cursor-not-allowed disabled:opacity-40 sm:py-2 ${
+                                className={`flex w-full items-center gap-2.5 px-3 py-2.5 text-left text-sm hover:cursor-pointer hover:bg-surface-hover focus:bg-surface-hover focus-visible:outline-2 focus-visible:-outline-offset-2 focus-visible:outline-accent-ink disabled:cursor-not-allowed disabled:opacity-40 sm:py-2 ${
                                     action.danger ? "text-danger" : "text-foreground"
                                 }`}
                             >

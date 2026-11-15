@@ -44,7 +44,7 @@ const clerkAppearance = {
         colorInput: "var(--ck-surface)",
         colorInputForeground: "var(--ck-foreground)",
         colorBorder: "var(--ck-line-strong)",
-        colorRing: "var(--ck-accent)",
+        colorRing: "var(--ck-accent-ink)",
         colorDanger: "var(--ck-danger)",
         colorSuccess: "var(--ck-success)",
         colorWarning: "var(--ck-warning)",
@@ -54,15 +54,20 @@ const clerkAppearance = {
     },
     // The main button in the app's plain button style, without Clerk's gradient. Clerk draws control outlines as a
     // faint shadow, nearly invisible in dark mode, so inputs and the Google button get the app's control border
-    // (and its focus ring) instead.
+    // (and its focus ring) instead. Clerk draws no keyboard focus ring on its buttons, so both get the app's outline.
+    // Links and rings use the accent ink, which stays readable on the card in every theme.
     elements: {
         formButtonPrimary:
-            "bg-(--ck-accent)! bg-none! bg-[image:none]! text-(--ck-on-accent)! shadow-none! before:hidden! after:hidden! hover:bg-(--ck-accent-hover)!",
+            "bg-(--ck-accent)! bg-none! bg-[image:none]! text-(--ck-on-accent)! shadow-none! before:hidden! after:hidden! hover:bg-(--ck-accent-hover)! " +
+            "focus-visible:outline-2! focus-visible:outline-offset-2! focus-visible:outline-(--ck-accent-ink)!",
         buttonArrowIcon: "hidden!",
         formFieldInput:
-            "shadow-[0_0_0_1px_var(--ck-line-strong)]! focus:shadow-[0_0_0_1px_var(--ck-accent),0_0_0_4px_color-mix(in_srgb,var(--ck-accent)_30%,transparent)]!",
-        socialButtonsBlockButton: "shadow-[0_0_0_1px_var(--ck-line-strong)]! hover:bg-(--ck-surface-hover)!",
+            "shadow-[0_0_0_1px_var(--ck-line-strong)]! focus:shadow-[0_0_0_1px_var(--ck-accent-ink),0_0_0_4px_var(--ck-accent-ink)]!",
+        socialButtonsBlockButton:
+            "shadow-[0_0_0_1px_var(--ck-line-strong)]! hover:bg-(--ck-surface-hover)! " +
+            "focus-visible:outline-2! focus-visible:outline-offset-2! focus-visible:outline-(--ck-accent-ink)!",
         socialButtonsBlockButtonText: "text-(--ck-foreground)!",
+        footerActionLink: "text-(--ck-accent-ink)! hover:text-(--ck-accent-ink-hover)!",
     },
 };
 

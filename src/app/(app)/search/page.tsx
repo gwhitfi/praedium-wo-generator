@@ -223,7 +223,7 @@ function ResultHeading({ id, title, count, href }: { id: string; title: string; 
             {href && (
                 <Link
                     href={href}
-                    className="inline-flex items-center gap-0.5 text-sm font-medium text-accent hover:text-accent-hover"
+                    className="inline-flex items-center gap-0.5 text-sm font-medium text-accent-ink hover:text-accent-ink-hover"
                 >
                     See all {count}
                     <ChevronRightIcon size={14} />

@@ -34,7 +34,7 @@ export default function AiDemoVideo({
                 onClick={open}
                 className={
                     className ??
-                    "inline-flex items-center gap-1.5 text-sm text-accent hover:text-accent-hover hover:cursor-pointer"
+                    "inline-flex items-center gap-1.5 text-sm text-accent-ink hover:text-accent-ink-hover hover:cursor-pointer"
                 }
             >
                 <PlayIcon />

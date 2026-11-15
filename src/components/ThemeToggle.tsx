@@ -78,7 +78,7 @@ export default function ThemeToggle({ label = false }: { label?: boolean }) {
                         return (
                             <label
                                 key={option.value}
-                                className={`flex h-8 items-center rounded px-2 text-[0.8125rem] hover:cursor-pointer has-[:focus-visible]:outline-2 has-[:focus-visible]:outline-accent ${
+                                className={`flex h-8 items-center rounded px-2 text-[0.8125rem] hover:cursor-pointer has-[:focus-visible]:outline-2 has-[:focus-visible]:outline-accent-ink ${
                                     selected
                                         ? "bg-surface-hover font-medium text-foreground"
                                         : "text-muted hover:text-foreground"

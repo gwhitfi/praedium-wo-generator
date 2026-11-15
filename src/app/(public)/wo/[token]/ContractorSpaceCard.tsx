@@ -171,7 +171,7 @@ export default function ContractorSpaceCard({
                                     aria-checked={item.completed}
                                     onClick={() => handleToggle(item)}
                                     disabled={readOnly || busy}
-                                    className={`flex min-h-12 w-full items-start gap-3 rounded-lg px-2 py-2.5 text-left transition-colors enabled:hover:cursor-pointer enabled:hover:bg-surface-hover/60 disabled:cursor-default ${busy ? "opacity-60" : ""}`}
+                                    className={`group flex min-h-12 w-full items-start gap-3 rounded-lg px-2 py-2.5 text-left transition-colors enabled:hover:cursor-pointer enabled:hover:bg-surface-hover/60 disabled:cursor-default ${busy ? "opacity-60" : ""}`}
                                 >
                                     <span
                                         aria-hidden
@@ -181,7 +181,7 @@ export default function ContractorSpaceCard({
                                                 : readOnly
                                                   ? // Locked until verified (or closed): dashed, so it doesn't look tappable.
                                                     "border-dashed border-line-strong bg-transparent"
-                                                  : "border-line-strong bg-surface"
+                                                  : "border-line-strong bg-surface group-enabled:group-hover:border-line-hover"
                                         }`}
                                     >
                                         {item.completed && <CheckIcon size={15} strokeWidth={3} />}

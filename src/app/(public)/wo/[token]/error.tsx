@@ -20,7 +20,7 @@ export default function WorkOrderError({ error, retry }: { error: Error & { dige
             >
                 Try again
             </button>
-            {error.digest && <p className="mt-8 text-xs text-faint">Error ID: {error.digest}</p>}
+            {error.digest && <p className="mt-8 text-xs text-subtle">Error ID: {error.digest}</p>}
         </main>
     );
 }

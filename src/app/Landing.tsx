@@ -34,7 +34,7 @@ export default function Landing() {
                 <section className="mx-auto grid max-w-5xl items-center gap-14 px-4 pt-10 pb-16 sm:pt-14 lg:grid-cols-[minmax(0,1fr)_22rem] lg:gap-16 lg:pt-12">
                     <div>
                         <p className="inline-flex items-center gap-2 rounded-full border border-line bg-surface px-3 py-1 text-xs font-medium text-muted">
-                            <PhoneIcon size={13} className="text-accent" />
+                            <PhoneIcon size={13} className="text-accent-ink" />
                             Built for small property managers
                         </p>
                         <h1 className="mt-5 text-4xl font-semibold tracking-tight text-balance sm:text-5xl sm:leading-[1.1]">
@@ -57,7 +57,7 @@ export default function Landing() {
                         <ul className="mt-6 flex flex-wrap gap-x-5 gap-y-2 text-sm text-muted">
                             {HIGHLIGHTS.map((highlight) => (
                                 <li key={highlight} className="flex items-center gap-1.5">
-                                    <CheckIcon size={14} className="text-accent" />
+                                    <CheckIcon size={14} className="text-accent-ink" />
                                     {highlight}
                                 </li>
                             ))}
@@ -76,7 +76,7 @@ export default function Landing() {
 
                 <section aria-labelledby="audience-title" className="border-t border-line bg-surface/40">
                     <div className="mx-auto max-w-5xl px-4 py-16 sm:py-20">
-                        <p className="text-sm font-semibold text-accent">Who it&apos;s for</p>
+                        <p className="text-sm font-semibold text-accent-ink">Who it&apos;s for</p>
                         <h2 id="audience-title" className="mt-2 max-w-xl text-2xl font-semibold tracking-tight sm:text-3xl">
                             Made for the people who keep rentals running
                         </h2>
