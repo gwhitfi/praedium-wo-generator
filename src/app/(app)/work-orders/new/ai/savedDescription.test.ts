@@ -3,7 +3,7 @@ import { decodeSavedDescription, encodeSavedDescription, SAVED_DESCRIPTION_MAX_A
 
 const now = new Date("2026-11-09T12:00:00Z");
 
-describe("saved Praedium Bot description", () => {
+describe("saved Fox Bot description", () => {
     it("round-trips the text with the time it was saved", () => {
         const savedAt = new Date("2026-11-08T09:30:00Z");
         expect(decodeSavedDescription(encodeSavedDescription("Unit 4B sink leak", savedAt), now)).toEqual({

@@ -1,4 +1,4 @@
-// Server-only. The daily cleanup job (src/app/api/cron/cleanup/route.ts): removes what Praedium no longer needs.
+// Server-only. The daily cleanup job (src/app/api/cron/cleanup/route.ts): removes what Work Order Fox no longer needs.
 // Each task runs on its own, so one failure doesn't stop the rest; the route reports any that failed.
 import { clerkClient } from "@clerk/nextjs/server";
 import { MAX_SESSION_DAYS } from "@/lib/contractorAccess";
@@ -10,9 +10,9 @@ const DAY_MS = 24 * 60 * 60 * 1000;
 
 // How long things are kept. The Privacy Policy states the organization and email log periods.
 export const KEEP_DAYS = {
-    // An organization locked in Praedium (Settings → Delete organization) or deleted in Clerk (webhook) is purged
+    // An organization locked in Work Order Fox (Settings → Delete organization) or deleted in Clerk (webhook) is purged
     // after this long, so with a daily run it's gone within 8 days. Until then an admin can restore one locked in
-    // Praedium from /setup.
+    // Work Order Fox from /setup.
     deletedOrganization: 7,
     emailLog: 90,
     // Verification codes expire after 10 minutes; the rows are kept a day for troubleshooting.

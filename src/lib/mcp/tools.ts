@@ -111,7 +111,7 @@ const activityInput = z.object({
 });
 
 export const MISSING_CREATOR_ERROR =
-    "This API key's creator is no longer in Praedium, so the key can't make changes. " +
+    "This API key's creator is no longer in Work Order Fox, so the key can't make changes. " +
     "Ask an admin to create a new API key in Settings.";
 
 // A page in the app: a full URL when APP_URL is set (as for links in emails), otherwise the path.
@@ -140,14 +140,14 @@ export function buildMcpServer({
 }): McpServer {
     const organizationId = organization.id;
     const server = new McpServer(
-        { name: "praedium", version: "0.1.0" },
+        { name: "work-order-fox", version: "0.1.0" },
         { instructions: serverInstructions(canChangeStatus) },
     );
 
     server.registerPrompt(
-        "praedium-guide",
+        "work-order-fox-guide",
         {
-            title: "Using Praedium",
+            title: "Using Work Order Fox",
             description: "How to find, create and change work orders, properties and contacts with these tools.",
         },
         () => ({
@@ -251,7 +251,7 @@ export function buildMcpServer({
         "list_activity",
         {
             description:
-                "List what happened across the organization's work orders, newest first, worded as in Praedium's " +
+                "List what happened across the organization's work orders, newest first, worded as in Work Order Fox's " +
                 "Activity sections: { type, text, note?, createdAt, workOrder: { id, jobNumber, title } }. " +
                 "Optional filters: workOrderId, since (an ISO date-time like 2026-11-04T00:00:00Z), and types (event " +
                 "types such as SENT, ITEM_CHECKED, COMPLETED_BY_CONTRACTOR). limit defaults to 50, at most 200.",
@@ -298,7 +298,7 @@ export function buildMcpServer({
         "create_property",
         {
             description:
-                "Create a property in Praedium. Call search_properties first so you don't add a duplicate. " +
+                "Create a property in Work Order Fox. Call search_properties first so you don't add a duplicate. " +
                 "propertyType is one of HOUSE, DUPLEX, TOWNHOUSE, CONDO, APARTMENT, COMMERCIAL, LAND; state is a " +
                 "2-letter US state code; zipCode is 5 digits. units is an optional list of { name }; without it " +
                 'the property gets one unit named "Main". Returns { id, displayName, units: [{ id, name }], url }.',
@@ -394,7 +394,7 @@ export function buildMcpServer({
                 "the contractor on a work order that was already sent makes a new contractor link, and the old " +
                 "link stops working. To send, start, cancel, archive or restore, use those tools if this key has " +
                 "them; " +
-                "otherwise it's done in Praedium. Returns { id, jobNumber, status, changed, newContractorLink, url }.",
+                "otherwise it's done in Work Order Fox. Returns { id, jobNumber, status, changed, newContractorLink, url }.",
             inputSchema: updateWorkOrderInput,
         },
         async (input) => {

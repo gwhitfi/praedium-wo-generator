@@ -22,11 +22,11 @@ import { DeleteMyAccountButton, DeleteOrganizationButton } from "./DeleteAccount
 
 export const metadata: Metadata = { title: "Settings" };
 
-// How many emails Settings → Recent emails lists, and how long a key Praedium revoked stays listed.
+// How many emails Settings → Recent emails lists, and how long a key Work Order Fox revoked stays listed.
 const RECENT_EMAILS = 50;
 const REVOKED_SHOWN_DAYS = 30;
 
-// Keys Praedium revoked after this moment are still listed, with the reason.
+// Keys Work Order Fox revoked after this moment are still listed, with the reason.
 function revokedShownSince(): Date {
     return new Date(Date.now() - REVOKED_SHOWN_DAYS * 24 * 60 * 60 * 1000);
 }
@@ -40,7 +40,7 @@ const SECTIONS = [
     { id: "export", label: "Export data", group: "Organization", adminOnly: true },
     { id: "appearance", label: "Appearance", group: "You" },
     { id: "notifications", label: "Notifications", group: "You" },
-    { id: "praedium-bot", label: "Praedium Bot", group: "You" },
+    { id: "praedium-bot", label: "Fox Bot", group: "You" },
     { id: "account", label: "Account", group: "You" },
 ];
 
@@ -57,7 +57,7 @@ export default async function Settings() {
 
     const { organization, user, role } = result;
     const isAdmin = role === "ADMIN";
-    // Active keys, plus those Praedium revoked lately (its creator left, say), so admins see why a key stopped.
+    // Active keys, plus those Work Order Fox revoked lately (its creator left, say), so admins see why a key stopped.
     const apiKeys = await prisma.apiKey.findMany({
         where: {
             organizationId: organization.id,
@@ -190,7 +190,7 @@ export default async function Settings() {
                             <GroupHeading
                                 id="emails-title"
                                 title="Recent emails"
-                                description={`The last ${RECENT_EMAILS} emails Praedium sent for ${organization.name}, and whether they arrived. An address that bounces or marks an email as spam isn't emailed again.`}
+                                description={`The last ${RECENT_EMAILS} emails Work Order Fox sent for ${organization.name}, and whether they arrived. An address that bounces or marks an email as spam isn't emailed again.`}
                             />
                             <RecentEmails emails={emails} />
                         </section>

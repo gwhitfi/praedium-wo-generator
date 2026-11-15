@@ -23,7 +23,7 @@ import { type RateLimitResult, type RateLimitRule, peekRateLimit, rateLimit } fr
 import { EmailNotSent, sendLoggedEmail } from "./emailLog";
 
 const ACCOUNT_LIMIT =
-    "Praedium can't send more email today. Try again tomorrow, or share the link yourself (Mark as sent first if it's a draft).";
+    "Work Order Fox can't send more email today. Try again tomorrow, or share the link yourself (Mark as sent first if it's a draft).";
 const OFFICE_KINDS = ["WORK_ORDER", "TENANT_NOTICE", "CANCELLED", "COMPLETED"] as const;
 
 // rateLimit() as if each bucket had just counted `counts[key]` (1 when not given), refusing over the rule's limit.
@@ -138,7 +138,7 @@ describe("sendLoggedEmail", () => {
         } as never);
 
         await expect(sendLoggedEmail(email)).rejects.toThrow(
-            "joe@example.com marked an earlier email as spam on November 3, 2026, so Praedium won't email it again. If this is a mistake, email support@praediumhq.com.",
+            "joe@example.com marked an earlier email as spam on November 3, 2026, so Work Order Fox won't email it again. If this is a mistake, email support@praediumhq.com.",
         );
     });
 
@@ -211,7 +211,7 @@ describe("sendLoggedEmail", () => {
             expect(sendEmail).not.toHaveBeenCalled();
             expect(logged()).toHaveLength(OFFICE_KINDS.length);
             expect(logged().every((row) => row.status === "SKIPPED")).toBe(true);
-            expect(logged()[0].error).toBe("Praedium's daily email limit reached.");
+            expect(logged()[0].error).toBe("Work Order Fox's daily email limit reached.");
         });
 
         it("still sends verification codes and deletion notices up to 90", async () => {

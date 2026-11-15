@@ -125,7 +125,7 @@ describe("handleResendReport", () => {
         );
     });
 
-    it("still suppresses a bounced address Praedium has no log for", async () => {
+    it("still suppresses a bounced address Work Order Fox has no log for", async () => {
         vi.mocked(prisma.emailLog.findUnique).mockResolvedValue(null);
 
         await handleResendReport({ type: "email.bounced", data: { ...base, bounce: { type: "Permanent" } } });

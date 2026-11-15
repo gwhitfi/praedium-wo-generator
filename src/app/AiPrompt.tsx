@@ -19,7 +19,7 @@ export default function AiPrompt(): React.ReactElement {
                         Draft work orders from a sentence
                     </h2>
                     <p className="mt-0.5 text-sm text-muted">
-                        Praedium Bot turns &ldquo;Unit 4B, kitchen sink leaking, Joe&apos;s Plumbing by Friday&rdquo;
+                        Fox Bot turns &ldquo;Unit 4B, kitchen sink leaking, Joe&apos;s Plumbing by Friday&rdquo;
                         into a draft for you to review. It&apos;s the only place AI is used, and you can change this in
                         Settings.
                     </p>

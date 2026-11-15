@@ -49,15 +49,15 @@ export default function Terms(): React.ReactElement {
             <Section title="1. Agreement">
                 <P>
                     These terms are an agreement between you and Justin Whitfield (&quot;we&quot;, &quot;us&quot;) about
-                    your use of Praedium. By creating an account or using the service, you accept them. If you use
-                    Praedium for a company or organization, you confirm you are allowed to accept these terms on its
+                    your use of Work Order Fox. By creating an account or using the service, you accept them. If you use
+                    Work Order Fox for a company or organization, you confirm you are allowed to accept these terms on its
                     behalf. You must be at least 18 years old.
                 </P>
             </Section>
 
-            <Section title="2. What Praedium is">
+            <Section title="2. What Work Order Fox is">
                 <P>
-                    Praedium is a tool for property managers to create, manage and send maintenance work orders to
+                    Work Order Fox is a tool for property managers to create, manage and send maintenance work orders to
                     contractors. It is currently free, and it is offered to users in the United States. It does not
                     perform repairs, choose contractors, or guarantee that any work gets done. It is not an emergency
                     service. You are responsible for your maintenance decisions and for what you send to contractors and
@@ -88,7 +88,7 @@ export default function Terms(): React.ReactElement {
             <Section title="4. Your data, and information about other people">
                 <P>
                     You own the content you enter. You give us permission to store, process, display and send it as
-                    needed to run Praedium, including through the service providers listed in the <PrivacyLink />.
+                    needed to run Work Order Fox, including through the service providers listed in the <PrivacyLink />.
                 </P>
                 <P>
                     Most of what you enter is about other people: tenants, contractors and other contacts. You are
@@ -120,10 +120,10 @@ export default function Terms(): React.ReactElement {
 
             <Section title="6. AI features">
                 <P>
-                    <strong className="text-foreground">Praedium Bot</strong> turns a written description into a draft
+                    <strong className="text-foreground">Fox Bot</strong> turns a written description into a draft
                     work order using Claude, an AI model from Anthropic. Only your description and today&apos;s date are
                     sent. The draft can be wrong, incomplete or misread what you said. Review it before you send it to
-                    anyone. Each user can turn Praedium Bot off in Settings.
+                    anyone. Each user can turn Fox Bot off in Settings.
                 </P>
                 <P>
                     <strong className="text-foreground">AI assistant access (MCP).</strong> An admin can create an API
@@ -138,19 +138,19 @@ export default function Terms(): React.ReactElement {
 
             <Section title="7. Email">
                 <P>
-                    Praedium sends email on your behalf through Resend: work orders and cancellations to contractors,
+                    Work Order Fox sends email on your behalf through Resend: work orders and cancellations to contractors,
                     and, if you tick &quot;Notify tenant&quot;, a short notice to the tenant naming the contractor and
                     the property. These emails show your organization&apos;s name as the sender and use your
                     organization&apos;s email as the reply-to address. Keep those details accurate, and only send to
                     people who expect to hear from you about maintenance. We can&apos;t guarantee that every email is
-                    delivered. Marking a work order as sent by SMS does not send a text message; Praedium has no SMS
+                    delivered. Marking a work order as sent by SMS does not send a text message; Work Order Fox has no SMS
                     feature.
                 </P>
             </Section>
 
             <Section title="8. Acceptable use">
                 <P>
-                    Don&apos;t use Praedium to break the law, to harass or deceive anyone, or to send spam. Don&apos;t
+                    Don&apos;t use Work Order Fox to break the law, to harass or deceive anyone, or to send spam. Don&apos;t
                     upload content you have no right to share. Don&apos;t try to reach another organization&apos;s data,
                     get around access controls, or interfere with the service. Don&apos;t impersonate another person or
                     business.
@@ -167,7 +167,7 @@ export default function Terms(): React.ReactElement {
 
             <Section title="10. Ending the agreement">
                 <P>
-                    You can stop using Praedium at any time and delete your account or (as an admin) your organization
+                    You can stop using Work Order Fox at any time and delete your account or (as an admin) your organization
                     in Settings, or ask us to do it. We may suspend or close accounts that break these terms, create a
                     security risk, or where the law requires it. Where it&apos;s reasonable, we&apos;ll tell you why and
                     give you a chance to fix the problem. The <PrivacyLink /> explains what happens to your data
@@ -177,7 +177,7 @@ export default function Terms(): React.ReactElement {
 
             <Section title="11. No warranty">
                 <P>
-                    Praedium is provided &quot;as is&quot; and &quot;as available&quot;, without any warranty, express
+                    Work Order Fox is provided &quot;as is&quot; and &quot;as available&quot;, without any warranty, express
                     or implied, including warranties of merchantability, fitness for a particular purpose and
                     non-infringement. We don&apos;t guarantee the accuracy of AI output, the delivery of email, or the
                     work of any contractor. Some places don&apos;t allow these exclusions, so some may not apply to you.
@@ -187,7 +187,7 @@ export default function Terms(): React.ReactElement {
             <Section title="12. Limitation of liability">
                 <P>
                     To the extent the law allows, we are not liable for indirect, incidental or consequential damages,
-                    lost profits, or lost data arising from your use of Praedium. Our total liability for any claim
+                    lost profits, or lost data arising from your use of Work Order Fox. Our total liability for any claim
                     connected to the service is limited to the greater of $100 or the amount you paid us in the past 12
                     months. These limits don&apos;t apply to anything the law doesn&apos;t allow us to limit.
                 </P>
@@ -212,7 +212,7 @@ export default function Terms(): React.ReactElement {
             <Section title="15. Changes to these terms">
                 <P>
                     We may update these terms. When we do, we&apos;ll change the effective date at the top of this page.
-                    If you keep using Praedium after a change takes effect, you accept the new terms. If you don&apos;t
+                    If you keep using Work Order Fox after a change takes effect, you accept the new terms. If you don&apos;t
                     agree, stop using the service and ask us to delete your account.
                 </P>
             </Section>

@@ -9,7 +9,7 @@ export default function PublicFooter(): React.ReactElement {
         <footer className="border-t border-line">
             <div className="mx-auto flex max-w-5xl flex-col gap-6 px-4 py-10 sm:flex-row sm:items-start sm:justify-between">
                 <div className="max-w-xs">
-                    <Logo className="h-5 w-auto text-foreground" />
+                    <Logo className="h-8 w-auto text-foreground" />
                     <p className="mt-2 text-sm text-muted">Work orders for small property managers and their contractors.</p>
                 </div>
                 <nav aria-label="Footer" className="flex flex-wrap gap-x-6 gap-y-1 text-sm text-muted [&>a]:py-1.5">
@@ -25,12 +25,12 @@ export default function PublicFooter(): React.ReactElement {
                         </Link>
                     ))}
                     {/* The same address the Terms and Privacy pages give for questions. */}
-                    <a href={`mailto:${SUPPORT_EMAIL}?subject=Praedium`} className="hover:text-foreground">
+                    <a href={`mailto:${SUPPORT_EMAIL}?subject=Work%20Order%20Fox`} className="hover:text-foreground">
                         Contact
                     </a>
                 </nav>
             </div>
-            <p className="mx-auto max-w-5xl px-4 pb-8 text-xs text-subtle">&copy; {new Date().getFullYear()} Praedium</p>
+            <p className="mx-auto max-w-5xl px-4 pb-8 text-xs text-subtle">&copy; {new Date().getFullYear()} Work Order Fox</p>
         </footer>
     );
 }

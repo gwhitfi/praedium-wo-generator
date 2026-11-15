@@ -4,7 +4,8 @@ import { type NavLink } from "./MobileMenu";
 import NavMenu from "./NavMenu";
 import NavLinks, { MobileNavTabs, NavIconLink } from "./NavLinks";
 import NotificationBell from "./NotificationBell";
-import { SearchIcon, SparklesIcon } from "./Icons";
+import { SearchIcon } from "./Icons";
+import { FoxDispatch } from "./FoxMarks";
 import { INFO_LINKS } from "@/lib/defaults";
 import { iconButtonClass } from "@/lib/ui";
 
@@ -15,16 +16,16 @@ const links: NavLink[] = [
     { href: "/properties", label: "Properties" },
 ];
 
-const AI_LINK = { href: "/work-orders/new/ai", label: "Draft with AI", title: "Praedium Bot: draft a work order with AI" };
+const AI_LINK = { href: "/work-orders/new/ai", label: "Fox Bot", title: "Fox Bot: draft a work order with AI" };
 
-// `showAi` is true only once the user has turned Praedium Bot on (it starts off).
+// `showAi` is true only once the user has turned Fox Bot on (it starts off).
 export default function Nav({ showAi, unreadCount }: { showAi: boolean; unreadCount: number }) {
     return (
         <header className="sticky top-0 z-40 border-b border-line bg-background/90 backdrop-blur supports-[backdrop-filter]:bg-background/80 print:hidden">
             <div className="mx-auto flex h-16 max-w-5xl items-center justify-between gap-3 px-4">
                 <div className="flex min-w-0 items-center gap-6">
-                    <Link href="/" aria-label="Praedium dashboard" className="shrink-0 rounded text-foreground">
-                        <Logo className="h-6 w-auto" />
+                    <Link href="/" aria-label="Work Order Fox dashboard" className="shrink-0 rounded text-foreground">
+                        <Logo className="h-9 w-auto" />
                     </Link>
                     <NavLinks links={links} />
                 </div>
@@ -33,16 +34,17 @@ export default function Nav({ showAi, unreadCount }: { showAi: boolean; unreadCo
                         <SearchIcon size={18} />
                     </NavIconLink>
                     {showAi && (
-                        // Labelled "AI" on small screens and "Draft with AI" on wide ones, never a bare icon.
+                        // The dispatch fox, with "Fox Bot" beside it where the header has room. The fox is Fox Bot's
+                        // face, so on narrower screens it stands alone (the link keeps its full label for screen
+                        // readers and as a tooltip).
                         <NavIconLink
                             href={AI_LINK.href}
                             title={AI_LINK.title}
                             aria-label={AI_LINK.title}
-                            className={`${iconButtonClass()} w-auto! gap-1 px-2 text-accent hover:text-accent-hover lg:gap-1.5 lg:px-3`}
+                            className={`${iconButtonClass()} w-auto! gap-1.5 px-1.5 lg:px-2.5`}
                         >
-                            <SparklesIcon size={18} />
-                            <span className="text-sm font-medium lg:hidden">AI</span>
-                            <span className="hidden text-sm font-medium lg:inline">{AI_LINK.label}</span>
+                            <FoxDispatch className="h-7 w-7" />
+                            <span className="hidden text-sm font-medium text-secondary lg:inline">{AI_LINK.label}</span>
                         </NavIconLink>
                     )}
                     <NotificationBell unreadCount={unreadCount} />

@@ -1,7 +1,7 @@
 "use client";
 
 import { useSyncExternalStore } from "react";
-import { THEME_STORAGE_KEY, type Theme } from "@/lib/theme";
+import { DEVICE_THEME, THEME_STORAGE_KEY, type Theme } from "@/lib/theme";
 
 function subscribe(onChange: () => void) {
     const observer = new MutationObserver(onChange);
@@ -12,8 +12,8 @@ const getTheme = (): Theme => (document.documentElement.dataset.theme === "light
 // The server doesn't know the theme, so the button renders empty until the browser takes over.
 const getServerTheme = () => null;
 
-// The saved choice: light, dark, or nothing saved, which follows the device (see themeScript).
-type ThemeChoice = Theme | "device";
+// The saved choice: light, dark, or the device setting. Nothing saved is dark, the default (see themeScript).
+type ThemeChoice = Theme | typeof DEVICE_THEME;
 const CHOICE_EVENT = "praedium-theme-choice";
 function subscribeChoice(onChange: () => void) {
     window.addEventListener(CHOICE_EVENT, onChange);
@@ -26,15 +26,14 @@ function subscribeChoice(onChange: () => void) {
 function getChoice(): ThemeChoice {
     try {
         const saved = localStorage.getItem(THEME_STORAGE_KEY);
-        return saved === "light" || saved === "dark" ? saved : "device";
+        return saved === "light" || saved === "dark" || saved === DEVICE_THEME ? saved : "dark";
     } catch {
-        return "device";
+        return "dark";
     }
 }
 function choose(choice: ThemeChoice) {
     try {
-        if (choice === "device") localStorage.removeItem(THEME_STORAGE_KEY);
-        else localStorage.setItem(THEME_STORAGE_KEY, choice);
+        localStorage.setItem(THEME_STORAGE_KEY, choice);
     } catch {
         // Storage can be blocked (e.g. private browsing); the theme still changes for this page.
     }

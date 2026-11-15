@@ -10,7 +10,7 @@ type VerifyCodeEmailInput = {
 // The 6-digit code a contractor enters to verify a browser, with a link to the confirm page as an alternative.
 export function verifyCodeEmail(input: VerifyCodeEmailInput): { subject: string; html: string; text: string } {
     const context = `${input.organizationName} · #${input.jobNumber}`;
-    const subject = `Your Praedium code: ${input.code}`;
+    const subject = `Your Work Order Fox code: ${input.code}`;
 
     const text = [
         context,

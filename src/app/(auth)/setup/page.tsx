@@ -51,7 +51,7 @@ export default async function Page(): Promise<React.ReactElement> {
     const scheduled = await scheduledForDeletion();
     return (
         <main id="main" className="flex min-h-screen flex-col items-center px-4 py-10 text-foreground">
-            <Logo className="h-7 w-auto" />
+            <Logo className="h-10 w-auto" />
             <div className="flex w-full flex-col items-center gap-4 pt-10 pb-10 text-center sm:pt-16">
                 <div className="max-w-md">
                     <h1 className="text-2xl font-semibold tracking-tight">Set up your organization</h1>

@@ -1,10 +1,10 @@
-// Server-only. Keeps Praedium in step with Clerk (webhooks, verified in src/app/api/webhooks/clerk/route.ts) so
+// Server-only. Keeps Work Order Fox in step with Clerk (webhooks, verified in src/app/api/webhooks/clerk/route.ts) so
 // that leaving or being deleted takes effect at once: a removed member's API keys stop working, a deleted
 // organization is locked, a deleted user's name and email are cleared. Each handler is safe to receive twice.
 import type { WebhookEvent } from "@clerk/nextjs/webhooks";
 import prisma from "@/lib/prisma";
 
-// Shown in Settings next to a key Praedium revoked.
+// Shown in Settings next to a key Work Order Fox revoked.
 export const REVOKED_REASONS = {
     creatorLeft: "Its creator left the organization.",
     creatorDeleted: "Its creator's account was deleted.",

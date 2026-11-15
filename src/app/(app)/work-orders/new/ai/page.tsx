@@ -4,7 +4,6 @@ import { getCurrentUser } from "@/lib/auth";
 import prisma from "@/lib/prisma";
 import PageHeader from "@/components/list/PageHeader";
 import { ButtonLink } from "@/components/Button";
-import { SparklesIcon } from "@/components/Icons";
 import { readingClass, taskPageClass } from "@/lib/ui";
 import BotForm from "./BotForm";
 
@@ -14,7 +13,7 @@ export default async function NewWorkOrderWithAi() {
     const result = await getCurrentUser();
     if (result.state === "signed-out") redirect("/sign-in");
     if (result.state === "needs-org") redirect("/setup");
-    // "Turn off Praedium Bot" in Settings turns the tool off, not just its nav button.
+    // "Turn off Fox Bot" in Settings turns the tool off, not just its nav button.
     if (result.user.aiEnabled !== true) redirect("/work-orders/new");
     const organizationId = result.organization.id;
 
@@ -56,12 +55,6 @@ export default async function NewWorkOrderWithAi() {
             <div className={readingClass}>
                 <PageHeader
                     back={{ href: "/work-orders", label: "Work orders" }}
-                    eyebrow={
-                        <span className="inline-flex items-center gap-1.5 text-sm font-medium text-accent">
-                            <SparklesIcon size={14} />
-                            Praedium Bot
-                        </span>
-                    }
                     title="Draft a work order with AI"
                     subtitle="Describe the job in your own words. You'll review everything before a draft is created."
                     actions={

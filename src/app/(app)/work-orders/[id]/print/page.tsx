@@ -43,7 +43,7 @@ export default async function WorkOrderPrint({ params }: { params: Promise<{ id:
                 <PrintButton />
             </div>
             <div className="hidden print:block text-xs text-neutral-500 mb-4">
-                Praedium · #{workOrder.jobNumber}
+                Work Order Fox · #{workOrder.jobNumber}
             </div>
             <h1 className="mb-2 flex items-center justify-center gap-3 text-2xl font-semibold">
                 {workOrder.title ?? "Untitled work order"}

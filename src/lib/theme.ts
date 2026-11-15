@@ -7,13 +7,16 @@ export const THEME_STORAGE_KEY = "theme";
 // data-palette-dark attributes on <html>.
 export const PALETTE_STORAGE_KEYS = { light: "palette-light", dark: "palette-dark" } as const;
 
+// The saved theme choice: "device" follows the device setting. Nothing saved means dark, the default.
+export const DEVICE_THEME = "device";
+
 // Runs in <head> before the page paints, so there's no flash of the wrong theme.
-// Uses the saved choice, or the device setting when nothing is saved. The contractor pages (/wo/...) start
-// dark instead of following the device, and skip palettes: they only use the standard light and dark themes.
+// Uses the saved choice, and dark when nothing is saved. The contractor pages (/wo/...) skip palettes: they only
+// use the standard light and dark themes.
 export const themeScript =
     `try{var t=localStorage.getItem(${JSON.stringify(THEME_STORAGE_KEY)});` +
-    `if(t!=="light"&&t!=="dark")t=location.pathname.indexOf("/wo/")!==0&&` +
-    `matchMedia("(prefers-color-scheme: light)").matches?"light":"dark";` +
+    `if(t===${JSON.stringify(DEVICE_THEME)})t=matchMedia("(prefers-color-scheme: light)").matches?"light":"dark";` +
+    `else if(t!=="light"&&t!=="dark")t="dark";` +
     `document.documentElement.dataset.theme=t;` +
     `if(location.pathname.indexOf("/wo/")!==0){` +
     `var l=localStorage.getItem(${JSON.stringify(PALETTE_STORAGE_KEYS.light)}),` +

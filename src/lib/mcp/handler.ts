@@ -42,7 +42,7 @@ function requestContext(request: Request): Record<string, string> {
 function unauthorized(): Response {
     return Response.json(
         { error: "Missing or invalid API key. Send it as Authorization: Bearer <key>." },
-        { status: 401, headers: { "WWW-Authenticate": 'Bearer realm="praedium"' } },
+        { status: 401, headers: { "WWW-Authenticate": 'Bearer realm="work-order-fox"' } },
     );
 }
 

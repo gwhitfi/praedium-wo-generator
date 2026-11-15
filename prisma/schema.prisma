@@ -101,7 +101,7 @@ enum EmailStatus {
   SKIPPED // not sent: a suppressed address or over the daily limit
 }
 
-// One row per email Praedium tries to send (src/lib/emailLog.ts), so the office can see whether it arrived.
+// One row per email Work Order Fox tries to send (src/lib/emailLog.ts), so the office can see whether it arrived.
 model EmailLog {
   id        String      @id @default(cuid())
   kind      EmailKind
@@ -131,7 +131,7 @@ enum SuppressionReason {
   COMPLAINED
 }
 
-// Addresses that hard-bounced or marked our email as spam. Praedium never emails them again, for any organization:
+// Addresses that hard-bounced or marked our email as spam. Work Order Fox never emails them again, for any organization:
 // a dead mailbox is dead for everyone, and complaints hurt the sending domain for every customer.
 model SuppressedEmail {
   // Trimmed and lower-cased.
@@ -477,7 +477,7 @@ model ApiKey {
   keyHash         String    @unique
   lastUsedAt      DateTime?
   revokedAt       DateTime?
-  // Why Praedium revoked it (its creator left or was deleted, or the organization was deleted). Null when an admin
+  // Why Work Order Fox revoked it (its creator left or was deleted, or the organization was deleted). Null when an admin
   // revoked it in Settings.
   revokedReason   String?
   createdAt       DateTime  @default(now())

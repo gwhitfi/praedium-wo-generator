@@ -40,7 +40,7 @@ describe("GET /settings/export", () => {
         expect(response.status).toBe(200);
         expect(response.headers.get("Content-Type")).toBe("application/zip");
         expect(response.headers.get("Content-Disposition")).toMatch(
-            /^attachment; filename="praedium-export-acme-property-\d{4}-\d{2}-\d{2}\.zip"$/,
+            /^attachment; filename="work-order-fox-export-acme-property-\d{4}-\d{2}-\d{2}\.zip"$/,
         );
         expect(response.headers.get("Cache-Control")).toBe("no-store");
         expect(buildExport).toHaveBeenCalledWith({ id: "org1", name: "Acme Property" }, expect.any(Date));

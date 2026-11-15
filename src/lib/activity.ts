@@ -92,7 +92,7 @@ const schemas = {
 };
 
 // The wording for one event: `active` follows the actor's name ("Marcus Hill checked off ..."); `passive` stands
-// alone for backfilled rows with no actor. `alone` is a complete sentence with no actor, for what Praedium itself
+// alone for backfilled rows with no actor. `alone` is a complete sentence with no actor, for what Work Order Fox itself
 // reports (email delivery). Null when the detail can't be read.
 type Phrase = { active: string; passive?: string; note?: string; alone?: string };
 
@@ -115,7 +115,7 @@ function phrase(type: WorkOrderEventType, detail: Prisma.JsonValue): Phrase | nu
     switch (type) {
         case "CREATED": {
             const d = read(schemas.CREATED);
-            if (d?.source === "bot") return { active: "created the work order with Praedium Bot" };
+            if (d?.source === "bot") return { active: "created the work order with Fox Bot" };
             if (d?.source === "mcp") return { active: "created the work order through the API" };
             return { active: "created the work order" };
         }

@@ -1,8 +1,8 @@
-// Server-only. Every email Praedium sends for an organization goes through sendLoggedEmail(): it refuses suppressed
+// Server-only. Every email Work Order Fox sends for an organization goes through sendLoggedEmail(): it refuses suppressed
 // addresses (hard bounces, spam complaints), holds each organization to a daily allowance so open sign-up can't turn
-// Praedium into a mail relay, caps what one address gets from one organization, keeps the whole account under Resend's
-// daily quota, sends through Resend and records the outcome in EmailLog. Resend's webhooks then move the row to
-// Delivered, Bounced or Complained (src/lib/resendWebhook.ts).
+// Work Order Fox into a mail relay, caps what one address gets from one organization, keeps the whole account under
+// Resend's daily quota, sends through Resend and records the outcome in EmailLog. Resend's webhooks then move the row
+// to Delivered, Bounced or Complained (src/lib/resendWebhook.ts).
 import * as Sentry from "@sentry/nextjs";
 import { Prisma, type EmailKind } from "@/generated/prisma/client";
 import { normalizeEmail } from "@/lib/contractorWorkOrders";
@@ -45,7 +45,7 @@ async function alertOwner(alert: "warning" | "ceiling", message: string): Promis
     }
 }
 
-// An email Praedium chose not to send. The message is written for the person who tried, and safe to show.
+// An email Work Order Fox chose not to send. The message is written for the person who tried, and safe to show.
 export class EmailNotSent extends Error {}
 
 export type LoggedEmail = {
@@ -95,8 +95,8 @@ export async function suppressionMessage(address: string): Promise<string | null
     const on = formatFullDate(dateInAppTimeZone(suppressed.createdAt));
     const support = `If this is a mistake, email ${SUPPORT_EMAIL}.`;
     return suppressed.reason === "COMPLAINED"
-        ? `${suppressed.email} marked an earlier email as spam on ${on}, so Praedium won't email it again. ${support}`
-        : `Email to ${suppressed.email} bounced on ${on}, so Praedium won't email it again. Check the address. ${support}`;
+        ? `${suppressed.email} marked an earlier email as spam on ${on}, so Work Order Fox won't email it again. ${support}`
+        : `Email to ${suppressed.email} bounced on ${on}, so Work Order Fox won't email it again. Check the address. ${support}`;
 }
 
 // Sends the email, or throws EmailNotSent (suppressed address, a daily limit) or Resend's error. Returns the log
@@ -150,13 +150,13 @@ export async function sendLoggedEmail(email: LoggedEmail): Promise<{ resendId: s
     // before either is counted, so the total can go a little over; the gap to Resend's own limit absorbs that.
     const accountTotal = await peekRateLimit(ACCOUNT_KEY);
     if (accountTotal >= accountCeiling(email.kind)) {
-        await record(email, to, { status: "SKIPPED", error: "Praedium's daily email limit reached." });
+        await record(email, to, { status: "SKIPPED", error: "Work Order Fox's daily email limit reached." });
         await alertOwner(
             "ceiling",
-            `Praedium stopped sending email: ${accountTotal} sent today, at the daily ceiling (${RATE_LIMITS.emailAccountOffice.limit} for the office, ${RATE_LIMITS.emailAccount.limit} with verification codes and deletion notices).`,
+            `Work Order Fox stopped sending email: ${accountTotal} sent today, at the daily ceiling (${RATE_LIMITS.emailAccountOffice.limit} for the office, ${RATE_LIMITS.emailAccount.limit} with verification codes and deletion notices).`,
         );
         throw new EmailNotSent(
-            "Praedium can't send more email today. Try again tomorrow, or share the link yourself (Mark as sent first if it's a draft).",
+            "Work Order Fox can't send more email today. Try again tomorrow, or share the link yourself (Mark as sent first if it's a draft).",
         );
     }
 
@@ -182,7 +182,7 @@ export async function sendLoggedEmail(email: LoggedEmail): Promise<{ resendId: s
     if (sentToday >= RATE_LIMITS.emailAccountWarning.limit) {
         await alertOwner(
             "warning",
-            `Praedium has sent ${sentToday} emails today; the office stops at ${RATE_LIMITS.emailAccountOffice.limit} and everything at ${RATE_LIMITS.emailAccount.limit}.`,
+            `Work Order Fox has sent ${sentToday} emails today; the office stops at ${RATE_LIMITS.emailAccountOffice.limit} and everything at ${RATE_LIMITS.emailAccount.limit}.`,
         );
     }
     return { resendId };

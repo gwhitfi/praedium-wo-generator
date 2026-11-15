@@ -68,6 +68,9 @@ export default function NavMenu({ infoLinks }: { infoLinks: NavLink[] }): React.
             ref={rootRef}
             className="relative"
             onBlur={(event) => {
+                // No new focus target: a press on something that can't take focus, like a theme choice's label.
+                // Chrome drops focus on mouse down, before the click; clicks outside close it in onPointerDown.
+                if (!event.relatedTarget) return;
                 if (insideClerk(event.relatedTarget)) return;
                 if (!rootRef.current?.contains(event.relatedTarget)) setOpen(false);
             }}

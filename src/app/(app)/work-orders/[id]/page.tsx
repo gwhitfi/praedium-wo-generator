@@ -545,7 +545,7 @@ function BounceNotice({
                 <p className="mt-1 text-secondary [overflow-wrap:anywhere]">{email.error}</p>
             )}
             <p className="mt-1 text-secondary">
-                Praedium won&apos;t email that address again.{" "}
+                Work Order Fox won&apos;t email that address again.{" "}
                 {contactId ? (
                     <>
                         <Link href={`/contacts/${contactId}`} className={textLinkClass}>

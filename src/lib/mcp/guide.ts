@@ -1,5 +1,5 @@
 // Guidance for the AI assistant using the MCP server: short instructions sent with every connection, and the fuller
-// walkthrough offered as the "praedium-guide" prompt. Both depend on whether the key can change status.
+// walkthrough offered as the "work-order-fox-guide" prompt. Both depend on whether the key can change status.
 
 export function serverInstructions(canChangeStatus: boolean): string {
     const status = canChangeStatus
@@ -7,16 +7,16 @@ export function serverInstructions(canChangeStatus: boolean): string {
           "start_work_order (in-house work orders), cancel_work_order, archive_work_order and restore_work_order. " +
           "They email the contractor (and on a first send or start, sometimes the tenant), so confirm with the " +
           "user before calling them."
-        : "This key can't send, cancel, archive or restore work orders; a person does that in Praedium.";
+        : "This key can't send, cancel, archive or restore work orders; a person does that in Work Order Fox.";
     return [
-        "Praedium manages maintenance work orders for property managers.",
+        "Work Order Fox manages maintenance work orders for property managers.",
         "Search before creating: use search_properties and search_contacts so you don't add duplicates, and ask " +
             "the user when a search is ambiguous instead of guessing.",
         "Get area and line item ids from get_work_order.",
         "Ask the user before removing a line item or area; removes are permanent.",
         "New work orders are drafts. Never say a work order was sent unless send_work_order succeeded.",
         status,
-        "The praedium-guide prompt has a fuller walkthrough.",
+        "The work-order-fox-guide prompt has a fuller walkthrough.",
     ].join(" ");
 }
 
@@ -31,7 +31,7 @@ export function assistantGuide(canChangeStatus: boolean): string {
               "- start_work_order is the in-house counterpart: it moves an in-house Draft to In progress without " +
                   "sending anything, and emails the tenant when tenant notification is on. Confirm first.",
               "- A draft that was cancelled and reopened is sent or started without emailing the tenant again. If " +
-                  "the tenant should hear again, the user does it from the work order page in Praedium.",
+                  "the tenant should hear again, the user does it from the work order page in Work Order Fox.",
               "- cancel_work_order works only on Sent or In progress work orders and emails the contractor. " +
                   "Archive a draft instead.",
               "- archive_work_order hides a work order. A Sent or In progress one is also cancelled and its " +
@@ -42,13 +42,13 @@ export function assistantGuide(canChangeStatus: boolean): string {
               "## Sending",
               "",
               "This key can't send, cancel, archive or restore work orders. Tell the user to send the draft from " +
-                  "Praedium, and never tell anyone it has been sent.",
+                  "Work Order Fox, and never tell anyone it has been sent.",
           ];
 
     return [
-        "# Using Praedium",
+        "# Using Work Order Fox",
         "",
-        "Praedium manages maintenance work orders for property managers. A work order belongs to a property " +
+        "Work Order Fox manages maintenance work orders for property managers. A work order belongs to a property " +
             "(and optionally one of its units), may have a contractor, and holds areas (a room, the roof, the " +
             "yard) with line items, one per problem. Statuses: Draft, Sent, In progress, Completed, Closed, or " +
             "Cancelled. Only Draft, Sent and In progress work orders that aren't archived can be edited.",

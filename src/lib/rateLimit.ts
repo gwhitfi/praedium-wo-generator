@@ -20,14 +20,14 @@ export const RATE_LIMITS = {
     // Per contractor email, codes sent per day: bounds inbox spam from link holders; it's a shared budget, so it can't
     // stop a determined holder locking the contractor out for the day.
     verifyEmail: { limit: 10, windowSeconds: 86400 },
-    // Per user, Praedium Bot parses (each one is a paid Anthropic call).
+    // Per user, Fox Bot parses (each one is a paid Anthropic call).
     bot: { limit: 30, windowSeconds: 3600 },
     // Per organization, work order emails from the office button and the MCP send tool.
     email: { limit: 60, windowSeconds: 3600 },
     // The email limits below are sized for Resend's free plan (100 emails a day, 3,000 a month, for the whole
     // account), so a bigger plan only needs bigger numbers here.
-    // Per organization, every email Praedium sends for it (src/lib/emailLog.ts), so an abusive sign-up can't use
-    // Praedium to mail arbitrary addresses. A new organization (first 24 hours) gets the smaller allowance.
+    // Per organization, every email Work Order Fox sends for it (src/lib/emailLog.ts), so an abusive sign-up can't use
+    // Work Order Fox to mail arbitrary addresses. A new organization (first 24 hours) gets the smaller allowance.
     emailDay: { limit: 40, windowSeconds: 86400 },
     emailNewOrganization: { limit: 10, windowSeconds: 86400 },
     // Per organization and recipient address, every email except the deletion notice to admins.
