@@ -1,6 +1,7 @@
 import Link from "next/link";
 import Logo from "./Logo";
 import { INFO_LINKS } from "@/lib/defaults";
+import { SUPPORT_EMAIL } from "@/lib/support";
 
 // The footer for signed-out pages: the logo, a line about the product, and the demo, sign-in and legal links.
 export default function PublicFooter(): React.ReactElement {
@@ -24,7 +25,7 @@ export default function PublicFooter(): React.ReactElement {
                         </Link>
                     ))}
                     {/* The same address the Terms and Privacy pages give for questions. */}
-                    <a href="mailto:justinwclemson@gmail.com?subject=Praedium" className="hover:text-foreground">
+                    <a href={`mailto:${SUPPORT_EMAIL}?subject=Praedium`} className="hover:text-foreground">
                         Contact
                     </a>
                 </nav>

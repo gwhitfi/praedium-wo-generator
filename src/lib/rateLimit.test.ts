@@ -5,7 +5,7 @@ vi.mock("@/lib/prisma", () => ({
 }));
 
 import prisma from "@/lib/prisma";
-import { clientIp, rateLimit } from "./rateLimit";
+import { clientIp, peekRateLimit, rateLimit } from "./rateLimit";
 
 const rule = { limit: 3, windowSeconds: 60 };
 
@@ -59,6 +59,32 @@ describe("rateLimit", () => {
         vi.mocked(prisma.$queryRaw).mockRejectedValue(new Error("connection lost"));
         expect(await rateLimit("test:a", rule)).toEqual({ ok: true, remaining: 3, retryAfterSeconds: 0 });
         expect(consoleError).toHaveBeenCalledWith("rateLimit failed", expect.any(Error));
+        consoleError.mockRestore();
+    });
+});
+
+describe("peekRateLimit", () => {
+    it("reads the bucket's count without writing", async () => {
+        counted(7);
+        expect(await peekRateLimit("test:a")).toBe(7);
+        expect(prisma.$executeRaw).not.toHaveBeenCalled();
+    });
+
+    it("reads 0 when the bucket's window has ended", async () => {
+        counted(7, -1000);
+        expect(await peekRateLimit("test:a")).toBe(0);
+    });
+
+    it("reads 0 when there's no bucket yet", async () => {
+        vi.mocked(prisma.$queryRaw).mockResolvedValue([] as never);
+        expect(await peekRateLimit("test:a")).toBe(0);
+    });
+
+    it("fails open (reads 0) and logs when the database errors", async () => {
+        const consoleError = vi.spyOn(console, "error").mockImplementation(() => {});
+        vi.mocked(prisma.$queryRaw).mockRejectedValue(new Error("connection lost"));
+        expect(await peekRateLimit("test:a")).toBe(0);
+        expect(consoleError).toHaveBeenCalledWith("peekRateLimit failed", expect.any(Error));
         consoleError.mockRestore();
     });
 });

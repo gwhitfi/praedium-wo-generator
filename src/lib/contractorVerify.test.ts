@@ -98,7 +98,7 @@ describe("startVerification", () => {
         expect(rateLimit).toHaveBeenCalledWith("verify-send:tok1", expect.any(Object));
         expect(rateLimit).toHaveBeenCalledWith("verify-day:tok1", { limit: 20, windowSeconds: 86400 });
         expect(rateLimit).toHaveBeenCalledWith("verify-ip:203.0.113.7", expect.any(Object));
-        expect(rateLimit).toHaveBeenCalledWith("verify-email:sam@example.com", expect.any(Object));
+        expect(rateLimit).toHaveBeenCalledWith("verify-email:sam@example.com", { limit: 10, windowSeconds: 86400 });
     });
 
     it("refuses without creating a row when rate limited", async () => {
@@ -145,6 +145,20 @@ describe("startVerification", () => {
             error: "Couldn't send a code to the email on file. Ask the office to check it.",
         });
         expect(prisma.contractorChallenge.delete).toHaveBeenCalled();
+    });
+
+    it("doesn't show the contractor Praedium's daily limit either", async () => {
+        sendEmail.mockRejectedValue(
+            new EmailNotSent(
+                "Praedium can't send more email today. Try again tomorrow, or share the link yourself (Mark as sent first if it's a draft).",
+            ),
+        );
+        vi.mocked(prisma.contractorChallenge.delete).mockResolvedValue({} as never);
+        vi.spyOn(console, "error").mockImplementation(() => {});
+
+        expect(await startVerification(start)).toEqual({
+            error: "Couldn't send a code to the email on file. Ask the office to check it.",
+        });
     });
 
     it("deletes the row and reports an error when the email fails", async () => {

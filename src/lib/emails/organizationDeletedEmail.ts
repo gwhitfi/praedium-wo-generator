@@ -1,5 +1,19 @@
 import { escapeHtml } from "./shared";
-import { dateInAppTimeZone, formatFullDate, formatFullTimestamp } from "@/lib/dates";
+import { appTimeZone, dateInAppTimeZone, formatFullDate } from "@/lib/dates";
+
+// "November 14, 2026 12:02 AM EST" in APP_TIMEZONE: admins may be elsewhere, so the time names its zone.
+function formatTimestampWithZone(date: Date): string {
+    const timeZone = appTimeZone();
+    const day = date.toLocaleDateString("en-US", { month: "long", day: "numeric", year: "numeric", timeZone });
+    const time = date.toLocaleTimeString("en-US", {
+        hour: "numeric",
+        minute: "2-digit",
+        timeZone,
+        timeZoneName: "short",
+    });
+    // Newer ICU versions put a narrow no-break space before AM/PM.
+    return `${day} ${time.replace(/\s+/g, " ")}`;
+}
 
 type OrganizationDeletedEmailInput = {
     organizationName: string;
@@ -20,10 +34,10 @@ export function organizationDeletedEmail(input: OrganizationDeletedEmailInput): 
 } {
     const name = input.organizationName;
     const deadlineDay = formatFullDate(dateInAppTimeZone(input.restoreDeadline));
-    const deadline = formatFullTimestamp(input.restoreDeadline);
+    const deadline = formatTimestampWithZone(input.restoreDeadline);
 
     const subject = `${name} will be deleted on ${deadlineDay}`;
-    const what = `${input.deletedBy} deleted ${name} in Praedium on ${formatFullTimestamp(input.deletedAt)}.`;
+    const what = `${input.deletedBy} deleted ${name} in Praedium on ${formatTimestampWithZone(input.deletedAt)}.`;
     const locked =
         "It's locked for everyone now: no one can open it, and its API keys and contractor links don't work.";
     const removed = `After ${deadline}, every property, contact, work order, photo, activity entry, email record and API key in it is deleted for good.`;
