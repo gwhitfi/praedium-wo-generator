@@ -1,33 +1,67 @@
 import { PriorityBadge, StatusBadge } from "./StatusBadge";
 import { AlertIcon, CheckIcon } from "./Icons";
+import { FoxDispatch } from "./FoxMarks";
 
 // The landing page's feature section: three large pictures of the real app (dashboard, a work order, notifications),
 // each beside what it does. Drawn with the app's own styles, so they follow light and dark mode and stay sharp.
 
-const ROWS = [
+type Row = {
+    eyebrow: string;
+    // Drawn beside the eyebrow.
+    icon?: React.ReactElement;
+    title: string;
+    body: string;
+    points: string[];
+    picture: React.ReactElement;
+    caption: string;
+};
+
+const ROWS: Row[] = [
     {
         eyebrow: "Dashboard",
-        title: "Know what needs you today",
-        body: "Open the app and see what's out with contractors, what's finished and waiting for your review, and what's past due.",
-        points: ["Overdue work flagged in red", "Search every job, contact and property", "Your properties, units and tenants on file"],
+        title: "See what needs your attention",
+        body: "Open the app and see which work orders are still open, what's finished and waiting for your review, and what's past due.",
+        points: [
+            "Easily see overdue work flagged in red",
+            "Search by job, contact, and property",
+            "Your properties, units and tenants on file",
+        ],
         picture: <DashboardPicture />,
-        caption: "The dashboard: counts of open, active, to-review and overdue work orders, and a list that needs attention.",
+        caption:
+            "The dashboard: counts of drafts, active, to-review and overdue work orders, and a list of the ones that need attention.",
     },
     {
         eyebrow: "Work orders",
-        title: "One page per job, room by room",
-        body: "List the work by area with a priority and photos for each item. The page always shows the next step, so nothing stalls.",
-        points: ["A link for the contractor, no app or account", "Email the tenant when it's sent", "Print or save as PDF"],
+        title: "See the whole job on one page",
+        body: "List the work by area, with a priority and photos for each item. The page shows you what to do next.",
+        points: [
+            "A link for the contractor, no app or account needed",
+            "Print or save as PDF for contractors who need it",
+            "Optional: Email the tenant when it's sent",
+        ],
         picture: <WorkOrderPicture />,
-        caption: "A work order: its areas and line items, progress, and a Next step card.",
+        caption: "Work order showing room-by-room tasks, progress, and what to do next.",
     },
     {
         eyebrow: "Updates",
-        title: "Hear back without chasing anyone",
-        body: "As the contractor opens the link and checks items off, you're told, with their notes and the date each item was done.",
-        points: ["Choose which updates you get", "Optional: draft a work order from a sentence"],
+        title: "Receive notifications on changes",
+        body: "Get notifications when something happens on a work order, such as a contractor opening the link or marking the job as completed.",
+        points: ["Choose which updates you are sent"],
         picture: <UpdatesPicture />,
         caption: "Notifications: a contractor checked off items and finished a job.",
+    },
+    {
+        eyebrow: "Fox Bot (AI)",
+        icon: <FoxDispatch className="h-7 w-7" />,
+        title: "Describe the job and Fox Bot drafts it",
+        body: "Type the job in your own words, with the address, the contractor and what needs doing. Fox Bot turns it into a draft work order, and you review it before anything is created.",
+        points: [
+            "Optional: you choose whether to turn it on",
+            "Connect your own AI assistant, like Claude or Grok Bot, through our MCP server",
+            "An admin creates the API key in Settings, and you can revoke it any time",
+        ],
+        picture: <FoxBotPicture />,
+        caption: "Fox Bot: a typed description of a job, and the draft work order it produces.",
     },
 ];
 
@@ -37,7 +71,7 @@ export default function ProductShowcase(): React.ReactElement {
             <div className="mx-auto max-w-5xl px-4 py-20 sm:py-24">
                 <p className="text-sm font-semibold text-accent-ink">Features</p>
                 <h2 id="features-title" className="mt-2 max-w-xl text-3xl font-semibold tracking-tight sm:text-4xl">
-                    Everything a work order needs, nothing it doesn&apos;t
+                    What it looks like day to day
                 </h2>
                 <div className="mt-14 flex flex-col gap-20">
                     {ROWS.map((row, i) => (
@@ -51,7 +85,10 @@ export default function ProductShowcase(): React.ReactElement {
                             }`}
                         >
                             <div className={i % 2 === 1 ? "lg:order-2" : ""}>
-                                <p className="text-sm font-medium text-muted">{row.eyebrow}</p>
+                                <p className="flex items-center gap-2 text-sm font-medium text-muted">
+                                    {row.icon}
+                                    {row.eyebrow}
+                                </p>
                                 <h3 className="mt-1 text-2xl font-semibold tracking-tight">{row.title}</h3>
                                 <p className="mt-3 leading-relaxed text-muted">{row.body}</p>
                                 <ul className="mt-5 flex flex-col gap-2 text-sm text-secondary">
@@ -86,7 +123,7 @@ const card = "rounded-lg border border-line bg-surface";
 
 function DashboardPicture() {
     const tiles = [
-        { label: "Open", value: 12, dot: "bg-status-sent" },
+        { label: "Drafts", value: 12, dot: "bg-status-sent" },
         { label: "Active", value: 9, dot: "bg-status-in-progress" },
         { label: "To review", value: 3, dot: "bg-status-completed" },
         { label: "Overdue", value: 2, dot: "bg-danger", danger: true },
@@ -230,6 +267,56 @@ function UpdatesPicture() {
                     </div>
                 </div>
             ))}
+        </div>
+    );
+}
+
+function FoxBotPicture() {
+    const areas = [
+        { name: "Kitchen", items: ["Fix the leak under the sink cabinet", "Clear the jammed disposal"] },
+        { name: "Bathroom", items: ["Recaulk the tub"] },
+    ];
+    return (
+        <div>
+            <div className={`${card} p-3`}>
+                <p className="text-xs font-medium text-muted">Describe the job</p>
+                <p className="mt-1.5 text-sm leading-relaxed text-foreground">
+                    812 Augusta St, unit B, for Hill Plumbing by Friday. Kitchen: the sink is leaking under the cabinet
+                    and the disposal is jammed. Bathroom: recaulk the tub.
+                </p>
+            </div>
+            <div className="mt-4 flex flex-wrap items-center gap-2 text-xs text-muted">
+                #2026-1030 <StatusBadge status="DRAFT" />
+                <span>Due Nov 20</span>
+            </div>
+            <p className="mt-2 text-lg font-semibold text-foreground">Kitchen sink leak and bathroom caulking</p>
+            <p className="text-xs font-medium text-secondary">812 Augusta St, Unit B · Hill Plumbing</p>
+            <div className="mt-4 grid gap-3 sm:grid-cols-[minmax(0,1fr)_11rem]">
+                <div className="flex flex-col gap-3">
+                    {areas.map((area) => (
+                        <div key={area.name} className="rounded-xl border border-line bg-surface">
+                            <p className="border-b border-line px-3 py-2 text-xs font-semibold text-foreground">
+                                {area.name}
+                            </p>
+                            <ul className="divide-y divide-line">
+                                {area.items.map((item) => (
+                                    <li key={item} className="flex items-start gap-2.5 px-3 py-2.5">
+                                        <span className="mt-px flex h-4 w-4 shrink-0 rounded border-2 border-line-strong" />
+                                        <span className="text-xs leading-snug text-foreground">{item}</span>
+                                    </li>
+                                ))}
+                            </ul>
+                        </div>
+                    ))}
+                </div>
+                <div className={`${card} h-fit p-3`}>
+                    <p className="text-sm font-semibold text-foreground">Next step</p>
+                    <p className="mt-1 text-xs leading-relaxed text-secondary">Ready to send to Hill Plumbing.</p>
+                    <p className="mt-3 rounded-md bg-accent py-1.5 text-center text-xs font-medium text-on-accent">
+                        Send by email
+                    </p>
+                </div>
+            </div>
         </div>
     );
 }

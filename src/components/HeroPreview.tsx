@@ -17,7 +17,7 @@ export default function HeroPreview(): React.ReactElement {
     return (
         <div
             role="img"
-            aria-label="A contractor's work order on a phone: three of five items checked off, and the office getting a notification"
+            aria-label="A contractor's work order on a phone with three of five items checked off, and the update the office sees in the app"
             className="relative mx-auto w-full max-w-[22rem] select-none"
         >
             <div className="rounded-[2.25rem] border border-line-strong/60 bg-surface-hover/60 p-2.5 shadow-2xl shadow-black/20">
@@ -86,7 +86,9 @@ export default function HeroPreview(): React.ReactElement {
                     <span className="mt-1 h-2 w-2 shrink-0 rounded-full bg-accent" />
                     <div className="min-w-0">
                         <p className="truncate text-xs font-semibold text-foreground">Water heater replacement</p>
-                        <p className="mt-0.5 text-xs text-muted">Marcus Hill checked off &ldquo;Install the new heater&rdquo;</p>
+                        <p className="mt-0.5 text-xs text-muted">
+                            Marcus Hill checked off &ldquo;Install the new heater with expansion tank&rdquo;
+                        </p>
                         <p className="mt-1 text-[10px] text-subtle">Just now</p>
                     </div>
                 </div>
