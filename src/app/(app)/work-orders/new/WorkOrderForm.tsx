@@ -56,7 +56,7 @@ export type WorkOrderFormValues = {
 
 // What's typed on a new work order, kept in this browser as the user goes (src/lib/formDraft.ts), so a refresh, a
 // closed tab or a trip to add a property or contractor doesn't lose it. Cleared on submit.
-const DRAFT_KEY = "praedium-new-work-order";
+const DRAFT_KEY = "workorderfox-new-work-order";
 // A draft is only worth restoring with one of these filled in.
 const DRAFT_MEANINGFUL = ["title", "notes"];
 

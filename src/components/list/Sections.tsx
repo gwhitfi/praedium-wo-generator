@@ -33,7 +33,7 @@ export function SectionMenu({ sections }: { sections: SectionLink[] }): React.Re
     );
 }
 
-const STORAGE_PREFIX = "praedium:section:";
+const STORAGE_PREFIX = "workorderfox:section:";
 
 // One section of a split list that can be folded away: the heading (with its count) opens and closes it. Whether it's
 // open is remembered in this browser per section id; `defaultOpen` is the starting point (closed for history such as

@@ -423,7 +423,7 @@ describe("verifyCode", () => {
             userAgent: CHROME,
         });
         expect(cookieSet).toHaveBeenCalledWith(
-            "praedium_contractor",
+            "workorderfox_contractor",
             "session-key",
             expect.objectContaining({ httpOnly: true, path: "/wo" }),
         );

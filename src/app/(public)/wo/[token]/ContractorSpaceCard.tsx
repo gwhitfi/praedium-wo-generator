@@ -61,12 +61,12 @@ export default function ContractorSpaceCard({
 
     // Unsent notes are also kept in this browser, so a reload or a dropped connection doesn't lose them; they come
     // back as "Note not saved yet".
-    const draftKey = (itemId: string) => `praedium-note:${token}:${itemId}`;
+    const draftKey = (itemId: string) => `workorderfox-note:${token}:${itemId}`;
     const itemIds = area.lineItems.map((item) => item.id).join(",");
     useEffect(() => {
         const restored: Record<string, string> = {};
         for (const id of itemIds.split(",").filter(Boolean)) {
-            const saved = readTextDraft(`praedium-note:${token}:${id}`);
+            const saved = readTextDraft(`workorderfox-note:${token}:${id}`);
             if (saved) restored[id] = saved;
         }
         if (Object.keys(restored).length > 0) {

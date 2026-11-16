@@ -7,7 +7,7 @@ const base = {
     deletedBy: "Dana Reyes",
     deletedAt: new Date("2026-11-13T15:30:00Z"),
     restoreDeadline: new Date("2026-11-20T15:30:00Z"),
-    setupUrl: "https://praedium.test/setup",
+    setupUrl: "https://workorderfox.test/setup",
 };
 
 // Unique per field, so each assertion proves that particular field was escaped.
@@ -32,8 +32,8 @@ describe("organizationDeletedEmail", () => {
         expect(text).toContain("Dana Reyes deleted Acme Property in Work Order Fox on November 13, 2026 10:30 AM EST.");
         expect(text).toContain("It's locked for everyone now");
         expect(text).toContain("After November 20, 2026 10:30 AM EST, every property");
-        expect(text).toContain("sign in at https://praedium.test/setup and choose Restore.");
-        expect(html).toContain('href="https://praedium.test/setup"');
+        expect(text).toContain("sign in at https://workorderfox.test/setup and choose Restore.");
+        expect(html).toContain('href="https://workorderfox.test/setup"');
         expect(html).toContain("November 20, 2026 10:30 AM EST");
     });
 
@@ -69,7 +69,7 @@ describe("organizationDeletedEmail", () => {
     it("carries no restore token or other secret in the link", () => {
         const { html, text } = organizationDeletedEmail(base);
         const links = [...html.matchAll(/href="([^"]+)"/g)].map((match) => match[1]);
-        expect(links).toEqual(["https://praedium.test/setup"]);
+        expect(links).toEqual(["https://workorderfox.test/setup"]);
         expect(text).not.toMatch(/setup\?|token/i);
     });
 });

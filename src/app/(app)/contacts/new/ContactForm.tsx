@@ -60,7 +60,7 @@ const ADDRESS_FIELDS = ["addressLine1", "addressLine2", "city", "state", "zipCod
 
 // What's typed on a new contact, kept in this browser as the user goes (src/lib/formDraft.ts), so a refresh or a
 // closed tab doesn't lose it. Cleared on submit. Worth restoring only with one of DRAFT_MEANINGFUL filled in.
-const DRAFT_KEY = "praedium-new-contact";
+const DRAFT_KEY = "workorderfox-new-contact";
 const DRAFT_MEANINGFUL = ["firstName", "lastName", "company", "email", "phone", "notes"];
 // The fields the form doesn't keep in state, put back straight into the inputs.
 const UNCONTROLLED_FIELDS = ["phone", "email", "notes", ...ADDRESS_FIELDS];

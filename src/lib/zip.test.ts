@@ -14,14 +14,14 @@ const text = (value: string) => new TextEncoder().encode(value);
 describe("zipStream", () => {
     it("writes an archive the standard unzip tool reads back exactly, UTF-8 names included", async () => {
         const files = [
-            { name: "README.txt", data: text("Exported from Praedium\r\n") },
+            { name: "README.txt", data: text("Exported from Work Order Fox\r\n") },
             { name: "contacts.csv", data: text('name,email\r\n"Smith, Jo",jo@example.com\r\n') },
             { name: "notes/Café é.txt", data: text("ünïcode ✓") },
             { name: "empty.txt", data: new Uint8Array() },
         ];
         const zip = await collect(zipStream(files, new Date("2026-11-10T12:34:56Z")));
 
-        const dir = mkdtempSync(join(tmpdir(), "praedium-zip-"));
+        const dir = mkdtempSync(join(tmpdir(), "workorderfox-zip-"));
         try {
             const path = join(dir, "export.zip");
             writeFileSync(path, zip);

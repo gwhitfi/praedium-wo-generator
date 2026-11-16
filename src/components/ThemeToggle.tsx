@@ -14,7 +14,7 @@ const getServerTheme = () => null;
 
 // The saved choice: light, dark, or the device setting. Nothing saved is dark, the default (see themeScript).
 type ThemeChoice = Theme | typeof DEVICE_THEME;
-const CHOICE_EVENT = "praedium-theme-choice";
+const CHOICE_EVENT = "workorderfox-theme-choice";
 function subscribeChoice(onChange: () => void) {
     window.addEventListener(CHOICE_EVENT, onChange);
     window.addEventListener("storage", onChange);

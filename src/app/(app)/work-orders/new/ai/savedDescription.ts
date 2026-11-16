@@ -1,7 +1,7 @@
 // The Fox Bot description saved in the browser as the user types, so a refresh or a closed tab doesn't lose it.
 // Stored as JSON with the time it was saved; older versions stored the plain text.
 
-export const SAVED_DESCRIPTION_KEY = "praedium-bot-description";
+export const SAVED_DESCRIPTION_KEY = "workorderfox-bot-description";
 
 // Saved text older than this is dropped instead of restored.
 export const SAVED_DESCRIPTION_MAX_AGE_MS = 7 * 24 * 60 * 60 * 1000;

@@ -123,7 +123,7 @@ describe("sendLoggedEmail", () => {
         const sent = sendLoggedEmail(email);
         await expect(sent).rejects.toBeInstanceOf(EmailNotSent);
         await expect(sent).rejects.toThrow(/^Email to joe@example.com bounced on November 3, 2026/);
-        await expect(sent).rejects.toThrow(/ If this is a mistake, email support@praediumhq\.com\.$/);
+        await expect(sent).rejects.toThrow(/ If this is a mistake, email support@workorderfox\.com\.$/);
         expect(sendEmail).not.toHaveBeenCalled();
         expect(rateLimit).not.toHaveBeenCalled();
         expect(logged()[0]).toMatchObject({ status: "SKIPPED", error: expect.stringContaining("bounced") });
@@ -138,7 +138,7 @@ describe("sendLoggedEmail", () => {
         } as never);
 
         await expect(sendLoggedEmail(email)).rejects.toThrow(
-            "joe@example.com marked an earlier email as spam on November 3, 2026, so Work Order Fox won't email it again. If this is a mistake, email support@praediumhq.com.",
+            "joe@example.com marked an earlier email as spam on November 3, 2026, so Work Order Fox won't email it again. If this is a mistake, email support@workorderfox.com.",
         );
     });
 

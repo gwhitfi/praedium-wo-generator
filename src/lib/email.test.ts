@@ -7,11 +7,11 @@ afterEach(() => {
 
 describe("getAppUrl", () => {
     it("strips trailing slashes", () => {
-        vi.stubEnv("APP_URL", "https://workorder.dev/");
-        expect(getAppUrl()).toBe("https://workorder.dev");
+        vi.stubEnv("APP_URL", "https://workorderfox.com/");
+        expect(getAppUrl()).toBe("https://workorderfox.com");
 
-        vi.stubEnv("APP_URL", "https://workorder.dev///");
-        expect(getAppUrl()).toBe("https://workorder.dev");
+        vi.stubEnv("APP_URL", "https://workorderfox.com///");
+        expect(getAppUrl()).toBe("https://workorderfox.com");
     });
 
     it("returns a URL without a trailing slash unchanged", () => {
@@ -26,7 +26,7 @@ describe("getAppUrl", () => {
 });
 
 describe("formatFrom", () => {
-    const from = "notifications@workorder.dev";
+    const from = "notifications@workorderfox.com";
 
     it("uses Work Order Fox as the default sender name", () => {
         expect(formatFrom(from)).toBe(`"Work Order Fox" <${from}>`);
@@ -36,7 +36,7 @@ describe("formatFrom", () => {
 
     it("adds the name as the display name", () => {
         expect(formatFrom(from, "Acme Property")).toBe(
-            '"Acme Property via Work Order Fox" <notifications@workorder.dev>',
+            '"Acme Property via Work Order Fox" <notifications@workorderfox.com>',
         );
     });
 
@@ -48,13 +48,13 @@ describe("formatFrom", () => {
 
     it("removes quotes, backslashes and angle brackets from the name", () => {
         expect(formatFrom(from, 'Bob "The Plumber" <evil@x.com> \\')).toBe(
-            '"Bob The Plumber evil@x.com  via Work Order Fox" <notifications@workorder.dev>',
+            '"Bob The Plumber evil@x.com  via Work Order Fox" <notifications@workorderfox.com>',
         );
     });
 
     it("removes line breaks, so the name can't add email headers", () => {
         expect(formatFrom(from, "Acme\r\nBcc: victim@example.com")).toBe(
-            '"AcmeBcc: victim@example.com via Work Order Fox" <notifications@workorder.dev>',
+            '"AcmeBcc: victim@example.com via Work Order Fox" <notifications@workorderfox.com>',
         );
     });
 });

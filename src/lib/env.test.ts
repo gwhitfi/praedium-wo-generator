@@ -8,7 +8,7 @@ const valid = {
     CLERK_SECRET_KEY: "sk_test_abc",
     ANTHROPIC_API_KEY: "anthropic-key",
     RESEND_API_KEY: "resend-key",
-    EMAIL_FROM: "Praedium <notifications@example.com>",
+    EMAIL_FROM: "Work Order Fox <notifications@example.com>",
     APP_URL: "https://example.com",
     APP_TIMEZONE: "America/New_York",
     BLOB_STORE_ID: "store_1",

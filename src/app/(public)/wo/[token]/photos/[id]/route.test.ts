@@ -12,7 +12,7 @@ import prisma from "@/lib/prisma";
 import { servePhoto } from "@/lib/servePhoto";
 import { GET } from "./route";
 
-const request = new Request("https://praedium.test/wo/token1/photos/ph1");
+const request = new Request("https://workorderfox.test/wo/token1/photos/ph1");
 const params = (token = "token1", id = "ph1") => ({ params: Promise.resolve({ token, id }) });
 
 beforeEach(() => {

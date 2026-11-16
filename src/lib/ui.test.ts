@@ -5,7 +5,7 @@ describe("headingId", () => {
     it("drops the section number and keeps letters and digits", () => {
         expect(headingId("4. Your content")).toBe("your-content");
         expect(headingId("Who we share it with (and why)")).toBe("who-we-share-it-with-and-why");
-        expect(headingId("12. AI & Praedium Bot")).toBe("ai-praedium-bot");
+        expect(headingId("12. AI & Fox Bot")).toBe("ai-fox-bot");
     });
 });
 

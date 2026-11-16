@@ -37,7 +37,7 @@ describe("scrubEvent", () => {
             message: "boom",
             request: {
                 url: `https://app.example.com/wo/${token}`,
-                cookies: { praedium_contractor: "secret" },
+                cookies: { workorderfox_contractor: "secret" },
                 headers: { authorization: `Bearer ${apiKey}` },
                 data: { tenantEmail: "ana@example.com" },
             },

@@ -81,7 +81,7 @@ export function DemoProvider({ children }: { children: React.ReactNode }) {
 function BrowserDemoProvider({ children }: { children: React.ReactNode }) {
     const [demo, setDemo] = useState<Demo>(() => {
         try {
-            const saved = sessionStorage.getItem("praedium-demo-v1");
+            const saved = sessionStorage.getItem("workorderfox-demo-v1");
             if (saved) {
                 const value = JSON.parse(saved) as Demo;
                 if (
@@ -114,7 +114,7 @@ function BrowserDemoProvider({ children }: { children: React.ReactNode }) {
     useEffect(() => {
         {
             try {
-                sessionStorage.setItem("praedium-demo-v1", JSON.stringify(demo));
+                sessionStorage.setItem("workorderfox-demo-v1", JSON.stringify(demo));
             } catch {
                 /* The demo still works in memory. */
             }
@@ -401,7 +401,7 @@ export default function DemoWorkOrder({ contractor = false }: { contractor?: boo
                                     data-demo-guide="contractor-link"
                                     onClick={() => {
                                         try {
-                                            sessionStorage.setItem("praedium-tutorial-office", "done");
+                                            sessionStorage.setItem("workorderfox-tutorial-office", "done");
                                         } catch {
                                             /* Optional persistence. */
                                         }
@@ -549,7 +549,7 @@ export default function DemoWorkOrder({ contractor = false }: { contractor?: boo
                                             onClick={() => {
                                                 setDemo((current) => ({ ...current, completed: true }));
                                                 try {
-                                                    sessionStorage.setItem("praedium-tutorial-contractor", "done");
+                                                    sessionStorage.setItem("workorderfox-tutorial-contractor", "done");
                                                 } catch {
                                                     /* Optional persistence. */
                                                 }
