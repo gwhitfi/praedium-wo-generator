@@ -11,19 +11,19 @@ import { buttonClass } from "@/lib/ui";
 const AUDIENCE = [
     {
         title: "Independent landlords",
-        body: "A handful of doors and a few contractors you trust. Send each repair as a link instead of a phone call and a long text thread.",
+        body: "No matter the size of your portfolio, send repair requests to your trusted contractors with confidence.",
     },
     {
-        title: "Small management teams",
-        body: "One shared list of every open job across your properties: who's on it, what's done, and what's past due.",
+        title: "Property managers",
+        body: "One shared list of every open job across the properties you manage: who it's assigned to, what's finished, and what's past due.",
     },
     {
-        title: "Maintenance coordinators",
-        body: "Write up a turnover room by room, hand it to a contractor or your own crew, and watch it get checked off.",
+        title: "Turnover coordinators",
+        body: "Write up a detailed turnover work order, attach pictures, and hand off to a contractor or your own crew.",
     },
 ];
 
-const HIGHLIGHTS = ["No app for contractors", "Works on any phone", "Print-ready work orders"];
+const HIGHLIGHTS = ["No app required", "Works in your phone's browser", "Print-ready work orders"];
 
 export default function Landing() {
     return (
@@ -35,15 +35,15 @@ export default function Landing() {
                     <div>
                         <p className="inline-flex items-center gap-2 rounded-full border border-line bg-surface px-3 py-1 text-xs font-medium text-muted">
                             <PhoneIcon size={13} className="text-accent-ink" />
-                            Built for small property managers
+                            For landlords and small property managers
                         </p>
                         <h1 className="mt-5 text-4xl font-semibold tracking-tight text-balance sm:text-5xl sm:leading-[1.1]">
                             Work orders your contractors can check off from their phone.
                         </h1>
                         <p className="mt-5 max-w-xl text-lg leading-relaxed text-muted">
-                            Build a work order room by room, send your contractor a link, and watch items get checked off
-                            as the work gets done. Made for landlords and small management teams who send out repairs
-                            every week.
+                            Easily build a work order room by room, send your contractor a link, and follow the progress
+                            as the work gets done. Your contractors will have an intuitive interface to use, and
+                            there&apos;s no app required for them to get started.
                         </p>
                         <div className="mt-8 flex flex-col gap-3 sm:flex-row">
                             <Link href="/sign-up" className={buttonClass({ variant: "primary", size: "lg" })}>
@@ -78,7 +78,7 @@ export default function Landing() {
                     <div className="mx-auto max-w-5xl px-4 py-16 sm:py-20">
                         <p className="text-sm font-semibold text-accent-ink">Who it&apos;s for</p>
                         <h2 id="audience-title" className="mt-2 max-w-xl text-2xl font-semibold tracking-tight sm:text-3xl">
-                            Made for the people who keep rentals running
+                            Landlords and property managers
                         </h2>
                         <div className="mt-8 grid gap-8 sm:grid-cols-3">
                             {AUDIENCE.map((group) => (
@@ -95,11 +95,11 @@ export default function Landing() {
                     <div className="mx-auto max-w-5xl px-4 py-20 sm:py-24">
                         <div className="rounded-2xl border border-accent/30 bg-accent/[0.06] px-6 py-12 text-center sm:px-12">
                             <h2 id="cta-title" className="text-3xl font-semibold tracking-tight text-balance">
-                                Send your first work order today
+                                Send your first work order now
                             </h2>
                             <p className="mx-auto mt-3 max-w-md text-muted">
-                                Add a property and a contractor, list the work, and send the link. It takes a few
-                                minutes, and it&apos;s free while in early access.
+                                Add a property and a contractor, list the work, and send them a link. Free while in
+                                early access.
                             </p>
                             <div className="mt-8 flex flex-col justify-center gap-3 sm:flex-row">
                                 <Link href="/sign-up" className={buttonClass({ variant: "primary", size: "lg" })}>

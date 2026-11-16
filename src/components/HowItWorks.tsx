@@ -11,15 +11,15 @@ const STEPS = [
     },
     {
         title: "Add a contractor",
-        description: "Keep each contractor's phone and email in one place. Star the ones you use most.",
+        description: "Save each contractor's phone number and email address. Star the ones you use most.",
     },
     {
-        title: "Create and send a work order",
-        description: "List the work room by room, set a due date, and email your contractor a link.",
+        title: "Create and send",
+        description: "Create the work order room by room, set a due date, and email your contractor a link.",
     },
     {
-        title: "Follow the work to the finish",
-        description: "They check items off from their phone. You see it right away, review it and close it out.",
+        title: "Follow through to completion",
+        description: "Contractors check items off from their phone. You check for updates, review it and close it out.",
     },
 ];
 
@@ -32,7 +32,7 @@ export default function HowItWorks(): React.ReactElement {
         <section aria-labelledby="how-it-works-title" className="mx-auto max-w-5xl px-4 py-20 sm:py-24">
             <p className="text-sm font-semibold text-accent-ink">How it works</p>
             <h2 id="how-it-works-title" className="mt-2 max-w-xl text-3xl font-semibold tracking-tight sm:text-4xl">
-                From a leaky faucet to a closed job in four steps
+                Sending and tracking a work order from start to finish
             </h2>
 
             <div className="mt-10 grid gap-8 lg:grid-cols-[19rem_minmax(0,1fr)] lg:items-start">
