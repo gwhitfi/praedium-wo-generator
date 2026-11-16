@@ -81,7 +81,7 @@ export function storedNotificationTypes(selected: NotificationType[]): string[] 
 }
 
 // Dispatched on `window` by the /inbox page once it has marked everything seen, so the bell clears its badge.
-export const NOTIFICATIONS_SEEN_EVENT = "praedium:notifications-seen";
+export const NOTIFICATIONS_SEEN_EVENT = "workorderfox:notifications-seen";
 
 // A small tag in front of each notification. `tone` picks its color.
 export type NotificationTag = {

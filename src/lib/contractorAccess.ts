@@ -1,4 +1,4 @@
-// Server-only. Contractor sessions: a verified browser holds a random key in the `praedium_contractor` cookie, and
+// Server-only. Contractor sessions: a verified browser holds a random key in the `workorderfox_contractor` cookie, and
 // the `ContractorSession` row it points at says which email it proved. The database decides expiry (30 days from
 // last use, and never more than 180 days from verifying); the cookie is only a key. Verification itself is in
 // src/lib/contractorVerify.ts.
@@ -7,7 +7,7 @@ import { cookies } from "next/headers";
 import prisma from "@/lib/prisma";
 import { normalizeEmail } from "@/lib/contractorWorkOrders";
 
-export const CONTRACTOR_COOKIE = "praedium_contractor";
+export const CONTRACTOR_COOKIE = "workorderfox_contractor";
 export const SESSION_DAYS = 30;
 // However often it's used, a session ends this long after the contractor verified, so they enter a code again.
 export const MAX_SESSION_DAYS = 180;

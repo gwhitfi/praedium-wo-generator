@@ -11,7 +11,7 @@ const base = {
     dueDate: null,
     notes: null,
     itemCount: 3,
-    url: "https://workorder.dev/wo/abc123",
+    url: "https://www.workorderfox.com/wo/abc123",
     isResend: false,
 };
 
@@ -57,7 +57,7 @@ describe("workOrderEmail", () => {
     });
 
     it("escapes the link inside href", () => {
-        const url = 'https://workorder.dev/wo/abc?a=1&b="x"';
+        const url = 'https://www.workorderfox.com/wo/abc?a=1&b="x"';
         const email = workOrderEmail({ ...base, url });
 
         expect(email.html).toContain(`href="${escapeHtml(url)}"`);

@@ -40,7 +40,7 @@ const SECTIONS = [
     { id: "export", label: "Export data", group: "Organization", adminOnly: true },
     { id: "appearance", label: "Appearance", group: "You" },
     { id: "notifications", label: "Notifications", group: "You" },
-    { id: "praedium-bot", label: "Fox Bot", group: "You" },
+    { id: "fox-bot", label: "Fox Bot", group: "You" },
     { id: "account", label: "Account", group: "You" },
 ];
 
@@ -226,7 +226,7 @@ export default async function Settings() {
                             <AppearanceSettings />
                         </div>
                         <NotificationSettings selected={resolveNotificationTypes(user.notificationTypes)} />
-                        <div id="praedium-bot" className="scroll-mt-24">
+                        <div id="fox-bot" className="scroll-mt-24">
                             <AiPreferenceForm aiEnabled={user.aiEnabled === true} />
                         </div>
                     </section>

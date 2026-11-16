@@ -10,7 +10,7 @@ import { Button } from "@/components/Button";
 // The contractor's last step: optional notes for the office, then "Mark as completed" with a confirmation.
 export default function CompleteWorkOrder({ token, remainingCount }: { token: string; remainingCount: number }) {
     // Unsent notes are kept in this browser, so a reload or a dropped connection doesn't lose them.
-    const draftKey = `praedium-completion-notes:${token}`;
+    const draftKey = `workorderfox-completion-notes:${token}`;
     const [notes, setNotes] = useState("");
     const [confirming, setConfirming] = useState(false);
     const [pending, setPending] = useState(false);

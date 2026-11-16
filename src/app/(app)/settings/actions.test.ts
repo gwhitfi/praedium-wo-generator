@@ -11,7 +11,7 @@ vi.mock("@/lib/deletion", async (importOriginal) => ({
     planAccountDeletion: vi.fn(),
 }));
 vi.mock("@/lib/purgeOrganization", () => ({ purgeOrganization: vi.fn() }));
-vi.mock("@/lib/email", () => ({ getAppUrl: () => "https://praedium.test" }));
+vi.mock("@/lib/email", () => ({ getAppUrl: () => "https://workorderfox.test" }));
 vi.mock("@/lib/emailLog", () => ({ sendLoggedEmail: vi.fn() }));
 vi.mock("@/lib/prisma", () => ({
     default: {

@@ -32,7 +32,7 @@ function spotRect(spot: Position, width: number, height: number) {
 // talking about gets an accent outline and is scrolled into view; if the card would cover it, the card moves to the
 // top of the screen instead, and back again when it's clear.
 export default function DemoTutorial({ mode, step }: { mode: "office" | "contractor"; step: Step | null }) {
-    const storageKey = `praedium-tutorial-${mode}`;
+    const storageKey = `workorderfox-tutorial-${mode}`;
     const cardRef = useRef<HTMLElement>(null);
     const [position, setPosition] = useState<Position>("bottom-right");
     // Phones start with the small pill (which names the step), so the card never sits over the page there; a tap

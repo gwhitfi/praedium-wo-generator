@@ -6,7 +6,7 @@ const base = {
     organizationName: "Acme Property",
     jobNumber: "2026-1001",
     code: "042917",
-    url: "https://workorder.dev/wo/abc123/verify?c=ch1.042917",
+    url: "https://www.workorderfox.com/wo/abc123/verify?c=ch1.042917",
 };
 
 describe("verifyCodeEmail", () => {
