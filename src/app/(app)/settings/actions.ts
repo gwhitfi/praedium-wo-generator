@@ -24,6 +24,7 @@ import { DELETE_NOT_CONFIRMED, isDeleteConfirmed } from "@/lib/confirmDelete";
 import { restoreDeadline } from "@/lib/cleanup";
 import { deleteAccount, lockOrganization, notifyOrganizationDeleted, planAccountDeletion } from "@/lib/deletion";
 import { officeActorName } from "@/lib/workOrderEvents";
+import { OPEN_STATUSES } from "@/lib/workOrders";
 import { after } from "next/server";
 
 // Sent back on failure so the form can refill what the user typed.
@@ -80,6 +81,47 @@ export async function setAiPreference(formData: FormData): Promise<void> {
         data: { aiEnabled: parsed.data.aiEnabled },
     });
     revalidatePath("/", "layout");
+}
+
+export type RemindersPromptResult = { ok: true; enrolled: number } | { ok: false; error: string };
+
+// The one-time dashboard box for organizations from before overdue reminders (admins only): either answer hides it
+// for everyone; "enroll" also turns reminders on for the organization's open contractor work orders, which the
+// daily reminder job (src/lib/overdueReminders.ts) then picks up. Only the first answer counts.
+export async function answerRemindersPrompt(rawEnroll: unknown): Promise<RemindersPromptResult> {
+    const result = await getCurrentUser();
+    if (result.state !== "ready" || result.role !== "ADMIN") {
+        return { ok: false, error: "Only an admin can choose this." };
+    }
+    const parsed = z.boolean().safeParse(rawEnroll);
+    if (!parsed.success) return { ok: false, error: "Something went wrong. Reload the page and try again." };
+    const organizationId = result.organization.id;
+
+    try {
+        const enrolled = await prisma.$transaction(async (tx) => {
+            const answered = await tx.organization.updateMany({
+                where: { id: organizationId, remindersPromptPending: true },
+                data: { remindersPromptPending: false },
+            });
+            if (answered.count === 0 || !parsed.data) return 0;
+            const { count } = await tx.workOrder.updateMany({
+                where: {
+                    organizationId,
+                    archived: false,
+                    inHouse: false,
+                    status: { in: OPEN_STATUSES },
+                    overdueReminders: false,
+                },
+                data: { overdueReminders: true },
+            });
+            return count;
+        });
+        revalidatePath("/", "layout");
+        return { ok: true, enrolled };
+    } catch (error) {
+        console.error("answerRemindersPrompt failed", error);
+        return { ok: false, error: "Could not save. Try again." };
+    }
 }
 
 // Per user, like the AI switch. Applies in every organization the user belongs to.

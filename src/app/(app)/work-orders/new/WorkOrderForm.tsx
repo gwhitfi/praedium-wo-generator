@@ -11,7 +11,14 @@ import {
     MAX_TITLE_LENGTH,
     type WorkOrderFormState,
 } from "../schemas";
-import { assignableContactLabel, IN_HOUSE, IN_HOUSE_OPTION_LABEL, inputClass, PRIORITY_LABELS } from "@/lib/defaults";
+import {
+    assignableContactLabel,
+    IN_HOUSE,
+    IN_HOUSE_OPTION_LABEL,
+    inputClass,
+    OVERDUE_REMINDER_MAX,
+    PRIORITY_LABELS,
+} from "@/lib/defaults";
 import { cardClass } from "@/lib/ui";
 import { ErrorSummary, Field, FieldGroup, FormActions } from "@/components/form/Field";
 import Combobox from "@/components/form/Combobox";
@@ -52,6 +59,7 @@ export type WorkOrderFormValues = {
     notes: string;
     dueDate: string; // YYYY-MM-DD
     notifyTenant: boolean;
+    overdueReminders: boolean;
 };
 
 // What's typed on a new work order, kept in this browser as the user goes (src/lib/formDraft.ts), so a refresh, a
@@ -166,6 +174,7 @@ export default function WorkOrderForm({
     const [selectedContractor, setSelectedContractor] = useState(initial?.contractorId ?? defaultContractorId ?? "");
     const [selectedUnit, setSelectedUnit] = useState(initial?.unitId ?? "");
     const [contactTenant, setContactTenant] = useState(initial?.notifyTenant ?? false);
+    const [remind, setRemind] = useState(initial?.overdueReminders ?? true);
     const property = properties.find((p) => p.id === selectedProperty);
     const units = property?.units ?? [];
     const selectedUnitId = units.length === 1 ? units[0].id : selectedUnit;
@@ -199,6 +208,8 @@ export default function WorkOrderForm({
             setSelectedUnit(state.values.unitId ?? "");
             setSelectedContractor(state.values.contractorId ?? "");
             setContactTenant(state.values.tenant === "on");
+            // In-house work doesn't send the box; keep it as it was for when a contractor is chosen again.
+            if (state.values.overdueReminders !== undefined) setRemind(state.values.overdueReminders !== "off");
         }
     }
 
@@ -234,6 +245,8 @@ export default function WorkOrderForm({
         }
         if (!defaultContractorId) setSelectedContractor(saved.contractorId ?? "");
         setContactTenant(saved.tenant === "on");
+        // Drafts saved before the box existed have no value: on, like a new form.
+        setRemind(saved.overdueReminders !== "off");
         if (!draft.quiet) setRestoredAt(draft.savedAt);
         /* eslint-enable react-hooks/set-state-in-effect */
     }, [creating, defaultPropertyId, defaultContractorId]);
@@ -242,7 +255,7 @@ export default function WorkOrderForm({
     // rendered into the form. A failed submit (a new `state`) saves again, since submitting cleared the draft.
     useEffect(() => {
         if (creating && restoreDone.current && formRef.current) saveDraft(formRef.current);
-    }, [creating, selectedProperty, selectedUnit, selectedContractor, contactTenant, state]);
+    }, [creating, selectedProperty, selectedUnit, selectedContractor, contactTenant, remind, state]);
 
     function startFresh() {
         clearDraft();
@@ -251,6 +264,7 @@ export default function WorkOrderForm({
         setSelectedUnit("");
         setSelectedContractor(defaultContractorId ?? "");
         setContactTenant(false);
+        setRemind(true);
         setRestoredAt(null);
     }
 
@@ -468,6 +482,28 @@ export default function WorkOrderForm({
                             )}
                         </Field>
                     </div>
+                    {selectedContractor !== IN_HOUSE && (
+                        <label className="flex items-start gap-3 text-sm hover:cursor-pointer">
+                            {/* Sent even when the box is unticked, so the action can tell "off" from "not on the form". */}
+                            <input type="hidden" name="overdueReminders" value="off" />
+                            <input
+                                key={responseCount}
+                                name="overdueReminders"
+                                type="checkbox"
+                                checked={remind}
+                                onChange={(e) => setRemind(e.target.checked)}
+                                className="mt-0.5 h-4 w-4 shrink-0 accent-accent"
+                            />
+                            <span>
+                                <span className="block font-medium text-foreground">
+                                    Remind the contractor if it&apos;s overdue
+                                </span>
+                                <span className="block text-[0.8125rem] text-muted">
+                                    Up to {OVERDUE_REMINDER_MAX} emails, starting the day after the due date.
+                                </span>
+                            </span>
+                        </label>
+                    )}
                 </FieldGroup>
 
                 {/* Optional, so folded on a fresh form; open when it has something in it or an error. */}

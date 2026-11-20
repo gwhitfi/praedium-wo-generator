@@ -1,13 +1,6 @@
-import { timingSafeEqual } from "node:crypto";
 import * as Sentry from "@sentry/nextjs";
 import { runCleanup } from "@/lib/cleanup";
-
-// Constant-time, so the secret can't be guessed a character at a time from response timing.
-function matches(given: string, expected: string): boolean {
-    const a = Buffer.from(given);
-    const b = Buffer.from(expected);
-    return a.length === b.length && timingSafeEqual(a, b);
-}
+import { refuseCronRequest } from "@/lib/cronAuth";
 
 // Sentry's monitor for this job, created or updated by every check-in. The schedule matches vercel.json. Vercel's
 // Hobby plan starts a daily job at any time within its hour, so a check-in up to 90 minutes late is still on time; a
@@ -24,14 +17,8 @@ const monitorConfig = {
 // "Authorization: Bearer <CRON_SECRET>"; anything else is refused, and without the secret it doesn't run at all.
 // Each run that gets past those checks tells Sentry it ran (Sentry only reports from production).
 export async function GET(request: Request): Promise<Response> {
-    const secret = process.env.CRON_SECRET;
-    if (!secret) {
-        console.error("Cleanup: CRON_SECRET is not set");
-        return new Response("Not configured", { status: 503 });
-    }
-    if (!matches(request.headers.get("authorization") ?? "", `Bearer ${secret}`)) {
-        return new Response("Unauthorized", { status: 401 });
-    }
+    const refused = refuseCronRequest(request, "Cleanup");
+    if (refused) return refused;
 
     const report = await runCleanup();
     console.info("Cleanup done", report.done);

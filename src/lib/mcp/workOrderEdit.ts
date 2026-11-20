@@ -7,6 +7,7 @@ import { z } from "zod";
 import type { LineItemPriority, WorkOrderStatus } from "@/generated/prisma/client";
 import { LineItemPriority as Priorities } from "@/generated/prisma/enums";
 import { attachmentKeys } from "@/lib/attachments";
+import { REMINDER_RESET } from "@/lib/overdueReminders";
 import prisma from "@/lib/prisma";
 import { deleteFiles } from "@/lib/storage";
 import { contractorSnapshot, findTenant, tenantSnapshot } from "@/lib/workOrderCreate";
@@ -121,6 +122,7 @@ export async function updateWorkOrder(
     const newLink = contractorChanged && workOrder.status !== "DRAFT";
     // Stored as midnight UTC, like the form and createDraftWorkOrder.
     const dueDate = input.dueDate === undefined ? undefined : input.dueDate ? new Date(input.dueDate) : null;
+    const dueDateChanged = dueDate !== undefined && dueDate?.getTime() !== workOrder.dueDate?.getTime();
 
     await prisma.workOrder.update({
         where: { id: workOrder.id },
@@ -130,6 +132,8 @@ export async function updateWorkOrder(
             dueDate,
             notifyTenant: input.notifyTenant,
             inHouse,
+            // A new deadline or contractor starts a new set of overdue reminders.
+            ...(dueDateChanged || contractorChanged || inHouseChanged ? REMINDER_RESET : {}),
             ...(unitChanged
                 ? { unitId: input.unitId, ...tenantSnapshot(await findTenant(input.unitId ?? null, organizationId)) }
                 : {}),
@@ -141,7 +145,7 @@ export async function updateWorkOrder(
     const fields = [
         input.title !== undefined && input.title !== workOrder.title && "title",
         input.notes !== undefined && input.notes !== workOrder.notes && "notes",
-        dueDate !== undefined && dueDate?.getTime() !== workOrder.dueDate?.getTime() && "dueDate",
+        dueDateChanged && "dueDate",
         unitChanged && "unit",
         input.notifyTenant !== undefined && input.notifyTenant !== workOrder.notifyTenant && "notifyTenant",
     ].filter((field) => field !== false);

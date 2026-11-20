@@ -13,6 +13,7 @@ import { z } from "zod";
 import { deleteFiles } from "@/lib/storage";
 import { attachmentKeys, onWorkOrders } from "@/lib/attachments";
 import { logEvent } from "@/lib/workOrderEvents";
+import { REMINDER_RESET } from "@/lib/overdueReminders";
 import { parseId } from "@/lib/validation";
 import {
     firstItemInput,
@@ -42,8 +43,8 @@ async function readWorkOrderForm(formData: FormData, organizationId: string, pro
     if (!parsed.success) {
         return { ok: false, state: { errors: z.flattenError(parsed.error).fieldErrors, values } };
     }
-    const { title, unitId, notes, dueDate, notifyTenant, inHouse, contractorId } = parsed.data;
-    const fields = { title, unitId, notes, dueDate, notifyTenant, inHouse };
+    const { title, unitId, notes, dueDate, notifyTenant, overdueReminders, inHouse, contractorId } = parsed.data;
+    const fields = { title, unitId, notes, dueDate, notifyTenant, overdueReminders, inHouse };
 
     if (fields.unitId) {
         const unit = await prisma.unit.findFirst({
@@ -183,11 +184,13 @@ export async function updateWorkOrder(
     const inHouseChanged = fields.inHouse !== workOrder.inHouse;
     const unitChanged = fields.unitId !== workOrder.unitId;
     const newLink = contractorChanged && workOrder.status !== "DRAFT";
+    const dueDateChanged = fields.dueDate?.getTime() !== workOrder.dueDate?.getTime();
 
     await prisma.workOrder.update({
         where: { id: workOrderId },
         data: {
             ...fields,
+            ...(dueDateChanged || contractorChanged || inHouseChanged ? REMINDER_RESET : {}),
             ...(contractorChanged ? contractorSnapshot(contractor) : {}),
             ...(unitChanged ? tenantSnapshot(await findTenant(fields.unitId, organizationId)) : {}),
             ...(newLink ? { publicToken: randomBytes(24).toString("base64url"), deliveryMethod: null } : {}),
@@ -200,9 +203,12 @@ export async function updateWorkOrder(
         const changed = [
             fields.title !== workOrder.title && "title",
             fields.notes !== workOrder.notes && "notes",
-            fields.dueDate?.getTime() !== workOrder.dueDate?.getTime() && "dueDate",
+            dueDateChanged && "dueDate",
             unitChanged && "unit",
             fields.notifyTenant !== workOrder.notifyTenant && "notifyTenant",
+            fields.overdueReminders !== undefined &&
+                fields.overdueReminders !== workOrder.overdueReminders &&
+                "overdueReminders",
         ].filter((field) => field !== false);
 
         if (changed.length > 0) await logEvent({ ...event, type: "EDITED", detail: { fields: changed } });
