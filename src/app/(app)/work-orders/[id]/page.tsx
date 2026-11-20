@@ -2,7 +2,7 @@ import type { Metadata } from "next";
 import { getCurrentUser } from "@/lib/auth";
 import prisma from "@/lib/prisma";
 import { redirect, notFound } from "next/navigation";
-import { assigneeName, unitLabel, WORK_ORDER_STATUS_LABELS } from "@/lib/defaults";
+import { assigneeName, OVERDUE_REMINDER_MAX, unitLabel, WORK_ORDER_STATUS_LABELS } from "@/lib/defaults";
 import AreaBuilder from "./AreaBuilder";
 import StatusActions, { CancelWorkOrderButton } from "./StatusActions";
 import ContractorLink from "./ContractorLink";
@@ -148,6 +148,19 @@ export default async function WorkOrderDetail({
             ? { emailedOn: lastTenantNotice ? formatFullDate(dateInAppTimeZone(lastTenantNotice.createdAt)) : null }
             : null;
 
+    // Overdue reminders, for work orders with a due date and a contractor to remind. Changed on the edit form.
+    const reminderStatus =
+        workOrder.inHouse || !workOrder.dueDate || !workOrder.contractorId
+            ? null
+            : !workOrder.overdueReminders
+              ? "Overdue reminders off"
+              : workOrder.reminderCount === 0
+                ? "Overdue reminders on"
+                : `Overdue reminders: ${workOrder.reminderCount} of ${OVERDUE_REMINDER_MAX} sent` +
+                  (workOrder.lastReminderAt
+                      ? `, last ${formatTimestamp(workOrder.lastReminderAt)}`
+                      : "");
+
     const details: Detail[] = [
         {
             label: "Property",
@@ -173,7 +186,7 @@ export default async function WorkOrderDetail({
             extra: workOrder.inHouse ? (
                 <p>Your team. There&apos;s no contractor link.</p>
             ) : (
-                (workOrder.contractorPhone || workOrder.contractorEmail) && (
+                (workOrder.contractorPhone || workOrder.contractorEmail || reminderStatus) && (
                     <>
                         {workOrder.contractorPhone && (
                             <ContactLine href={`tel:${workOrder.contractorPhone}`}>
@@ -185,6 +198,7 @@ export default async function WorkOrderDetail({
                                 {workOrder.contractorEmail}
                             </ContactLine>
                         )}
+                        {reminderStatus && <p>{reminderStatus}</p>}
                     </>
                 )
             ),

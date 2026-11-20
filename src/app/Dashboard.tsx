@@ -4,10 +4,11 @@ import type { Organization, User } from "@/generated/prisma/client";
 import Nav from "@/components/Nav";
 import { navUnreadCount } from "@/lib/notifications";
 import AiPrompt from "./AiPrompt";
+import RemindersPrompt from "./RemindersPrompt";
 import PageHeader from "@/components/list/PageHeader";
 import { WorkOrderList } from "@/components/WorkOrderRow";
 import { CheckIcon, ChevronRightIcon } from "@/components/Icons";
-import { WORK_ORDER_FILTERS, WORK_ORDER_SORTS } from "@/lib/workOrders";
+import { OPEN_STATUSES, WORK_ORDER_FILTERS, WORK_ORDER_SORTS } from "@/lib/workOrders";
 import { parseSort, sortLabels, sortRows, type SearchParams } from "@/lib/sorting";
 import { cardClass, pageClass, sectionTitleClass } from "@/lib/ui";
 
@@ -16,10 +17,12 @@ const include = { property: true, unit: true, contractor: { select: { firstName:
 export default async function Dashboard({
     organization,
     user,
+    isAdmin,
     params,
 }: {
     organization: Organization;
     user: User;
+    isAdmin: boolean;
     params: SearchParams;
 }) {
     const base = { organizationId: organization.id, archived: false };
@@ -39,6 +42,7 @@ export default async function Dashboard({
         contractorCount,
         workOrderCount,
         unreadCount,
+        unenrolledCount,
     ] = await Promise.all([
         prisma.workOrder.count({ where: { ...base, ...WORK_ORDER_FILTERS.draft.where() } }),
         prisma.workOrder.count({ where: { ...base, ...WORK_ORDER_FILTERS.active.where() } }),
@@ -61,6 +65,12 @@ export default async function Dashboard({
         prisma.contact.count({ where: { ...base, contactType: "CONTRACTOR" } }),
         prisma.workOrder.count({ where: { organizationId: organization.id } }),
         navUnreadCount(user, organization.id),
+        // The reminders box only matters while there's something it would enroll.
+        isAdmin && organization.remindersPromptPending
+            ? prisma.workOrder.count({
+                  where: { ...base, inHouse: false, status: { in: OPEN_STATUSES }, overdueReminders: false },
+              })
+            : 0,
     ]);
 
     const needsAttention = [...completedOrders, ...overdueOrders].slice(0, 10);
@@ -86,6 +96,8 @@ export default async function Dashboard({
                 />
 
                 {steps.some((s) => !s.done) && <GetStarted steps={steps} />}
+
+                {unenrolledCount > 0 && <RemindersPrompt />}
 
                 <div className="mb-10 grid grid-cols-2 gap-3 lg:grid-cols-4">
                     <StatCard

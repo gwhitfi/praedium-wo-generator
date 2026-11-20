@@ -15,6 +15,9 @@ const nextConfig: NextConfig = {
     // production (src/instrumentation-client.ts), without relying on Vercel exposing NEXT_PUBLIC_VERCEL_ENV.
     env: { NEXT_PUBLIC_DEPLOY_ENV: process.env.VERCEL_ENV ?? "" },
     serverExternalPackages: ["@prisma/client", "@prisma/adapter-neon"],
+    // Stops `next dev` writing an AGENTS.md for AI coding agents (CLAUDE.md already covers it). With it off, the next
+    // `next dev` also removes the block it wrote, and the file with it when nothing else is in it.
+    agentRules: false,
     // Dev only: extra hostnames the dev server accepts for its hot-reload socket and internal assets, e.g. a tunnel
     // or VPN name used to test on a phone. Comma-separated, kept in .env.local so no hostname lands in the repo.
     allowedDevOrigins: process.env.ALLOWED_DEV_ORIGINS?.split(",")

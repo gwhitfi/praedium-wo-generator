@@ -114,6 +114,18 @@ describe("workOrderFormInput", () => {
         expect(z.flattenError(result.error!).fieldErrors.title).toEqual(["Use 200 characters or fewer"]);
     });
 
+    it("reads the reminder box: hidden off alone, off then on, or not on the form", () => {
+        const read = (values: string[]) => {
+            const data = new FormData();
+            data.set("title", "x");
+            for (const value of values) data.append("overdueReminders", value);
+            return workOrderFormInput.parse(readWorkOrderFormData(data)).overdueReminders;
+        };
+        expect(read(["off"])).toBe(false);
+        expect(read(["off", "on"])).toBe(true);
+        expect(read([])).toBeUndefined();
+    });
+
     it("reads the due date as a date and refuses anything else", () => {
         const parsed = workOrderFormInput.parse(readWorkOrderFormData(form({ title: "x", dueDate: "2026-11-20" })));
         expect(parsed.dueDate).toEqual(new Date("2026-11-20"));

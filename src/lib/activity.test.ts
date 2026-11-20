@@ -187,6 +187,14 @@ describe("describeEvent: email reports", () => {
     it("falls back to a plain label when the detail can't be read", () => {
         expect(report("EMAIL_BOUNCED", null).text).toBe("Email bounced");
     });
+
+    it("words an overdue reminder as a sentence with its number", () => {
+        expect(report("REMINDER_SENT", { to: "joe@example.com", number: 2 })).toEqual({
+            text: "Overdue reminder 2 of 3 emailed to joe@example.com",
+            backfilled: false,
+        });
+        expect(report("REMINDER_SENT", { to: "joe@example.com" }).text).toBe("Overdue reminder sent");
+    });
 });
 
 describe("describeEvent: unreadable details", () => {

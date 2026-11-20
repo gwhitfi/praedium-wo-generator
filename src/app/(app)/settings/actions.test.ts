@@ -13,13 +13,17 @@ vi.mock("@/lib/deletion", async (importOriginal) => ({
 vi.mock("@/lib/purgeOrganization", () => ({ purgeOrganization: vi.fn() }));
 vi.mock("@/lib/email", () => ({ getAppUrl: () => "https://workorderfox.test" }));
 vi.mock("@/lib/emailLog", () => ({ sendLoggedEmail: vi.fn() }));
-vi.mock("@/lib/prisma", () => ({
-    default: {
+vi.mock("@/lib/prisma", () => {
+    const client: Record<string, unknown> = {
         apiKey: { create: vi.fn(), updateMany: vi.fn() },
         organization: { update: vi.fn(), updateMany: vi.fn() },
         user: { update: vi.fn() },
-    },
-}));
+        workOrder: { updateMany: vi.fn() },
+    };
+    // Interactive transactions run against the same fakes.
+    client.$transaction = vi.fn((run: (tx: unknown) => unknown) => run(client));
+    return { default: client };
+});
 
 import { clerkClient } from "@clerk/nextjs/server";
 import { after } from "next/server";
@@ -29,6 +33,7 @@ import { deleteAccount, deleteOrganizationEverywhere, planAccountDeletion } from
 import { sendLoggedEmail } from "@/lib/emailLog";
 import { purgeOrganization } from "@/lib/purgeOrganization";
 import {
+    answerRemindersPrompt,
     createApiKey,
     deleteMyAccount,
     deleteOrganization,
@@ -108,6 +113,58 @@ describe("createApiKey", () => {
         expect(state.errors?.name).toBeDefined();
         expect(state.key).toBeUndefined();
         expect(prisma.apiKey.create).not.toHaveBeenCalled();
+    });
+});
+
+describe("answerRemindersPrompt", () => {
+    beforeEach(() => {
+        vi.mocked(prisma.organization.updateMany).mockResolvedValue({ count: 1 } as never);
+        vi.mocked(prisma.workOrder.updateMany).mockResolvedValue({ count: 4 } as never);
+    });
+
+    it("enrolls the organization's open contractor work orders and closes the prompt", async () => {
+        signedInAs("ADMIN");
+
+        expect(await answerRemindersPrompt(true)).toEqual({ ok: true, enrolled: 4 });
+        expect(prisma.organization.updateMany).toHaveBeenCalledWith({
+            where: { id: "org1", remindersPromptPending: true },
+            data: { remindersPromptPending: false },
+        });
+        expect(prisma.workOrder.updateMany).toHaveBeenCalledWith({
+            where: {
+                organizationId: "org1",
+                archived: false,
+                inHouse: false,
+                status: { in: ["DRAFT", "SENT", "IN_PROGRESS"] },
+                overdueReminders: false,
+            },
+            data: { overdueReminders: true },
+        });
+    });
+
+    it("only closes the prompt on No thanks", async () => {
+        signedInAs("ADMIN");
+
+        expect(await answerRemindersPrompt(false)).toEqual({ ok: true, enrolled: 0 });
+        expect(prisma.organization.updateMany).toHaveBeenCalled();
+        expect(prisma.workOrder.updateMany).not.toHaveBeenCalled();
+    });
+
+    it("enrolls nothing once the prompt was already answered", async () => {
+        signedInAs("ADMIN");
+        vi.mocked(prisma.organization.updateMany).mockResolvedValue({ count: 0 } as never);
+
+        expect(await answerRemindersPrompt(true)).toEqual({ ok: true, enrolled: 0 });
+        expect(prisma.workOrder.updateMany).not.toHaveBeenCalled();
+    });
+
+    it("refuses members who aren't admins, and anything but a yes or no", async () => {
+        signedInAs("USER");
+        expect(await answerRemindersPrompt(true)).toMatchObject({ ok: false });
+
+        signedInAs("ADMIN");
+        expect(await answerRemindersPrompt({ not: false })).toMatchObject({ ok: false });
+        expect(prisma.organization.updateMany).not.toHaveBeenCalled();
     });
 });
 

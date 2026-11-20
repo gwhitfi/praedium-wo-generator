@@ -20,6 +20,9 @@ export const workOrderFormInput = z
             .optional()
             .transform((value) => (value ? new Date(value) : null)),
         notifyTenant: z.boolean(),
+        // Undefined when the form didn't include the box: a new work order then gets the default (on), an edit
+        // leaves it as it was.
+        overdueReminders: z.boolean().optional(),
     })
     .transform(({ contractorId, ...fields }) => ({
         ...fields,
@@ -123,12 +126,14 @@ export type WorkOrderFormState = {
     values?: Record<string, string>;
 };
 
-// Reads the submitted form into the schema's input shape. Unchecked checkboxes aren't sent at all.
+// Reads the submitted form into the schema's input shape. Unchecked checkboxes aren't sent at all, so the reminder box
+// comes with a hidden "off" before it: "off" alone is unticked, "off" and "on" ticked, neither means not on the form.
 export function readWorkOrderFormData(formData: FormData): z.input<typeof workOrderFormInput> {
     const text = (name: string) => {
         const value = formData.get(name);
         return typeof value === "string" ? value : undefined;
     };
+    const reminders = formData.getAll("overdueReminders");
     return {
         title: text("title") ?? "",
         propertyId: text("propertyId"),
@@ -137,6 +142,7 @@ export function readWorkOrderFormData(formData: FormData): z.input<typeof workOr
         notes: text("notes"),
         dueDate: text("dueDate"),
         notifyTenant: formData.get("tenant") === "on",
+        overdueReminders: reminders.length === 0 ? undefined : reminders.includes("on"),
     };
 }
 

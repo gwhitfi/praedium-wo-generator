@@ -72,7 +72,11 @@ export const EMAIL_KIND_LABELS: Record<string, string> = {
     COMPLETED: "Completion notice",
     VERIFY_CODE: "Verification code",
     ORGANIZATION_DELETED: "Organization deletion notice",
+    OVERDUE_REMINDER: "Overdue reminder",
 };
+
+// Most overdue reminders one work order's contractor gets per due date (src/lib/overdueReminders.ts).
+export const OVERDUE_REMINDER_MAX = 3;
 
 export const EMAIL_STATUS_LABELS: Record<string, string> = {
     SENT: "Sent",

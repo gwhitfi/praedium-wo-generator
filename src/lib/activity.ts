@@ -4,7 +4,7 @@
 import { z } from "zod";
 import type { Prisma, WorkOrderEventType } from "@/generated/prisma/client";
 import { appTimeZone } from "./dates";
-import { EMAIL_KIND_LABELS, PRIORITY_LABELS } from "./defaults";
+import { EMAIL_KIND_LABELS, OVERDUE_REMINDER_MAX as REMINDER_MAX, PRIORITY_LABELS } from "./defaults";
 
 export type ActivityEvent = {
     id: string;
@@ -47,6 +47,7 @@ const PLAIN_LABELS: Record<WorkOrderEventType, string> = {
     VERIFIED: "Verified by the contractor",
     EMAIL_DELIVERED: "Email delivered",
     EMAIL_BOUNCED: "Email bounced",
+    REMINDER_SENT: "Overdue reminder sent",
 };
 
 // "work order email", mid-sentence.
@@ -60,6 +61,7 @@ const FIELD_LABELS: Record<string, string> = {
     dueDate: "due date",
     unit: "unit",
     notifyTenant: "tenant notification",
+    overdueReminders: "overdue reminders",
 };
 
 const itemRef = z.object({ item: z.string(), area: z.string() });
@@ -89,6 +91,7 @@ const schemas = {
         reason: z.enum(["bounced", "complained"]).optional(),
         message: z.string().optional(),
     }),
+    REMINDER_SENT: z.object({ to: z.string(), number: z.number().int().positive() }),
 };
 
 // The wording for one event: `active` follows the actor's name ("Marcus Hill checked off ..."); `passive` stands
@@ -243,6 +246,11 @@ function phrase(type: WorkOrderEventType, detail: Prisma.JsonValue): Phrase | nu
             return d.reason === "complained"
                 ? { active: "", alone: `${d.to} marked the ${label} as spam`, ...message }
                 : { active: "", alone: `The ${label} to ${d.to} bounced`, ...message };
+        }
+        case "REMINDER_SENT": {
+            const d = read(schemas.REMINDER_SENT);
+            if (!d) return null;
+            return { active: "", alone: `Overdue reminder ${d.number} of ${REMINDER_MAX} emailed to ${d.to}` };
         }
     }
 }

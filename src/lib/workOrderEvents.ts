@@ -52,6 +52,8 @@ type DetailsByType = {
     // From Resend's webhooks (src/lib/resendWebhook.ts). `to` is the address; `message` is the bounce reason.
     EMAIL_DELIVERED: { to: string; kind: EmailKind };
     EMAIL_BOUNCED: { to: string; kind: EmailKind; reason: "bounced" | "complained"; message?: string };
+    // From the daily reminder job (src/lib/overdueReminders.ts). `number` counts reminders for this due date.
+    REMINDER_SENT: { to: string; number: number };
 };
 
 // Fails to compile if an event type in the schema is missing from DetailsByType.
@@ -59,7 +61,7 @@ type CoversEveryType<T extends Record<WorkOrderEventType, unknown>> = T;
 export type EventDetails = CoversEveryType<DetailsByType>;
 
 // Who did it: a signed-in office user, the contractor on the public page (named as on the work order), or Work Order Fox
-// itself (email delivery reports).
+// itself (email delivery reports, overdue reminders).
 export type Actor =
     | { kind: "office"; user: Pick<User, "id" | "firstName" | "lastName" | "email"> }
     | { kind: "contractor"; name: string | null }

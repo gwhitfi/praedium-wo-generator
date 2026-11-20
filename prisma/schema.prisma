@@ -81,6 +81,8 @@ enum WorkOrderEventType {
   // Email (Resend webhooks)
   EMAIL_DELIVERED // the contractor's work order email arrived
   EMAIL_BOUNCED // an email for this work order bounced or was marked as spam
+  // Work Order Fox
+  REMINDER_SENT // emailed the contractor an overdue reminder (src/lib/overdueReminders.ts)
 }
 
 enum EmailKind {
@@ -90,6 +92,7 @@ enum EmailKind {
   COMPLETED // the contractor finished; goes to the office
   VERIFY_CODE // the contractor's 6-digit code
   ORGANIZATION_DELETED // the organization was scheduled for deletion; goes to its admins
+  OVERDUE_REMINDER // the contractor's work order is past due (src/lib/overdueReminders.ts)
 }
 
 enum EmailStatus {
@@ -155,6 +158,9 @@ model Organization {
   // Set when an admin deletes the organization in Settings (restorable for 7 days) or it's deleted in Clerk
   // (webhook, which also revokes its API keys). No one can open it; the data itself is removed later by the purge job.
   deletedAt     DateTime?
+  // True for organizations that existed before overdue reminders (2026-11): an admin sees the one-time dashboard box
+  // offering to enroll their existing work orders. False for organizations created since.
+  remindersPromptPending Boolean @default(false)
 
   users       User[]
   properties  Property[]
@@ -334,6 +340,12 @@ model WorkOrder {
   cancelledAt     DateTime?
   cancelReason    String?
   completionNotes String?
+  // Overdue reminders to the contractor (src/lib/overdueReminders.ts). Work orders from before the feature start
+  // unenrolled (the migration set false for them) until an admin enrolls them. The count and time start over when
+  // the due date or contractor changes.
+  overdueReminders Boolean   @default(true)
+  reminderCount    Int       @default(0)
+  lastReminderAt   DateTime?
 
   contractorId    String?
   contractor      Contact? @relation("WorkOrderContractor", fields: [contractorId], references: [id], onDelete: SetNull)
@@ -369,6 +381,7 @@ model WorkOrder {
   @@index([tenantId])
   @@index([status])
   @@index([unitId])
+  @@index([status, dueDate])
 }
 
 // The work order's activity history. One row per thing that happened; see WorkOrderEventType.

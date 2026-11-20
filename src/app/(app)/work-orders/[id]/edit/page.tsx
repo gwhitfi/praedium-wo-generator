@@ -75,6 +75,7 @@ export default async function EditWorkOrder({ params }: { params: Promise<{ id: 
                         notes: workOrder.notes ?? "",
                         dueDate: workOrder.dueDate ? workOrder.dueDate.toISOString().slice(0, 10) : "",
                         notifyTenant: workOrder.notifyTenant,
+                        overdueReminders: workOrder.overdueReminders,
                     }}
                     action={updateWorkOrder.bind(null, workOrder.id)}
                     submitLabel="Save changes"
